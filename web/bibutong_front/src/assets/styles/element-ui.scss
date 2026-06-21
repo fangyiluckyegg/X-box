@@ -1,0 +1,56 @@
+.el-breadcrumb__inner,
+.el-breadcrumb__inner a {
+  font-weight: 400 !important;
+}
+
+.cell {
+  .el-tag {
+    margin-right: 0px;
+  }
+}
+
+.small-padding {
+  .cell {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+}
+
+.fixed-width {
+  .el-button--mini {
+    padding: 8px 12px;
+    width: 70px;
+  }
+}
+
+.status-col {
+  .cell {
+    padding: 0 10px;
+    text-align: center;
+
+    .el-tag {
+      margin-right: 0px;
+    }
+  }
+}
+
+.el-dialog {
+  transform: none;
+  left: 0;
+  position: relative;
+  margin: 0 auto;
+}
+
+.el-dropdown-menu {
+  a {
+    display: block
+  }
+}
+
+.el-menu--collapse
+  > div
+  > .el-submenu
+  > .el-submenu__title
+  .el-submenu__icon-arrow {
+  display: none;
+}
