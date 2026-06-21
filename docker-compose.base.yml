@@ -1,0 +1,57 @@
+#version: "3.8"
+# 公共常驻服务：Nginx网关、MySQL8、Redis5
+services:
+  nginx-gateway:
+    image: nginx:1.25-alpine
+    container_name: dev-nginx-gateway
+    mem_limit: 256m
+    cpus: 0.5
+    restart: always    
+    volumes:
+      - ./gateway/nginx/conf.d:/etc/nginx/conf.d
+      - ./logs/nginx:/var/log/nginx
+      - ./gateway/nginx/ssl:/etc/nginx/ssl
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+    networks:
+      - dev-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: dev-mysql
+    mem_limit: 1g
+    cpus: 1
+    restart: always
+    volumes:
+      - ./db/mysql_data:/var/lib/mysql
+      - ./db/mysql_init:/docker-entrypoint-initdb.d
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PWD}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:33060:3306"
+    networks:
+      - dev-network
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  redis:
+    image: redis:5.0.14-alpine
+    container_name: dev-redis
+    mem_limit: 512m
+    cpus: 0.3
+    restart: always
+    volumes:
+      - ./db/redis_data:/data
+    command: redis-server --dbfilename dump.rdb --appendonly no
+    ports:
+      - "127.0.0.1:63790:6379"
+    networks:
+      - dev-network
+
+# 统一容器内网网络
+networks:
+  dev-network:
+    driver: bridge
