@@ -1,0 +1,8 @@
+# 屏蔽mysql套接字与数据目录
+db/mysql_data/
+*.sock
+*.sock.lock
+# 可选：过滤编译缓存、日志、容器挂载数据
+target/
+logs/
+tmp/

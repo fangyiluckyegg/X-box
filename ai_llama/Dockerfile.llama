@@ -1,0 +1,12 @@
+# 官方ollama基础镜像，自带ollama二进制
+FROM ollama/ollama:latest
+
+WORKDIR /app
+
+# 时区
+ENV TZ=Asia/Shanghai
+ENV OLLAMA_HOST=http://0.0.0.0:11434
+
+# 暴露ollama默认端口11434
+EXPOSE 11434
+EXPOSE 8000
