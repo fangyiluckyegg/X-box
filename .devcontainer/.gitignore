@@ -1,0 +1,3 @@
+# Dev容器缓存
+.devcontainer/.devcontainer.json.cache
+.devcontainer/devcontainer-lock.json
