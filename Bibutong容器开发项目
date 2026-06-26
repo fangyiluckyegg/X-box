@@ -36,12 +36,16 @@ server
 │   └── conf.d               # 各项目路由配置文件
 ├── db
 │   ├── mysql_data           # MySQL持久化数据
-│   ├── mysql_init           # 数据库初始化SQL（建库、账号、权限）
+│   ├── mysql_init           # 数据库初始化SQL（建库、账号、权限）【是否核实上传GIT】
 │   └── redis_data           # Redis持久化RDB文件
-├── web
-│   └── bibutong_front       # Bibutong Vue前端源码
-├── backend
-│   └── bibutong_server      # Spring Cloud Alibaba后端源码
+├── web/bibutong_front       
+│   ├── src                  # Bibutong Vue前端源码
+│   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像
+│   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【待修改】
+├── backend/bibutong_server      
+│   ├── src                  # Spring Cloud Alibaba后端源码
+│   ├── Dockerfile.prod      # 生产环境-多阶段打包镜像（CI流水线使用）
+│   └── Dockerfile.dev       # 开发环境-多阶段打包镜像（CI流水线使用）【待修改】
 ├── ai_llama                 # Llama3.2、bge-m3向量模型权重（宿主机挂载，不打包镜像）
 ├── logs                     # 全容器统一日志挂载目录
 │   ├── nginx
@@ -56,41 +60,51 @@ server
 │   └── backup_dev.bat       # 定时备份脚本
 ├── backup                   # 数据库、配置文件备份存档【暂缺】
 ├── .env.dev                 # 本地开发环境变量（不提交Git）
+├── .env.prod                # 线上环境变量【暂无】
 ├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重
 ├── .dockerignore            # 屏蔽************【暂缺】
-├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis
-└── docker-compose.business-bibutong.yml # Bibutong专属业务容器：前端、后端、AI向量服务
+├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关
+├── docker-compose.business-bibutong.yml        # Bibutong专属业务容器：前端、后端、AI向量服务【生产环境版本】
+└── docker-compose.business-bibutong.dev.yml    # Bibutong专属业务容器：前端、后端、AI向量服务【开发环境版本】
+
+
+# 在git-hub删除制定文件.env.dev
+git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env.dev' --prune-empty --tag-name-filter cat -- --all
+# 1.清理本地 Git 垃圾（压缩旧历史）
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+# 2. 强制推送重写后的本地历史到远程（关键）
+git push origin --force --all
 
 二、资源配额规划（适配 16G 本地内存）
 1. 常驻公共容器（开机长期运行，总占用≈3GB）
-表格
-容器服务	镜像版本	内存限制	CPU 限制	作用说明
-nginx-gateway	nginx:1.25-alpine	256M	0.5 核	统一网关、反向代理、跨域、静态分发
-mysql	mysql:8.0	1G	1 核	多项目共用，Bibutong 使用bibutong_dev库
-redis	redis:5.0.14-alpine	512M	0.3 核	共用缓存，Bibutong 固定使用 db9
+容器服务	    镜像版本	                内存限制	    CPU 限制	        作用说明
+nginx-gateway	nginx:1.25-alpine	        256M	        0.5 核	        统一网关、反向代理、跨域、静态分发
+mysql	        mysql:8.0	                1G	            1 核	        多项目共用，Bibutong 使用bibutong_dev库
+redis	        redis:5.0.14-alpine	        512M	        0.3 核	        共用缓存，Bibutong 固定使用 db9
 2. Bibutong 业务容器（分时启停，总占用≈4GB）
-表格
-容器服务	镜像 / 构建规则	内存限制	CPU 限制	备注
-bibutong-front	nginx:1.25-alpine	128M	0.2 核	Vue 打包后静态托管，无 Node 运行时
-bibutong-backend	eclipse-temurin:21-jdk-alpine 构建	2G	2 核	Spring Cloud Alibaba2.5.1，JVM -Xmx1800M
-llama	python:3.9.5-slim	2G	2 核	Llama3.2 大模型 + bge-m3 向量嵌入，可临时关停释放内存
+容器服务	    镜像 / 构建规则	            内存限制	    CPU 限制	        备注
+bibutong-front	nginx:1.25-alpine	        128M	        0.2 核	        Vue 打包后静态托管，无 Node 运行时
+bibutong-backend	eclipse-temurin:21-jdk-alpine 构建	2G	2 核	        Spring Cloud Alibaba2.5.1，JVM -Xmx1800M
+llama	        python:3.9.5-slim	        2G	            2 核	        Llama3.2 大模型 + bge-m3 向量嵌入，可临时关停释放内存
 3. 整体内存核算
 容器合计峰值：3G + 4G = 7GB
 Docker WSL 上限 8GB，剩余 9GB 供给 Windows 系统、IDE、浏览器、数据库工具，无磁盘交换卡顿。
+
 三、网络与端口规划（本地开发隔离，不和生产冲突）
 1. 宿主机暴露端口（仅 127.0.0.1 访问）
-表格
-服务	宿主机端口	容器内部端口	用途
-Nginx 网关 HTTP	80	80	前端页面、API 统一入口
-Nginx 网关 HTTPS	443	443	开发自签 SSL 调试
-MySQL	33060	3306	Navicat 本地连接开发库
-Redis	63790	6379	Redis 客户端调试缓存
-Llama AI 推理	8000	8000	后端本地调用向量接口
+服务	        宿主机端口	    容器内部端口	    用途
+Nginx 网关 HTTP	    80	        80	            前端页面、API 统一入口
+Nginx 网关 HTTPS	443	        443	            开发自签 SSL 调试
+MySQL	            33060	    3306	        Navicat 本地连接开发库
+Redis	            63790	    6379	        Redis 客户端调试缓存
+Llama AI 推理	    8000	    8000	        后端本地调用向量接口
 2. 容器内网互通规则
 统一自定义网络dev-network，所有容器加入该网络；
 数据库、Redis 仅允许网关、业务后端、AI 容器内网访问，不对外暴露；
 禁止容器使用--privileged特权模式；
 容器间通信使用服务名作为域名（mysql、redis、llama），无需 IP 写死。
+
 四、多项目数据隔离规范（公共中间件复用）
 MySQL 隔离
 Bibutong 业务库：bibutong_dev
@@ -99,6 +113,7 @@ Bibutong 业务库：bibutong_dev
 Redis 隔离
 Bibutong 固定使用 db9，其他新项目依次分配 db10、db11…
 关闭 Redis 持久化 AOF，仅保留 RDB 简易落盘，减少磁盘 IO
+
 五、完整编排配置文件
 1. docker-compose.base.yml（公共常驻中间件）
 2. docker-compose.business-bibutong.yml（Bibutong 业务容器）
@@ -113,7 +128,7 @@ Bibutong 固定使用 db9，其他新项目依次分配 db10、db11…
 4. ai_switch.bat 按需启停 AI 容器（释放 2G 内存）
 5. backup_dev.bat 开发数据定时备份脚本
 
-八、标准完整部署操作流程
+七、标准完整部署操作流程
 步骤 1：环境初始化（首次部署执行）
 创建D:\crh123dexiaohao\server全套目录层级；
 放入.env.dev、所有 yml 编排文件、Nginx 路由配置、MySQL 初始化 SQL；
@@ -138,7 +153,7 @@ Navicat 连接 127.0.0.1:33060，确认bibutong_dev库自动创建完成。
 每日开发结束：执行stop_business.bat关闭业务容器，公共中间件可常驻；
 每周执行backup_dev.bat备份开发数据库与配置。
 
-九、开发环境与 Mac Mini 生产环境无缝迁移方案
+八、开发环境与 Mac Mini 生产环境无缝迁移方案
 镜像、版本统一：Nginx、MySQL、Redis、JDK、Node、Python 镜像版本完全一致；
 编排文件复用：仅替换.env环境变量文件，compose 业务层无需修改；
 数据迁移：本地backup_dev.bat导出 bibutong_dev SQL，上传至 Mac Mini 导入生产库bibutong_db；
