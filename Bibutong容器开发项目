@@ -47,6 +47,7 @@ server
 │   ├── Dockerfile.prod      # 生产环境-多阶段打包镜像（CI流水线使用）
 │   └── Dockerfile.dev       # 开发环境-多阶段打包镜像（CI流水线使用）【待修改】
 ├── ai_llama                 # Llama3.2、bge-m3向量模型权重（宿主机挂载，不打包镜像）
+│   └── Dockerfile.llama     # 生产环境镜像【是不是应该归入常态化容器类更好？是不是因为担心长期占空间意义不大？】
 ├── logs                     # 全容器统一日志挂载目录
 │   ├── nginx
 │   ├── mysql   【暂缺】
