@@ -53,7 +53,7 @@ services:
       context: ./
       dockerfile: ./ai_llama/Dockerfile.llama
     container_name: dev-bibutong-llama
-    mem_limit: 4g
+    mem_limit: 6g
     cpus: 2
     volumes:
       #- ./ai_llama:/model

@@ -19,6 +19,7 @@ WORKDIR /app
 # 无需gcc/g++、无需meson、无需cython编译，零构建报错
 RUN apk update && apk add --no-cache python3 py3-pip py3-scikit-learn && ln -sf /usr/bin/python3 /usr/bin/python
 
+
 # 复制AI推理脚本目录并授权
 COPY --from=builder /app/backend/bibutong_server/src/ai-infer /app/ai-infer
 RUN chmod -R 755 /app/ai-infer
