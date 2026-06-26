@@ -1,0 +1,179 @@
+根据开发电脑的配置规划，先实施已有存量Bibutong项目在本地开发环境的部署
+# 本地开发电脑的配置如下
+# 1.硬件：i7-8700K、16GB DDR4 3000MHz、RTX 2070S、三星980 m.2 Nvme 1T、3T+1T 机械盘
+# 2.系统：win11
+本地开发电脑部署存量Bibutong项目的思路如下：
+Nginx 网关容器：镜像 nginx:1.25-alpine，轻量化反向代理网关，统一处理前端静态资源、前后端接口路由分发、跨域、SSL；
+Vue 前端静态服务：分两段构建，构建阶段使用 node:18-alpine 执行 Vue-Cli 打包生成 dist；生产运行阶段复用 nginx 镜像，仅部署编译完成的静态文件，无 Node 运行环境；
+Java 业务后端容器：编译阶段基于 eclipse-temurin:21-jdk-alpine，依托项目内置 mvnw 锁定 Maven3.8.6 完成打包；运行阶段切换轻量 JRE 镜像瘦身，承载 Spring Cloud Alibaba2.5.1 微服务业务；
+AI 推理服务容器：镜像锁定 python:3.9.5-slim，搭载 Llama3.2 大模型、bge-m3 向量嵌入能力；大模型权重文件通过宿主机目录挂载，不打入镜像；
+Redis 缓存容器（存量纳入统一编排）：镜像 redis:5.0.14-alpine，匹配项目业务依赖版本，开启 RDB 持久化存储缓存数据；
+MySQL 数据库容器（存量纳入统一编排）：镜像 mysql:8.0，完美兼容 Spring Cloud Alibaba2.5.1，挂载宿主机目录持久业务数据库。
+
+
+# 存量 Bibutong 项目 Win11 本地容器化详细部署方案
+方案定位：采用公共中间件常驻 + 业务项目分时运行架构，单时间仅启动一套重型项目；容器架构 1:1 对齐 Mac Mini M2 生产环境，开发环境仅调整资源配额、本地端口、环境变量，代码与编排文件可直接迁移生产，消除环境不一致 BUG。
+一、宿主机硬件与前置环境清单
+1. 本地开发机硬件
+CPU：i7-8700K
+内存：16GB DDR4 3000MHz
+显卡：RTX2070S（AI 推理加速）
+存储：1TB NVMe 系统盘、3T+1T 机械盘
+系统：Windows 11 专业版
+2. 必备软件安装与配置
+Docker Desktop for Windows
+后端启用 WSL2
+WSL 资源限制：内存 8G、CPU 6 核、交换分区 4G
+镜像存储路径指向机械盘，节省 NVMe 空间
+开启文件挂载热重载、启用 BuildKit 构建加速
+开发工具：VS Code（Docker/YAML/Vue/Java 插件）、Git、Windows 终端 / PowerShell
+网络规范：仅本地回环127.0.0.1暴露端口，禁止 0.0.0.0 全网监听，Windows 防火墙拦截外部访问 Docker 端口
+3. 宿主机统一目录规范（完全对齐生产层级）
+根目录：D:\crh123dexiaohao\server\
+plaintext
+server
+├── gateway/nginx            # Nginx网关配置、路由、SSL证书
+│   └── conf.d               # 各项目路由配置文件
+├── db
+│   ├── mysql_data           # MySQL持久化数据
+│   ├── mysql_init           # 数据库初始化SQL（建库、账号、权限）【是否核实上传GIT】
+│   └── redis_data           # Redis持久化RDB文件
+├── web/bibutong_front       
+│   ├── src                  # Bibutong Vue前端源码
+│   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像
+│   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【待修改】
+├── backend/bibutong_server      
+│   ├── src                  # Spring Cloud Alibaba后端源码
+│   ├── Dockerfile.prod      # 生产环境-多阶段打包镜像（CI流水线使用）
+│   └── Dockerfile.dev       # 开发环境-多阶段打包镜像（CI流水线使用）【待修改】
+├── ai_llama                 # Llama3.2、bge-m3向量模型权重（宿主机挂载，不打包镜像）
+│   └── Dockerfile.llama     # 生产环境镜像【是不是应该归入常态化容器类更好？是不是因为担心长期占空间意义不大？】
+├── logs                     # 全容器统一日志挂载目录
+│   ├── nginx
+│   ├── mysql   【暂缺】
+│   ├── redis   【暂缺】
+│   ├── bibutong-front
+│   ├── bibutong-backend
+│   └── llama
+├── scripts                  # 运维启停、备份、清理脚本
+│   ├── *.bat                # Windows批处理启停脚本
+│   ├── db_reset.sql         # 开发库重置脚本
+│   └── backup_dev.bat       # 定时备份脚本
+├── backup                   # 数据库、配置文件备份存档【暂缺】
+├── .env.dev                 # 本地开发环境变量（不提交Git）
+├── .env.prod                # 线上环境变量【暂无】
+├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重
+├── .dockerignore            # 屏蔽************【暂缺】
+├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关
+├── docker-compose.business-bibutong.yml        # Bibutong专属业务容器：前端、后端、AI向量服务【生产环境版本】
+└── docker-compose.business-bibutong.dev.yml    # Bibutong专属业务容器：前端、后端、AI向量服务【开发环境版本】
+
+
+# 在git-hub删除制定文件.env.dev
+git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env.dev' --prune-empty --tag-name-filter cat -- --all
+# 1.清理本地 Git 垃圾（压缩旧历史）
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+# 2. 强制推送重写后的本地历史到远程（关键）
+git push origin --force --all
+
+二、资源配额规划（适配 16G 本地内存）
+1. 常驻公共容器（开机长期运行，总占用≈3GB）
+容器服务	    镜像版本	                内存限制	    CPU 限制	        作用说明
+nginx-gateway	nginx:1.25-alpine	        256M	        0.5 核	        统一网关、反向代理、跨域、静态分发
+mysql	        mysql:8.0	                1G	            1 核	        多项目共用，Bibutong 使用bibutong_dev库
+redis	        redis:5.0.14-alpine	        512M	        0.3 核	        共用缓存，Bibutong 固定使用 db9
+2. Bibutong 业务容器（分时启停，总占用≈4GB）
+容器服务	    镜像 / 构建规则	            内存限制	    CPU 限制	        备注
+bibutong-front	nginx:1.25-alpine	        128M	        0.2 核	        Vue 打包后静态托管，无 Node 运行时
+bibutong-backend	eclipse-temurin:21-jdk-alpine 构建	2G	2 核	        Spring Cloud Alibaba2.5.1，JVM -Xmx1800M
+llama	        python:3.9.5-slim	        2G	            2 核	        Llama3.2 大模型 + bge-m3 向量嵌入，可临时关停释放内存
+3. 整体内存核算
+容器合计峰值：3G + 4G = 7GB
+Docker WSL 上限 8GB，剩余 9GB 供给 Windows 系统、IDE、浏览器、数据库工具，无磁盘交换卡顿。
+
+三、网络与端口规划（本地开发隔离，不和生产冲突）
+1. 宿主机暴露端口（仅 127.0.0.1 访问）
+服务	        宿主机端口	    容器内部端口	    用途
+Nginx 网关 HTTP	    80	        80	            前端页面、API 统一入口
+Nginx 网关 HTTPS	443	        443	            开发自签 SSL 调试
+MySQL	            33060	    3306	        Navicat 本地连接开发库
+Redis	            63790	    6379	        Redis 客户端调试缓存
+Llama AI 推理	    8000	    8000	        后端本地调用向量接口
+2. 容器内网互通规则
+统一自定义网络dev-network，所有容器加入该网络；
+数据库、Redis 仅允许网关、业务后端、AI 容器内网访问，不对外暴露；
+禁止容器使用--privileged特权模式；
+容器间通信使用服务名作为域名（mysql、redis、llama），无需 IP 写死。
+
+四、多项目数据隔离规范（公共中间件复用）
+MySQL 隔离
+Bibutong 业务库：bibutong_dev
+独立数据库账号：bibutong_user，仅授予本库增删改查权限
+初始化脚本容器启动自动执行，库字符集utf8mb4，兼容微信小程序特殊字符
+Redis 隔离
+Bibutong 固定使用 db9，其他新项目依次分配 db10、db11…
+关闭 Redis 持久化 AOF，仅保留 RDB 简易落盘，减少磁盘 IO
+
+五、完整编排配置文件
+1. docker-compose.base.yml（公共常驻中间件）
+2. docker-compose.business-bibutong.yml（Bibutong 业务容器）
+3. .env.dev 环境变量模板（存放敏感配置，禁止提交 Git）
+4. MySQL 初始化脚本 db/mysql_init/init.sql
+5. Nginx 网关路由配置 gateway/nginx/conf.d/default.conf
+
+六、前后端 Docker 构建文件
+1. 后端 Dockerfile.dev（backend/bibutong_server/Dockerfile.dev）
+2. switch_bibutong.bat 一键切换至 Bibutong 项目（日常开发核心脚本）
+3. stop_business.bat 关闭当前业务项目，保留公共中间件
+4. ai_switch.bat 按需启停 AI 容器（释放 2G 内存）
+5. backup_dev.bat 开发数据定时备份脚本
+
+七、标准完整部署操作流程
+步骤 1：环境初始化（首次部署执行）
+创建D:\crh123dexiaohao\server全套目录层级；
+放入.env.dev、所有 yml 编排文件、Nginx 路由配置、MySQL 初始化 SQL；
+放置前端源码web/bibutong_front、后端源码backend/bibutong_server；
+将 Llama3.2、bge-m3 模型权重放入ai_llama目录；
+配置 Docker Desktop WSL 内存 8G，重启 Docker；
+运行scripts/base_start.bat，启动 Nginx、MySQL、Redis 公共容器；
+Navicat 连接 127.0.0.1:33060，确认bibutong_dev库自动创建完成。
+
+步骤 2：启动 Bibutong 完整业务集群
+执行scripts/switch_bibutong.bat，自动拉起前端、后端、AI 容器。
+查看容器状态：docker ps，确认 4 个容器全部 running；
+后端自动构建 Jar 包，等待构建完成；
+访问 http://local.bibutong.com 验证前端页面；
+调用 /api 接口测试后端数据库读写；
+访问 8000 端口验证向量 AI 推理服务。
+
+步骤 3：日常开发使用规范
+仅调试页面：可宿主机npm run serve裸机热更新，上线前容器打包验证；
+无需 AI 功能：执行ai_switch.bat stop关闭 llama 容器，大幅降低内存占用；
+切换其他项目：执行新项目专属 switch 脚本，自动关停 Bibutong 业务容器；
+每日开发结束：执行stop_business.bat关闭业务容器，公共中间件可常驻；
+每周执行backup_dev.bat备份开发数据库与配置。
+
+八、开发环境与 Mac Mini 生产环境无缝迁移方案
+镜像、版本统一：Nginx、MySQL、Redis、JDK、Node、Python 镜像版本完全一致；
+编排文件复用：仅替换.env环境变量文件，compose 业务层无需修改；
+数据迁移：本地backup_dev.bat导出 bibutong_dev SQL，上传至 Mac Mini 导入生产库bibutong_db；
+构建产物通用：本地打包 dist 静态文件、后端 Jar 包，直接同步至家庭服务器部署；
+运维脚本统一：备份、日志清理、容器启停逻辑完全对齐，上线无额外适配工作。
+
+十、安全管控规范（本地对齐生产安全标准）
+敏感账号密码存放.env.dev，.gitignore屏蔽该文件，禁止提交代码仓库；
+MySQL、Redis 仅本地回环访问，禁止 0.0.0.0 监听；
+所有容器不使用特权模式，挂载目录最小读写权限；
+开发账号密码复杂度与生产保持一致，杜绝弱密码；
+统一日志目录自动归档，日志输出自动过滤密钥、数据库账号等敏感信息；
+模型权重目录设置只读权限，防止误删大模型文件。
+
+十一、内存优化补充方案（16G 内存极限流畅优化）
+Docker WSL 内存锁定 8G，不分配更高；
+后端 JVM 固定-Xmx1800M，不允许堆内存无限制扩张；
+不调试 AI 时永久关停 llama 容器，一次性释放 2G 内存；
+Redis 关闭 AOF 持久化，仅保留轻量 RDB；
+MySQL 开发环境关闭慢查询日志、大量索引缓存；
+Windows 关闭多余浏览器标签、IDE 无关插件，减少宿主机内存占用；
+定期执行日志清理脚本，避免日志文件占用磁盘与内存缓存。
