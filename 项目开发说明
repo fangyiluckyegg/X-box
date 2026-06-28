@@ -101,6 +101,11 @@ git gc --prune=now --aggressive
 # 2. 强制推送重写后的本地历史到远程（关键）
 git push origin --force --all
 
+git add VERSION.md
+git rm "1.2.5-r12)" "26.0.1"
+git commit -m "标准化版本文件为VERSION.md，清理旧版本零散文件"
+
+
 二、资源配额规划（适配 16G 本地内存）
 1. 常驻公共容器（开机长期运行，总占用≈3GB）
 容器服务	    镜像版本	                内存限制	    CPU 限制	        作用说明
