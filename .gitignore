@@ -1,55 +1,71 @@
-# 本地开发环境变量（不提交Git）
+# ====================== 环境变量（敏感，禁止提交） ======================
 .env.dev
 .env.prod
+# 仅允许无密码模板文件提交仓库
+!.env.dev.template
+!.env.prod.template
 
-# 运行日志
+# ====================== 运行日志 ======================
 logs/**
+*.log
 
-# MySQL 容器数据目录（完全不要提交）
+# ====================== Nginx SSL证书（私钥高危） ======================
+gateway/nginx/ssl/*.key
+gateway/nginx/ssl/*.crt
+gateway/nginx/ssl/*.pem
+
+# ====================== MySQL/Redis 持久化数据 ======================
+# 完整屏蔽数据目录，无需单独屏蔽库内文件
 db/mysql_data/
 db/redis_data/
-*.sock
-*.ibd
-ib_buffer_pool
-auto.cnf
-binlog.*
 
 # 本地真实数据库初始化脚本（含明文密码）
 db/mysql_init/init.sql
-# 仅允许提交模板文件
+# 仅允许提交无密码模板文件
 !db/mysql_init/*.template.sql
 
-# Llama模型、缓存、AI二进制文件
+
+
+# ====================== AI Llama 模型与缓存 ======================
 ai_llama/models/
 ai_llama/cache/
 
-# SSH私钥（绝对禁止提交，安全风险）
-id_ed25519
-id_ed25519.pub
+# SSH私钥（存放在ai_llama目录，精准匹配防泄露）
+ai_llama/id_ed25519
+ai_llama/id_ed25519.pub
 
-# 前端产物
+# ====================== 前端Vue产物/依赖 ======================
 web/bibutong_front/dist/
 web/bibutong_front/node_modules/
-npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# 后端产物
+# ====================== 后端Maven编译产物 ======================
 backend/bibutong_server/dependency-reduced-pom.xml
 backend/bibutong_server/target/
+# Maven本地缓存
+.m2/
 
-# Docker镜像、容器临时文件
+# ====================== Docker & 容器临时文件 ======================
 .docker/
-*.log
-tmp/
-temp/
-# Dev容器缓存
-.devcontainer/.devcontainer.json.cache
+**/tmp/
+**/temp/
+
+# DevContainer VSCode远程容器本地缓存
+.devcontainer/**.cache
 .devcontainer/devcontainer-lock.json
-# devcontainer本地临时缓存
 .devcontainer/.vscode/
 .devcontainer/temp-*
 
-# IDE系统文件
+# ====================== Python/AI脚本缓存 ======================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ====================== IDE & 系统隐藏文件 ======================
 .idea/
 .vscode/
 .DS_Store
-
+Thumbs.db
