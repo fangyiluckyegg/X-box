@@ -24,8 +24,6 @@ db/mysql_init/init.sql
 # 仅允许提交无密码模板文件
 !db/mysql_init/*.template.sql
 
-
-
 # ====================== AI Llama 模型与缓存 ======================
 ai_llama/models/
 ai_llama/cache/
