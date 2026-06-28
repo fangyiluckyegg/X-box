@@ -2,16 +2,21 @@ server {
     listen 80;
     server_name localhost 127.0.0.1 local.bibutong.com;
 
+    resolver 127.0.0.11 ipv6=off valid=30s;
+    resolver_timeout 10s;
+
     location / {
-        proxy_pass http://bibutong-front;
+        set $front_host bibutong-front;
+        proxy_pass http://$front_host;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         expires -1;
+        try_files $uri $uri/ /index.html;
     }
 
-    # 暂时注释后端与AI，避免启动时解析失败
     location /api/ {
-        proxy_pass http://bibutong-backend:8080/api/;
+        set $backend_host bibutong-backend;
+        proxy_pass http://$backend_host:8080/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         add_header Access-Control-Allow-Origin * always;
@@ -20,9 +25,9 @@ server {
     }
 
     location /ai/vector/ {
-        proxy_pass http://llama:8000/vector/;
+        set $llama_host llama;
+        proxy_pass http://$llama_host:8000/vector/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
-
 }
