@@ -33,22 +33,42 @@ WSL 资源限制：内存 8G、CPU 6 核、交换分区 4G
 plaintext
 server
 ├── gateway/nginx            # Nginx网关配置、路由、SSL证书
-│   └── conf.d               # 各项目路由配置文件
+│   └── conf.d               # 各项目路由配置文件【可上传GIT】【真实 SSL 证书目录写入 gitignore 屏蔽，待处理】
 ├── db
-│   ├── mysql_data           # MySQL持久化数据
-│   ├── mysql_init           # 数据库初始化SQL（建库、账号、权限）【是否核实上传GIT】
-│   └── redis_data           # Redis持久化RDB文件
-├── web/bibutong_front       
-│   ├── src                  # Bibutong Vue前端源码
-│   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像
-│   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【待修改】
-├── backend/bibutong_server      
-│   ├── src                  # Spring Cloud Alibaba后端源码
-│   ├── Dockerfile.prod      # 生产环境-多阶段打包镜像（CI流水线使用）
-│   └── Dockerfile.dev       # 开发环境-多阶段打包镜像（CI流水线使用）【待修改】
+│   ├── mysql_data           # MySQL持久化数据【不能上传GIT】
+│   ├── redis_data           # Redis持久化RDB文件【不能上传GIT】
+│   ├── mysql_init           # 数据库初始化SQL（建库、账号、权限）
+│   ├── init.sql             # 有真实密码【不能上传GIT】【待整合，git删除】
+│   └── init.template.sql    # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
 ├── ai_llama                 # Llama3.2、bge-m3向量模型权重（宿主机挂载，不打包镜像）
-│   └── Dockerfile.llama     # 生产环境镜像【是不是应该归入常态化容器类更好？是不是因为担心长期占空间意义不大？】
-├── logs                     # 全容器统一日志挂载目录
+│   ├── models               # 向量模型权重，是Ollama 完整模型二进制存储【不能上传GIT】
+│   ├── cache                # Ollama运行时自动生成的本地缓存文件【不能上传GIT】
+│   ├── Dockerfile.llama     # AI推理服务构建文件（开发生产共用）【可上传GIT】【是不是应该归入常态化容器类更好？是不是因为担心长期占空间意义不大？】
+│   ├── id_ed25519           # 私钥：绝对禁止提交 Git【不能上传GIT】
+│   └── id_ed25519.pub       # 公钥：仅用于服务器授权【不能上传GIT】
+├── web/bibutong_front       
+│   ├── dist                 # 打包产物，本地build生成，CI流水线重新构建，仓库不存【不能上传GIT】
+│   ├── node_modules         # 依赖包，体积巨大，通过package-lock.json统一安装【不能上传GIT】
+│   ├── src                  # Bibutong Vue前端源码【可上传GIT】
+│   ├── public               # Bibutong Vue前端静态资源【可上传GIT】
+│   ├── .editorconfig        # 代码格式化、校验规则，团队统一规范【可上传GIT】
+│   ├── .eslintignore        # 代码格式化、校验规则，团队统一规范【可上传GIT】
+│   ├── .eslintrc.js         # 代码格式化、校验规则，团队统一规范【可上传GIT】
+│   ├── babel.config.js      # 代码格式化、校验规则，团队统一规范【可上传GIT】
+│   ├── vue.config.js        # 代码格式化、校验规则，团队统一规范【可上传GIT】
+│   ├── package-lock.json    # 锁定依赖版本，必须提交，保证开发 / 生产安装完全一致依赖【可上传GIT】
+│   ├── package.json         # 锁定依赖版本，必须提交，保证开发 / 生产安装完全一致依赖【可上传GIT】
+│   ├── nginx.conf           # 前端生产 Nginx 托管配置，属于部署标准文件，可提交【可上传GIT】
+│   ├── .env.development     # 前端开发环境变量模板（仅接口域名、通用配置，无密钥则可提交）【可上传GIT】
+│   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像【可上传GIT】
+│   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【可上传GIT】【待修改】
+├── backend/bibutong_server      
+│   ├── src                  # Spring Cloud Alibaba后端源码【可上传GIT】
+│   ├── pom.xml              # Maven 主依赖配置，锁定所有 Java 三方包版本，强制提交，保证开发 / 生产依赖完全一致【可上传GIT】
+│   ├── dependency-reduced-pom.xml   # Maven 打包时自动生成的临时精简依赖文件，属于运行产物【不能上传GIT，待删除】
+│   ├── Dockerfile.prod      # 生产环境-线上CI流水线专用多阶段构建镜像，仅保留JRE，无编译工具，用于打包纯净生产镜像【可上传GIT】
+│   └── Dockerfile.dev       # 开发环境-单阶段 JDK 镜像，预装 Maven/Python，供 VSCode Dev Containers 挂载源码调试）【待修改】
+├── logs                     # 全容器统一日志挂载目录，容器运行日志【不能上传GIT】
 │   ├── nginx
 │   ├── mysql   【暂缺】
 │   ├── redis   【暂缺】
@@ -56,18 +76,22 @@ server
 │   ├── bibutong-backend
 │   └── llama
 ├── scripts                  # 运维启停、备份、清理脚本
-│   ├── *.bat                # Windows批处理启停脚本
-│   ├── db_reset.sql         # 开发库重置脚本
-│   └── backup_dev.bat       # 定时备份脚本
+│   ├── *.bat                # Windows批处理启停脚本（ai_switch、base_start、stop_business、switch_bibutong）【可上传GIT】
+│   ├── db_reset.sql         # 开发库重置脚本【可上传GIT】
+│   └── backup_dev.bat       # 定时备份脚本【可上传GIT】
 ├── backup                   # 数据库、配置文件备份存档【暂缺】
-├── .env.dev                 # 本地开发环境变量（不提交Git）
-├── .env.prod                # 线上环境变量【暂无】
-├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重
-├── .dockerignore            # 屏蔽************【暂缺】
-├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关
-├── docker-compose.business-bibutong.yml        # Bibutong专属业务容器：前端、后端、AI向量服务【生产环境版本】
-└── docker-compose.business-bibutong.dev.yml    # Bibutong专属业务容器：前端、后端、AI向量服务【开发环境版本】
-
+├── .devcontainer/
+│   ├── devcontainer.json    # VSCode远程容器配置，绑定bibutong-backend服务【可上传GIT】
+│   └── .gitignore           # 是否可以合并【待确定】
+├── .env.dev                 # 本地开发环境变量【不能上传GIT】
+├── .env.prod                # 线上环境变量【可上传GIT】【暂无，待处理】
+├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重【可上传GIT】
+├── .dockerignore            # 构建Docker镜像时统一屏蔽日志、模型、环境变量、编译产物，开发/生产Dockerfile共用【可上传GIT】
+├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】
+├── docker-compose.business-bibutong.yml        # Bibutong专属业务容器：前端、后端、AI向量服务【生产环境版本】【可上传GIT】
+├── docker-compose.business-bibutong.dev.yml    # Bibutong专属业务容器：前端、后端、AI向量服务【开发环境版本】【可上传GIT】
+├── VERSION.md               # 用 Markdown 格式清晰记录项目版本、迭代号、构建版本【可上传GIT】
+└── 项目开发说明              # 项目 Readme 文档，记录开发、部署流程，给团队提供使用指引【可上传GIT】
 
 # 在git-hub删除制定文件.env.dev
 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env.dev' --prune-empty --tag-name-filter cat -- --all
