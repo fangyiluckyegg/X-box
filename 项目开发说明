@@ -33,13 +33,19 @@ WSL 资源限制：内存 8G、CPU 6 核、交换分区 4G
 plaintext
 server
 ├── gateway/nginx            # Nginx网关配置、路由、SSL证书
-│   └── conf.d               # 各项目路由配置文件【可上传GIT】【真实 SSL 证书目录写入 gitignore 屏蔽，待处理】
+│   ├── conf.d               
+│   │   ├── default.conf     # 默认兜底站点【可上传GIT】
+│   │   └── bibutong.conf    # 业务HTTPS路由配置（移到此处，ssl目录只做挂载）【可上传GIT】
+│   └── ssl                  # 宿主机挂载目录，仓库无证书文件
+│       ├── *.key            # 【暂缺】【不能上传GIT】
+│       ├── *.crt            # 【暂缺】【不能上传GIT】
+│       └── *.pem            # 【暂缺】【不能上传GIT】
 ├── db
 │   ├── mysql_data           # MySQL持久化数据【不能上传GIT】
 │   ├── redis_data           # Redis持久化RDB文件【不能上传GIT】
 │   ├── mysql_init           # 数据库初始化SQL（建库、账号、权限）
-│   ├── init.sql             # 有真实密码【不能上传GIT】【待整合，git删除】
-│   └── init.template.sql    # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
+│       ├── init.sql         # 有真实密码【不能上传GIT】【待整合，git删除】
+│       └── init.template.sql    # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
 ├── ai_llama                 # Llama3.2、bge-m3向量模型权重（宿主机挂载，不打包镜像）
 │   ├── models               # 向量模型权重，是Ollama 完整模型二进制存储【不能上传GIT】
 │   ├── cache                # Ollama运行时自动生成的本地缓存文件【不能上传GIT】
@@ -70,8 +76,8 @@ server
 │   └── Dockerfile.dev       # 开发环境-单阶段 JDK 镜像，预装 Maven/Python，供 VSCode Dev Containers 挂载源码调试）【待修改】
 ├── logs                     # 全容器统一日志挂载目录，容器运行日志【不能上传GIT】
 │   ├── nginx
-│   ├── mysql   【暂缺】
-│   ├── redis   【暂缺】
+│   ├── mysql                # 【暂缺】
+│   ├── redis                # 【暂缺】
 │   ├── bibutong-front
 │   ├── bibutong-backend
 │   └── llama
