@@ -1,10 +1,23 @@
+# 本地开发环境变量（不提交Git）
+.env.dev
+.env.prod
+
+# 运行日志
+logs/**
+
 # MySQL 容器数据目录（完全不要提交）
 db/mysql_data/
+db/redis_data/
 *.sock
 *.ibd
 ib_buffer_pool
 auto.cnf
 binlog.*
+
+# 本地真实数据库初始化脚本（含明文密码）
+db/mysql_init/init.sql
+# 仅允许提交模板文件
+!db/mysql_init/*.template.sql
 
 # Llama模型、缓存、AI二进制文件
 ai_llama/models/
@@ -14,21 +27,29 @@ ai_llama/cache/
 id_ed25519
 id_ed25519.pub
 
-# Node前端产物
+# 前端产物
 web/bibutong_front/dist/
-node_modules/
+web/bibutong_front/node_modules/
 npm-debug.log
+
+# 后端产物
+backend/bibutong_server/dependency-reduced-pom.xml
+backend/bibutong_server/target/
 
 # Docker镜像、容器临时文件
 .docker/
 *.log
 tmp/
 temp/
+# Dev容器缓存
+.devcontainer/.devcontainer.json.cache
+.devcontainer/devcontainer-lock.json
+# devcontainer本地临时缓存
+.devcontainer/.vscode/
+.devcontainer/temp-*
 
 # IDE系统文件
 .idea/
 .vscode/
 .DS_Store
 
-# 本地开发环境变量（不提交Git）
-.env.dev
