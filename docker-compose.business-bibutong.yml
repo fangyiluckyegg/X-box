@@ -3,7 +3,7 @@ services:
   bibutong-front:
     build:
         context: ./web/bibutong_front
-        dockerfile: Dockerfile
+        dockerfile: Dockerfile.dev
     #image: nginx:1.25-alpine
     container_name: dev-bibutong-front
     ports:
