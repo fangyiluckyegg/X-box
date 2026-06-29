@@ -4,7 +4,7 @@
   "description": "xbox前端项目",
   "author": "X_X",
   "scripts": {
-    "dev": "vue-cli-service serve",
+    "dev": "node --max_old_space_size=768 node_modules/@vue/cli-service/bin/vue-cli-service.js serve --host 0.0.0.0",
     "build": "vue-cli-service build",
     "preview": "node build/index.js --preview",
     "lint": "eslint --ext .js,.vue src"

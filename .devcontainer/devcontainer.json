@@ -1,18 +1,54 @@
 {
-  "name": "后端开发容器",
+  "name": "Bibutong 全栈开发容器",
+  // 解决 /dev/tty TTY缺失报错，和compose tty:true配套
+  "tty": true,
   "dockerComposeFile": [
     "../docker-compose.base.yml",
-    "../docker-compose.business-bibutong.yml"
+    "../docker-compose.business-bibutong.dev.yml"
   ],
   "service": "bibutong-backend",
-  "workspaceFolder": "/app",
-  "runServices": ["mysql", "redis", "nginx-gateway", "bibutong-backend"],
-  "shutdownAction": "none",
+  "workspaceFolder": "/workspace",
+  // 修正服务名：ai-llama → llama，和yml内服务名保持一致
+  "runServices": [
+    "mysql",
+    "redis",
+    "nginx-gateway",
+    "llama",
+    "bibutong-backend",
+    "bibutong-front"
+  ],
+  "forwardPorts": [
+    80,
+    443,
+    33060,
+    63790,
+    8080,
+    5005,
+    8081,
+    11434,
+    8000
+  ],
+  "shutdownAction": "stopCompose",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
   "customizations": {
     "vscode": {
-      "extensions": ["vscjava.vscode-java-pack", "humao.rest-client"]
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vmware.vscode-spring-boot",
+        "humao.rest-client",
+        "vue.volar",
+        "vue.vscode-typescript-vue-plugin",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.docker",
+        "cweijan.vscode-mysql-client2"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
     }
   },
-  // 只保留maven，删掉npm那段
   "postCreateCommand": "cd backend/bibutong_server && mvn clean compile -DskipTests"
 }
