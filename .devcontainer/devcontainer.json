@@ -1,6 +1,5 @@
 {
   "name": "Bibutong 全栈开发容器",
-  // 解决 /dev/tty TTY缺失报错，和compose tty:true配套
   "tty": true,
   "dockerComposeFile": [
     "../docker-compose.base.yml",
@@ -8,15 +7,14 @@
   ],
   "service": "bibutong-backend",
   "workspaceFolder": "/workspace",
-  // 修正服务名：ai-llama → llama，和yml内服务名保持一致
-  "runServices": [
-    "mysql",
-    "redis",
-    "nginx-gateway",
-    "llama",
-    "bibutong-backend",
-    "bibutong-front"
-  ],
+//  "runServices": [
+//    "mysql",
+//    "redis",
+//    "nginx-gateway",
+//    "llama",
+//    "bibutong-backend",
+//    "bibutong-front"
+//  ],
   "forwardPorts": [
     80,
     443,
@@ -49,6 +47,8 @@
         "terminal.integrated.defaultProfile.linux": "bash"
       }
     }
-  },
-  "postCreateCommand": "cd backend/bibutong_server && mvn clean compile -DskipTests"
+  }
+  //},
+  // 临时注释，避免初始化阶段maven编译超时中断  
+  //"postCreateCommand": "cd backend/bibutong_server && mvn clean compile -DskipTests"
 }
