@@ -7,14 +7,6 @@
   ],
   "service": "bibutong-backend",
   "workspaceFolder": "/workspace",
-//  "runServices": [
-//    "mysql",
-//    "redis",
-//    "nginx-gateway",
-//    "llama",
-//    "bibutong-backend",
-//    "bibutong-front"
-//  ],
   "forwardPorts": [
     80,
     443,
@@ -48,7 +40,15 @@
       }
     }
   }
-  //},
-  // 临时注释，避免初始化阶段maven编译超时中断  
-  //"postCreateCommand": "cd backend/bibutong_server && mvn clean compile -DskipTests"
+  // Uncomment to explicitly start these services during container startup.
+  // "runServices": [
+  //   "mysql",
+  //   "redis",
+  //   "nginx-gateway",
+  //   "llama",
+  //   "bibutong-backend",
+  //   "bibutong-front"
+  // ],
+  // Temporary comment to avoid Maven compilation timeout during initialization.
+  // "postCreateCommand": "cd backend/bibutong_server && mvn clean compile -DskipTests"
 }
