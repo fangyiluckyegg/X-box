@@ -18,6 +18,8 @@ services:
       - dev-network
 
   mysql:
+    env_file:
+      - .env.dev
     image: mysql:8.0
     container_name: dev-mysql
     mem_limit: 1g
@@ -28,7 +30,6 @@ services:
       - ./db/mysql_init:/docker-entrypoint-initdb.d
 
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PWD}
       TZ: Asia/Shanghai
     ports:
       - "127.0.0.1:33060:3306"
