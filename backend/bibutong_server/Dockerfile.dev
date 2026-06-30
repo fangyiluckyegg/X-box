@@ -32,4 +32,4 @@ RUN pip install --no-cache-dir --break-system-packages pandas ollama openpyxl -i
 # 拷贝jar包
 COPY --from=builder /app/backend/bibutong_server/target/*.jar app.jar
 
-ENTRYPOINT ["java","-Xmx1800M","-jar","app.jar"]
+ENTRYPOINT ["java","-Xmx1800M","-jar","/app/app.jar"]
