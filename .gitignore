@@ -35,6 +35,8 @@ ai_llama/id_ed25519.pub
 # ====================== 前端Vue产物/依赖 ======================
 web/bibutong_front/dist/
 web/bibutong_front/node_modules/
+web/prj_frontend/dist/
+web/prj_frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -42,6 +44,8 @@ yarn-error.log*
 # ====================== 后端Maven编译产物 ======================
 backend/bibutong_server/dependency-reduced-pom.xml
 backend/bibutong_server/target/
+backend/prj-backend-c/dependency-reduced-pom.xml
+backend/prj-backend-c/target/
 # Maven本地缓存
 .m2/
 
