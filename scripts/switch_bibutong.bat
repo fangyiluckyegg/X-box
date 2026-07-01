@@ -12,7 +12,7 @@ docker compose -f docker-compose.business-bibutong.yml --env-file .env.dev up -d
 :: docker compose --env-file .env.dev -f docker-compose.base.yml -f docker-compose.business-bibutong.dev.yml up -d --build
 :: docker compose --env-file .env.dev -f docker-compose.base.yml -f docker-compose.business-bibutong.dev.yml up -d --build bibutong-backend
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-bibutong.dev.yml up -d --build
-
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-bibutong.dev.yml up -d --build bibutong-front
 :: docker ps
 :: docker ps
 :: # 清理旧构建缓存、故障容器
