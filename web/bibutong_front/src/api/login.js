@@ -35,6 +35,9 @@ export function getCodeImg() {
       isToken: false
     },
     method: 'get',
+    params: {
+      t: new Date().getTime()
+    },
     timeout: 2000
   })
 }
