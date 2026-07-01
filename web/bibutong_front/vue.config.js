@@ -19,12 +19,13 @@ module.exports = {
   devServer: {
     host: '0.0.0.0',
     port: port,
+    public: '127.0.0.1:' + port,
+    sockHost: '127.0.0.1',
+    sockPort: port,
     open: true,
     proxy: {
       [process.env.VUE_APP_BASE_API]: {
         //引入Gateway网关组件后连接到8090
-        //target: `http://localhost:8090`,
-        //target: `http://localhost:8080`,
         target: `http://bibutong-backend:8080`,
         changeOrigin: true,
         pathRewrite: {
@@ -32,7 +33,8 @@ module.exports = {
         }
       }
     },
-    disableHostCheck: true
+    disableHostCheck: true,
+    allowedHosts: ['all']
   },
   configureWebpack: {
     name: name,

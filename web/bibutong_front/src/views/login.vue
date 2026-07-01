@@ -83,9 +83,16 @@ export default {
   methods: {
     getCode() {
       getCodeImg().then(res => {
-        this.codeUrl = "data:image/gif;base64," + res.img;
-        this.loginForm.uuid = res.uuid;
-      }).catch(() => {
+        const payload = res.data || res
+        const img = payload.img || payload.captcha || payload.data?.img || ''
+        const uuid = payload.uuid || payload.data?.uuid || ''
+        if (!img) {
+          throw new Error('验证码数据为空')
+        }
+        this.codeUrl = img.startsWith('data:image') ? img : 'data:image/gif;base64,' + img
+        this.loginForm.uuid = uuid
+      }).catch(err => {
+        console.error('验证码加载失败：', err)
         this.codeUrl = "";
       });
     },
