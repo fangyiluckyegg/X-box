@@ -24,7 +24,8 @@ module.exports = {
       [process.env.VUE_APP_BASE_API]: {
         //引入Gateway网关组件后连接到8090
         //target: `http://localhost:8090`,
-        target: `http://localhost:8080`,
+        //target: `http://localhost:8080`,
+        target: `http://bibutong-backend:8080`,
         changeOrigin: true,
         pathRewrite: {
           ['^' + process.env.VUE_APP_BASE_API]: ''
