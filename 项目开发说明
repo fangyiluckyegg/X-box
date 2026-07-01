@@ -53,19 +53,19 @@ server
 │   ├── id_ed25519           # 私钥：绝对禁止提交 Git【不能上传GIT】
 │   └── id_ed25519.pub       # 公钥：仅用于服务器授权【不能上传GIT】
 ├── web/bibutong_front       
-│   ├── dist                 # 打包产物，本地build生成，CI流水线重新构建，仓库不存【不能上传GIT】
-│   ├── node_modules         # 依赖包，体积巨大，通过package-lock.json统一安装【不能上传GIT】
-│   ├── src                  # Bibutong Vue前端源码【可上传GIT】
-│   ├── public               # Bibutong Vue前端静态资源【可上传GIT】
+│   ├── dist                 # 打包产物，本地build生成，CI流水线重新构建【不能上传GIT】
+│   ├── node_modules         # 项目依赖包，体积巨大，通过package-lock.json统一安装【不能上传GIT】
+│   ├── src                  # Bibutong Vue前端源码（包含Vue组件、路由配置、状态管理等）【可上传GIT】
+│   ├── public               # Bibutong Vue前端静态资源（如index.html-你的应用的首页和图片等）【可上传GIT】
+│   ├── .env.development     # 前端开发环境变量模板（仅接口域名、通用配置，无密钥则可提交）【可上传GIT】
 │   ├── .editorconfig        # 代码格式化、校验规则，团队统一规范【可上传GIT】
 │   ├── .eslintignore        # 代码格式化、校验规则，团队统一规范【可上传GIT】
 │   ├── .eslintrc.js         # 代码格式化、校验规则，团队统一规范【可上传GIT】
-│   ├── babel.config.js      # 代码格式化、校验规则，团队统一规范【可上传GIT】
-│   ├── vue.config.js        # 代码格式化、校验规则，团队统一规范【可上传GIT】
+│   ├── babel.config.js      # 代码格式化、校验规则，团队统一规范，（可选）Babel的配置文件，用于编译JavaScript。【可上传GIT】
+│   ├── vue.config.js        # 代码格式化、校验规则，团队统一规范，（可选）Vue CLI项目的配置文件【可上传GIT】
 │   ├── package-lock.json    # 锁定依赖版本，必须提交，保证开发 / 生产安装完全一致依赖【可上传GIT】
-│   ├── package.json         # 锁定依赖版本，必须提交，保证开发 / 生产安装完全一致依赖【可上传GIT】
+│   ├── package.json         # 项目配置文件，记录项目元数据、依赖、脚本等。锁定依赖版本，保证开发/生产安装完全一致依赖【可上传GIT】
 │   ├── nginx.conf           # 前端生产 Nginx 托管配置，属于部署标准文件，可提交【可上传GIT】
-│   ├── .env.development     # 前端开发环境变量模板（仅接口域名、通用配置，无密钥则可提交）【可上传GIT】
 │   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像【可上传GIT】
 │   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【可上传GIT】【待修改】
 ├── backend/bibutong_server      
