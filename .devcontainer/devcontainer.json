@@ -1,11 +1,11 @@
 {
-  "name": "Bibutong 全栈开发容器",
+  "name": "X-box全栈开发容器",
   "tty": true,
   "dockerComposeFile": [
     "../docker-compose.base.yml",
-    "../docker-compose.business-bibutong.dev.yml"
+    "../docker-compose.business-prj.dev.yml"
   ],
-  "service": "bibutong-backend",
+  "service": "prj-backend-c",
   "workspaceFolder": "/workspace",
   "forwardPorts": [
     80,
@@ -19,9 +19,11 @@
     8000
   ],
   "shutdownAction": "stopCompose",
-  "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
+  // Docker-in-Docker is disabled here because the current Alpine-based service images
+  // do not provide bash during feature installation, which makes the build fail.
+  // "features": {
+  //   "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  // },
   "customizations": {
     "vscode": {
       "extensions": [
