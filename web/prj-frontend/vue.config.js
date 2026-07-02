@@ -7,7 +7,10 @@ function resolve(dir) {
 
 const name = 'X工具箱后台'
 
-const port = 80 // 端口
+//const port = 80 // 端口
+// 开发端口改为8081，避开系统80端口冲突
+const port = 8081
+
 
 // vue.config.js 配置说明
 module.exports = {
@@ -19,12 +22,18 @@ module.exports = {
   devServer: {
     host: '0.0.0.0',
     port: port,
-    open: true,
+    open: false, // 容器内不要自动打开浏览器，宿主机手动访问
+    // 容器热更新核心配置：轮询监听文件变化
+    watchOptions: {
+      poll: 1000
+    },
     proxy: {
       [process.env.VUE_APP_BASE_API]: {
-        //引入Gateway网关组件后连接到8090
-        //target: `http://localhost:8090`,
-        target: `http://localhost:8080`,
+        // Docker Compose多容器互通，使用后端服务名backend，不能localhost
+        target: `http://prj-backend-c:8080`,
+        //target: `http://backend:8080`,
+        //http://prj-backend-c:8080
+        //http://bibutong-backend:8080
         changeOrigin: true,
         pathRewrite: {
           ['^' + process.env.VUE_APP_BASE_API]: ''
