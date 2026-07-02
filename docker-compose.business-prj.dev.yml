@@ -5,13 +5,18 @@ services:
       dockerfile: Dockerfile.dev
     container_name: dev-prj-frontend
     ports:
-      - "8081:80"
+      - "8081:8081"
     mem_limit: 1g
     cpus: 0.5
+    stdin_open: true
+    tty: true # VSCode终端交互必需
+    command: sleep infinity # 容器常驻，不会启动后立刻退出
     volumes:
-      # 源码挂载，不覆盖容器内node_modules
+      # ① 全局挂载项目根目录到 /workspace，和后端统一路径，VSCode可直接加载全部源码
+      - ./:/workspace:cached
+      # ② 单独挂载前端源码目录到/app，供容器内部npm运行
       - ./web/prj-frontend:/app:cached
-      # 关键：单独挂载空卷屏蔽node_modules，保留容器内安装的依赖
+      # 隔离node_modules，不覆盖本地
       - node_modules_volume:/app/node_modules
       - ./logs/prj-frontend:/var/log/nginx
     networks:
