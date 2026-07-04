@@ -31,7 +31,7 @@ services:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
       # 数据库配置
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/prj_dev?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/prj_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       # Redis配置
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379

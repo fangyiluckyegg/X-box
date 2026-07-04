@@ -2,9 +2,9 @@ bat
 @echo off
 cd D:\crh123dexiaohao\server
 echo 停止所有其他业务容器
-docker compose -f docker-compose.business-prj.yml down
-echo 启动Bibutong前端、后端、AI向量服务
-docker compose -f docker-compose.business-prj.yml --env-file .env.dev up -d
+docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml down
+echo 启动Prj前端、后端、AI向量服务
+docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
 
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build prj-frontend
