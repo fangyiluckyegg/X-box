@@ -20,13 +20,13 @@ spring:
   jpa:
     show-sql: true
     hibernate:
-      dll-auto: validate
+      ddl-auto: validate
   datasource:
     driverClassName: com.mysql.cj.jdbc.Driver
     #数据源
-    url: jdbc:mysql://localhost:3306/hr_manager?characterEncoding=utf8&useSSL=true&serverTimezone=GMT%2B8
-    username: root
-    password: 20091010xuyi
+    url: jdbc:mysql://mysql:3306/prj_dev?characterEncoding=utf8&useSSL=true&serverTimezone=GMT%2B8
+    username: prj_user
+    password: Prj@Dev789
     # 初始连接数
     initialSize: 5
     # 最小连接池数量
@@ -39,14 +39,17 @@ spring:
   # redis 配置
   redis:
     # 地址s
-    host: localhost
+    host: redis
     # 端口，默认为6379
     port: 6379
   # sentinel控制台的工作地址和端口
   cloud:
     nacos:
       discovery:
-        server-addr: 127.0.0.1:8858, 127.0.0.1:8868
+        #server-addr: 127.0.0.1:8858,127.0.0.1:8868
+        server-addr: nacos:8858,nacos:8868
+        #暂时不用nacos!关闭当前单体服务向 Nacos 注册实例，不再发起 TCP 连接，Connection refused 报错直接消失
+        register-enabled: false
 
 # 负载均衡
 ribbon:
