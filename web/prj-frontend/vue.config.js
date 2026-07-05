@@ -22,6 +22,9 @@ module.exports = {
   devServer: {
     host: '0.0.0.0',
     port: port,
+    public: '127.0.0.1:' + port,
+    sockHost: '127.0.0.1',
+    sockPort: port,
     open: false, // 容器内不要自动打开浏览器，宿主机手动访问
     // 容器热更新核心配置：轮询监听文件变化
     watchOptions: {
@@ -40,7 +43,8 @@ module.exports = {
         }
       }
     },
-    disableHostCheck: true
+    disableHostCheck: true,
+    allowedHosts: ['all']
   },
   configureWebpack: {
     name: name,

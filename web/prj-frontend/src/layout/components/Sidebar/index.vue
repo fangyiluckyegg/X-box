@@ -19,12 +19,12 @@
                 <el-submenu index="/info_manager">
                     <template slot="title">
                        <i class="el-icon-location"></i>
-                       <span>比对工具</span>
+                       <span>X-box工具箱</span>
                      </template>
 
                     <el-menu-item-group>
-                        <el-menu-item index="/employee">单位名称比对</el-menu-item>
-                        <el-menu-item index="/employee_kpi">XXXXXXXX</el-menu-item>
+                        <el-menu-item index="/compare">比对工具</el-menu-item>
+                        <el-menu-item index="/employee_kpi">XX工具</el-menu-item>
                     </el-menu-item-group>
                 </el-submenu>
 XXXXXXXX

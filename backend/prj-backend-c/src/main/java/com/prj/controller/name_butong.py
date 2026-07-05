@@ -7,10 +7,10 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 # 读取Excel文件（修改为实际路径）
-df1 = pd.read_excel('E:/WorkSpace/prj-backend-c/uploadTemp/doc/names_bak.xlsx')
+df1 = pd.read_excel('D:/crh123dexiaohao/server/backend/prj-backend-c/uploadTemp/doc/names_bak.xlsx')
 
 # 读取比对表数据
-df2 = pd.read_excel('E:/WorkSpace/prj-backend-c/uploadTemp/doc/names_new.xlsx')
+df2 = pd.read_excel('D:/crh123dexiaohao/server/backend/prj-backend-c/uploadTemp/doc/names_new.xlsx')
 
 # 获取唯一单位列表
 unit1 = df1['danwei_name'].dropna().unique().tolist()
@@ -80,5 +80,5 @@ current_time = datetime.now()
 
 # 可选：保存结果到新文件
 data_to_import = pd.DataFrame({'danwei_name': semantic_diff,'bidui_date': current_time,})
-data_to_import.to_excel('E:/WorkSpace/prj-backend-c/uploadTemp/doc/names_budong.xlsx', index=False)
+data_to_import.to_excel('D:/crh123dexiaohao/server/backend/prj-backend-c/uploadTemp/doc/names_budong.xlsx', index=False)
 

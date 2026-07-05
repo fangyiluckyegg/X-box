@@ -17,7 +17,7 @@ services:
       - ./web/prj-frontend:/app:cached
       # 隔离node_modules，不覆盖本地
       - node_modules_volume:/app/node_modules
-      - ./logs/prj-frontend:/var/log/nginx
+      - ./logs/prj-frontend:/app/logs/prj-frontend
     networks:
       - dev-network
 
@@ -43,7 +43,7 @@ services:
       - ./:/workspace:cached
       # Maven缓存卷，避免重复下载依赖
       - maven-cache:/root/.m2
-      - ./logs/prj-backend-c:/app/logs
+      - ./logs/prj-backend-c:/app/logs/prj-backend-c
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
@@ -76,7 +76,7 @@ services:
     volumes:
       # Ollama官方模型持久化目录
       - ./ai_llama:/root/.ollama
-      - ./logs/llama:/app/logs
+      - ./logs/llama:/app/logs/llama
     environment:
       MODEL_ROOT_PATH: /model
       TZ: Asia/Shanghai

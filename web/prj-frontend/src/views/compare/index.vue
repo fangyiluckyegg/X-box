@@ -58,6 +58,16 @@
           size="large"
           icon="el-icon-search"
           :disabled="!originFile || !newFile || loading"
+          @click="uploadFiles"
+        >
+          文件上传
+        </el-button>
+
+        <el-button
+          type="primary"
+          size="large"
+          icon="el-icon-search"
+          :disabled="!originFile || !newFile || loading"
           @click="startCompare"
         >
           启动比对
@@ -118,16 +128,29 @@ export default {
       return true
     },
     handleOriginUpload(params) {
-      this.originFile = params.file.raw
+      const file = params.file.raw || params.file
+      this.originFile = file
       Message.success('原始数据文件已选择')
       params.onSuccess({})
     },
     handleNewUpload(params) {
-      this.newFile = params.file.raw
+      const file = params.file.raw || params.file
+      this.newFile = file
       Message.success('比对数据文件已选择')
       params.onSuccess({})
     },
+    uploadFiles() {
+      if (!this.originFile || !this.newFile) {
+        Message.warning('请先选择原始数据和比对数据文件')
+        return
+      }
+      this.startCompare()
+    },
     async startCompare() {
+      if (!this.originFile || !this.newFile) {
+        Message.warning('请先选择原始数据和比对数据文件')
+        return
+      }
       this.loading = true
       const loadingInstance = Loading.service({ text: '正在比对Excel数据，请稍候...' })
       const formData = new FormData()

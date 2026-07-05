@@ -3,7 +3,7 @@
     <el-row>
       <el-col>
         <blockquote style="font-size: 14px">
-          X工具箱
+          X-box工具箱
           <br/>
           <el-link
             href="http://www.tup.tsinghua.edu.cn/index.html"

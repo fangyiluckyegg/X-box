@@ -9,13 +9,13 @@ export const constantRoutes = [
         {
           path: '/',
           component: Layout,
-          name: '比对工具箱',
-          meta: { title: '比对工具箱' },
+          name: '比对工具',
+          meta: { title: '比对工具' },
             children: [
             {
-              path: '/employee',
-              component: (resolve) => require(['@/views/employee/index.vue'], resolve),
-              name: '员工信息管理',
+              path: '/compare',
+              component: (resolve) => require(['@/views/compare/index.vue'], resolve),
+              name: '单位名称比对',
               meta: { title: '单位名称比对' }
             }
           ]
@@ -23,8 +23,8 @@ export const constantRoutes = [
         {
           path: '/',
           component: Layout,
-          name: '员工管理-KPI',
-          meta: { title: '员工管理' },
+          name: 'XX工具',
+          meta: { title: 'XX工具' },
             children: [
             {
               path: '/employee_kpi',
