@@ -5,6 +5,7 @@ import java.util.List;
 import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.core.page.TableDataInfo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,7 +25,10 @@ public class EmployeeKpiController extends BaseController
     @Autowired
     private IEmployeeKpiService employeeKpiService;
 
+    // [P1-FIX] 添加权限注解，写操作需要 ADMIN 角色
+
     /** 查询员工评价管理列表     */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/list")
     public TableDataInfo list(EmployeeKpi employeeKpi)
     {
@@ -34,6 +38,7 @@ public class EmployeeKpiController extends BaseController
     }
 
     /** 获取员工评价管理详细信息     */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping(value = "/{id}")
     public AjaxResult getInfo(@PathVariable("id") Long id)
     {
@@ -41,6 +46,7 @@ public class EmployeeKpiController extends BaseController
     }
 
     /** 新增员工评价管理     */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public AjaxResult add(@RequestBody EmployeeKpi employeeKpi)
     {
@@ -48,6 +54,7 @@ public class EmployeeKpiController extends BaseController
     }
 
     /** 修改员工评价管理     */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping
     public AjaxResult edit(@RequestBody EmployeeKpi employeeKpi)
     {
@@ -55,6 +62,7 @@ public class EmployeeKpiController extends BaseController
     }
 
     /** 删除员工评价管理     */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{ids}")
     public AjaxResult remove(@PathVariable Long[] ids)
     {

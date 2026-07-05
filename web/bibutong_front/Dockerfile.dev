@@ -1,7 +1,0 @@
-FROM node:18-alpine
-WORKDIR /app
-COPY . .
-RUN npm install
-EXPOSE 8080
-# 常驻启动vite热更新服务
-CMD ["npm", "run", "dev"]

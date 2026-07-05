@@ -1,6 +1,6 @@
 package com.prj.common.core.domain.model;
 
-import com.alibaba.fastjson.annotation.JSONField;
+import com.alibaba.fastjson2.annotation.JSONField;  // [P0-FIX] fastjson2 迁移
 import com.prj.common.core.domain.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

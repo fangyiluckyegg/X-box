@@ -6,6 +6,8 @@ import java.util.concurrent.TimeUnit;
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 @Component
 public class TokenService
 {
+    private static final Logger logger = LoggerFactory.getLogger(TokenService.class);
+
     // 令牌自定义标识
     @Value("${token.header}")
     private String header;
@@ -59,6 +63,8 @@ public class TokenService
             }
             catch (Exception e)
             {
+                // [P0-FIX] 补充异常日志，避免Token解析异常被静默吞没
+                logger.error("Token parse error", e);
             }
         }
         return null;

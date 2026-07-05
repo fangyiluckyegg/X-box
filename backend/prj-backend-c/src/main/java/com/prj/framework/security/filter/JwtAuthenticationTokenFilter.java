@@ -7,6 +7,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.prj.framework.web.service.TokenService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +21,8 @@ import com.prj.common.utils.SecurityUtils;
 @Component
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter
 {
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationTokenFilter.class);
+
     @Autowired
     private TokenService tokenService;
 
@@ -27,7 +31,8 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
         throws ServletException, IOException
     {
         LoginUser loginUser = tokenService.getLoginUser(request);
-        System.out.println("JwtAuthenticationTokenFilter loginUser: " + loginUser);
+        // [P1-FIX] 替换 System.out.println 为 SLF4J logger，避免泄露 loginUser 对象
+        logger.debug("JwtAuthenticationTokenFilter loginUser: {}", loginUser != null ? loginUser.getUsername() : "null");
         if (loginUser != null && SecurityUtils.getAuthentication() == null)
         {
             try {
@@ -36,7 +41,8 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             } catch (Exception e) {
-                System.out.println("Token verify failed: " + e.getMessage());
+                // [P1-FIX] 替换 System.out.println 为 SLF4J logger
+                logger.warn("Token verify failed: {}", e.getMessage());
             }
         }
         chain.doFilter(request, response);

@@ -30,7 +30,8 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        // [P1-FIX] 不向客户端暴露异常详情，防止信息泄露
+        return AjaxResult.error("系统内部错误，请联系管理员");
     }
 
     // 兜底处理异常
@@ -39,7 +40,8 @@ public class GlobalExceptionHandler
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(e.getMessage());
+        // [P1-FIX] 不向客户端暴露异常详情，防止信息泄露
+        return AjaxResult.error("系统内部错误，请联系管理员");
     }
 
     /**

@@ -1,19 +1,29 @@
 package com.prj.service.impl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.prj.framework.config.UploadProperties;
 import com.prj.common.utils.UploadUtils;
+import com.prj.common.exception.ServiceException;
 import com.prj.service.UploadService;
 
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 
 /** 文件上传服务实现类 */
 @Service
 public class UploadServiceImpl implements UploadService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UploadServiceImpl.class);
+
+    // [P0-FIX] 文件扩展名白名单，防止上传恶意可执行文件
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            "jpg", "jpeg", "png", "gif", "pdf", "doc", "docx", "xls", "xlsx", "txt", "zip");
 
     @Autowired
     private UploadProperties uploadProperties;
@@ -31,7 +41,8 @@ public class UploadServiceImpl implements UploadService {
      * @throws IOException 上传异常
      */
     private String uploadFile(MultipartFile file, String type) throws IOException {
-        System.out.println("文件类型: " + file.getContentType());
+        // [P1-FIX] 替换 System.out.println 为 SLF4J logger
+        logger.info("文件类型: {}", file.getContentType());
         
         // 检查文件类型
         if (!uploadProperties.getAllowType().contains(file.getContentType())) {
@@ -43,10 +54,13 @@ public class UploadServiceImpl implements UploadService {
             throw new IOException("文件大小超过限制，最大支持: " + (uploadProperties.getMaxSize() / 1024 / 1024) + "MB");
         }
    
-        // 生成新的文件名
-        //String fileName = UploadUtils.generateFileName(file.getOriginalFilename());
-        String fileName = file.getOriginalFilename();
-        //String fileName = "names_bak.xlsx"; // 临时测试代码，固定文件名
+        // [P0-FIX] 恢复随机文件名 + 扩展名白名单校验，防止路径遍历和恶意文件上传
+        String originalFilename = file.getOriginalFilename();
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new ServiceException("不支持的文件类型: " + extension);
+        }
+        String fileName = UploadUtils.generateFileName(originalFilename);
         
         // 创建上传目录
         File uploadDir = new File(uploadProperties.getPath() + type);
@@ -58,7 +72,8 @@ public class UploadServiceImpl implements UploadService {
         File newFile = new File(uploadDir, fileName);
         file.transferTo(newFile);
         
-        System.out.println("文件保存路径: " + newFile.getAbsolutePath());
+        // [P1-FIX] 替换 System.out.println 为 SLF4J logger
+        logger.info("文件保存路径: {}", newFile.getAbsolutePath());
         return fileName;
     }
 }
