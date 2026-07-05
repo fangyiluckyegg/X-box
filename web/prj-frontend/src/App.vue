@@ -9,8 +9,8 @@ export default  {
   name:  'App',
     metaInfo() {
         return {
-            title: X工具箱,
-            titleTemplate: X工具箱
+            title: 'X-box工具箱',
+            titleTemplate: 'X-box工具箱'
         }
     }
 }

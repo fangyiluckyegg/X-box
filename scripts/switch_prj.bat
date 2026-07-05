@@ -9,6 +9,8 @@ docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build prj-frontend
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build prj-backend-c
+:: docker compose -f docker-compose.business-prj.dev.yml restart prj-backend-c
+:: docker compose -f docker-compose.business-prj.dev.yml restart nginx-gateway
 :: docker ps
 :: # 清理旧构建缓存、故障容器
 :: docker builder prune -f

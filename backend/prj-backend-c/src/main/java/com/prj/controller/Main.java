@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 public class Main {    
-    @PostMapping("/api/bibutong")
+    // 注意：此类包含开发时用于测试的 main 方法，已移除错误的 @PostMapping 映射
     public static void main(String[] args) {
 
        try {
             // 创建ProcessBuilder，更灵活和安全
-            ProcessBuilder pb = new ProcessBuilder("python", "E:/WorkSpace/prj-backend-c/src/main/java/com/prj/controller/name_butong.py", "arg1", "arg2");
+            ProcessBuilder pb = new ProcessBuilder("python", "D:/crh123dexiaohao/server/backend/prj-backend-c/src/main/java/com/prj/controller/name_butong.py", "arg1", "arg2");
             pb.environment().put("PYTHONIOENCODING", "utf-8");
             
             // 可以设置工作目录
