@@ -16,8 +16,11 @@ RUN mvn clean package -Dmaven.test.skip=true
 FROM eclipse-temurin:11-jre-alpine
 WORKDIR /app
 
-# 安装Python依赖（AI推理需要）
-RUN apk add --no-cache python3 py3-pip py3-scikit-learn && ln -sf /usr/bin/python3 /usr/bin/python
+# [P2-FIX] 创建非root用户，提升生产环境安全性
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+# 安装Python依赖（AI推理需要）+ wget（HEALTHCHECK需要）
+RUN apk add --no-cache python3 py3-pip py3-scikit-learn wget && ln -sf /usr/bin/python3 /usr/bin/python
 RUN pip install --no-cache-dir --break-system-packages pandas ollama openpyxl -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制AI推理脚本
@@ -26,5 +29,12 @@ RUN chmod -R 755 /app/ai-infer
 
 # 拷贝jar包
 COPY --from=builder /app/backend/prj-backend-c/target/*.jar app.jar
+
+# [P2-FIX] 设置文件归属权并切换到非特权用户
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# [P2-FIX] 健康检查：验证Spring Boot服务是否正常响应
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD wget -qO- http://localhost:8080/captchaImage || exit 1
 
 ENTRYPOINT ["java","-Xmx1800M","-jar","/app/app.jar"]

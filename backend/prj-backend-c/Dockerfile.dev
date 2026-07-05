@@ -5,8 +5,8 @@ WORKDIR /app
 # 替换阿里云Alpine软件源
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
-# 安装Maven
-RUN apk update && apk add --no-cache maven
+# 安装Maven + wget（HEALTHCHECK需要）
+RUN apk update && apk add --no-cache maven wget
 
 # 配置阿里云Maven镜像加速依赖下载
 COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
@@ -22,4 +22,9 @@ WORKDIR /app/backend/prj-backend-c
 
 # [P1-FIX] 开发模式：使用 spring-boot:run 支持热重载，不预先打包
 # 通过 docker-compose 挂载源码目录实现代码同步
+
+# [P2-FIX] 健康检查：验证Spring Boot服务是否正常响应
+#         start-period 设为 120s，因为 Maven 首次编译 + Spring Boot 启动需要较长时间
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 CMD wget -qO- http://localhost:8080/captchaImage || exit 1
+
 ENTRYPOINT ["mvn", "spring-boot:run", "-Dspring-boot.run.jvmArguments=-Xmx1800M"]

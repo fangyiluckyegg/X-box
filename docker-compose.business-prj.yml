@@ -9,6 +9,9 @@ services:
       - "8081:80"
     mem_limit: 512m
     cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
     volumes:
       #- ./web/prj-frontend/dist:/usr/share/nginx/html
       - ./logs/prj-frontend:/var/log/nginx
@@ -25,6 +28,9 @@ services:
     mem_limit: 2g
     cpus: 2
     restart: no
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
     volumes:
       - ./logs/prj-backend-c:/app/logs
       - prj-maven-cache:/root/.m2

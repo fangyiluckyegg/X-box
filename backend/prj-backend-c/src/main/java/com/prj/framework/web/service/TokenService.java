@@ -21,6 +21,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 // [P1-FIX] jjwt 0.12.x 移除 SignatureAlgorithm，改用 Jwts.SIG + Keys
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.WeakKeyException;
 
 @Component
 public class TokenService
@@ -63,6 +64,12 @@ public class TokenService
                 String userKey = getTokenKey(uuid);
                 LoginUser user = redisCache.getCacheObject(userKey);
                 return user;
+            }
+            catch (WeakKeyException e)
+            {
+                // [P1-FIX] jjwt 0.12.x 升级后，旧 HS512 签发的 token 验签时抛出 WeakKeyException
+                // （密钥 384 bits < HS512 要求的 512 bits），属于预期行为，降级为 debug 避免日志噪音
+                logger.debug("Legacy HS512 token rejected by HS256 key, user needs to re-login");
             }
             catch (Exception e)
             {
@@ -159,8 +166,17 @@ public class TokenService
      */
     public String getUsernameFromToken(String token)
     {
-        Claims claims = parseToken(token);
-        return claims.getSubject();
+        try
+        {
+            Claims claims = parseToken(token);
+            return claims.getSubject();
+        }
+        catch (Exception e)
+        {
+            // [P1-FIX] 添加异常防护，解析失败时返回 null 而非抛出异常
+            logger.debug("Failed to get username from token", e);
+            return null;
+        }
     }
 
     /** 获取请求token

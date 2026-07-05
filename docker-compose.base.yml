@@ -7,6 +7,9 @@ services:
     mem_limit: 256m
     cpus: 0.5
     restart: always    
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 50
     volumes:
       - ./gateway/nginx/conf.d:/etc/nginx/conf.d
       - ./gateway/nginx/ssl:/etc/nginx/ssl
@@ -25,6 +28,9 @@ services:
     mem_limit: 1g
     cpus: 1
     restart: always
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
     volumes:
       - ./db/mysql_data:/var/lib/mysql
       - ./db/mysql_init:/docker-entrypoint-initdb.d
@@ -45,6 +51,9 @@ services:
     mem_limit: 512m
     cpus: 0.3
     restart: always
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
     volumes:
       - ./db/redis_data:/data
       - ./logs/redis:/var/log/redis

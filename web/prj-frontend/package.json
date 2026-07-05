@@ -14,7 +14,6 @@
     "core-js": "^3.27.2",
     "element-ui": "^2.15.6",
     "js-cookie": "^3.0.1",
-    "nacos": "^2.5.1",
     "vue": "^2.6.12",
     "vue-meta": "^2.4.0",
     "vue-router": "^3.4.9",

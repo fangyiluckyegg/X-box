@@ -62,11 +62,28 @@
     </appender>
     -->
 
-	<!--系统操作日志-->
+	<!--系统操作日志（默认：文本格式 console + file_info + file_error）-->
     <root level="info">
         <appender-ref ref="console" />
         <appender-ref ref="file_info" />
         <appender-ref ref="file_error" />
         <!-- <appender-ref ref="LOGSTASH" /> -->
     </root>
+
+    <!-- [P2-FIX] JSON 格式日志，通过 spring profile "json-logs" 激活 -->
+    <!-- 生产环境通过 SPRING_PROFILES_ACTIVE=dev,json-logs 激活，输出结构化日志供 ELK 采集 -->
+    <!-- 文件日志保持文本格式不变，仅 console 切换为 JSON，最小变更保证兼容性 -->
+    <springProfile name="json-logs">
+        <appender name="json_console" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"app":"prj-backend"}</customFields>
+            </encoder>
+        </appender>
+        <root level="info">
+            <appender-ref ref="json_console" />
+            <appender-ref ref="file_info" />
+            <appender-ref ref="file_error" />
+        </root>
+    </springProfile>
+
 </configuration>
