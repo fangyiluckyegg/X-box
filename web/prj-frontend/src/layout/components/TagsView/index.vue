@@ -7,7 +7,7 @@
         ref="tag"
         :key="tag.path"
         :class="isActive(tag)?'active':''"
-        :to="{ path: tag.path, query: tag.query, fullPath: tag.fullPath }"
+        :to="{ path: tag.path, query: tag.query }"
         tag="span"
         class="tagsMenu"
         :style="activeStyle(tag)"
@@ -50,7 +50,11 @@
         return this.$store.state.tagsView.visitedViews
       },
       routes() {
-        return "首页"
+        // 返回路由配置数组，兼容 Vue Router 配置
+        return (this.$router && this.$router.options && this.$router.options.routes) || []
+      },
+      theme() {
+        return (this.$store && this.$store.state && this.$store.state.settings && this.$store.state.settings.theme) || '#43c985'
       },
     },
     // 监听
@@ -88,17 +92,24 @@
       },
       isFirstView() {
         try {
-            if(this.selectedTag.fullPath === this.visitedViews[1].fullPath || this.selectedTag.fullPath === '/index'){
-                return true
-            }else{
-                return false
-            }
+          if (!this.selectedTag || !this.selectedTag.path) return false
+          if (!this.visitedViews || this.visitedViews.length < 2) return false
+          if (this.selectedTag.path === this.visitedViews[1].path || this.selectedTag.path === '/index') {
+            return true
+          }
+          return false
         } catch (err) {
           return false
         }
       },
       isLastView() {
-        return this.selectedTag.fullPath === this.visitedViews[this.visitedViews.length - 1].fullPath
+        try {
+          if (!this.selectedTag || !this.selectedTag.path) return false
+          if (!this.visitedViews || this.visitedViews.length === 0) return false
+          return this.selectedTag.path === this.visitedViews[this.visitedViews.length - 1].path
+        } catch (err) {
+          return false
+        }
       },
       filterisFixedTags(routes, basePath = '/') {
         let tags = []
@@ -133,11 +144,14 @@
       moveToCurrentTag() {
         const tags = this.$refs.tag
         this.$nextTick(() => {
+          if (!tags) return
           for (const tag of tags) {
-            if (tag.to.path === this.$route.path) {
-              this.$refs.scrollPane.moveToTarget(tag)
+            const to = tag && tag.to
+            if (!to) continue
+            if (to.path === this.$route.path) {
+              this.$refs.scrollPane && this.$refs.scrollPane.moveToTarget && this.$refs.scrollPane.moveToTarget(tag)
 
-              if (tag.to.fullPath !== this.$route.fullPath) {
+              if (to.fullPath && to.fullPath !== this.$route.fullPath) {
                 this.$store.dispatch('tagsView/updateVisitedView', this.$route)
               }
               break
@@ -183,7 +197,7 @@
       toLastView(visitedViews, view) {
         const latestView = visitedViews.slice(-1)[0]
         if (latestView) {
-          this.$router.push(latestView.fullPath)
+          this.$router.push(latestView.fullPath || latestView.path)
         } else {
           this.$router.push('/')
         }
