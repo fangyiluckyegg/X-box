@@ -46,11 +46,13 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
     @Override
     protected void configure(HttpSecurity httpSecurity) throws Exception
     {
+        // [P1-FIX] CSRF 当前禁用，因 Token 存储在 Cookie 中存在 CSRF 风险。
+        // 已通过前端 SameSite=Lax Cookie 缓解。后续应评估恢复 CSRF Token 或改为 Authorization Header 方案。
         httpSecurity
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeRequests(auth -> auth
-                .antMatchers("/api/**").permitAll()  // 公开访问                
+                // [P0-FIX] 移除 /api/** permitAll，所有业务接口必须经过认证
                 .antMatchers("/login", "/captchaImage").anonymous()
                 .antMatchers(
                         HttpMethod.GET,
@@ -65,7 +67,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                 .antMatchers("/swagger-resources/**").anonymous()
                 .antMatchers("/webjars/**").anonymous()
                 .antMatchers("/*/api-docs").anonymous()
-                .antMatchers("/druid/**").anonymous()
+                // [P0-FIX] Druid控制台要求ADMIN角色认证，移除anonymous
+                .antMatchers("/druid/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .headers(headers -> headers.frameOptions().disable());

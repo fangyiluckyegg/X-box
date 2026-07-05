@@ -1,6 +1,7 @@
 # ====================== 环境变量（敏感，禁止提交） ======================
-.env.dev
-.env.prod
+# [P0-FIX] 通配符屏蔽所有env文件，防止敏感凭据泄露
+.env*
+*.env
 # 仅允许无密码模板文件提交仓库
 !.env.dev.template
 !.env.prod.template
@@ -9,41 +10,42 @@
 logs/**
 *.log
 
-# ====================== Nginx SSL证书（私钥高危） ======================
+# ====================== Nginx SSL证书/密钥文件（私钥高危） ======================
 gateway/nginx/ssl/*.key
 gateway/nginx/ssl/*.crt
 gateway/nginx/ssl/*.pem
+# [P0-FIX] 全局密钥文件屏蔽，防止任意位置的密钥泄露
+*.pem
+*.key
 
 # ====================== MySQL/Redis 持久化数据 ======================
 # 完整屏蔽数据目录，无需单独屏蔽库内文件
 db/mysql_data/
 db/redis_data/
 
-# 本地真实数据库初始化脚本（含明文密码）
-db/mysql_init/init.sql
-# 仅允许提交无密码模板文件
-!db/mysql_init/*.template.sql
+# [P0-FIX] init.sql 是数据库初始化脚本，必须在版本控制中
+# 其中开发默认密码与 application.yml 的 SPRING_DATASOURCE_PASSWORD 默认值一致
+# 生产部署后必须执行 ALTER USER 修改密码
 
 # ====================== AI Llama 模型与缓存 ======================
 ai_llama/models/
 ai_llama/cache/
 
-# SSH私钥（存放在ai_llama目录，精准匹配防泄露）
+# SSH私钥（精准匹配 + 通配符双重防护防泄露）
 ai_llama/id_ed25519
 ai_llama/id_ed25519.pub
+# [P0-FIX] 通配符屏蔽所有位置的SSH私钥
+**/id_*
 
 # ====================== 前端Vue产物/依赖 ======================
-web/bibutong_front/dist/
-web/bibutong_front/node_modules/
-web/prj_frontend/dist/
-web/prj_frontend/node_modules/
+# [P0-FIX] 路径修正：实际目录名为 prj-frontend（连字符）
+web/prj-frontend/dist/
+web/prj-frontend/node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # ====================== 后端Maven编译产物 ======================
-backend/bibutong_server/dependency-reduced-pom.xml
-backend/bibutong_server/target/
 backend/prj-backend-c/dependency-reduced-pom.xml
 backend/prj-backend-c/target/
 # Maven本地缓存

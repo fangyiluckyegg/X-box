@@ -1,7 +1,7 @@
 services:
   prj-frontend:
     build:
-        context: ./web/prj_frontend
+        context: ./web/prj-frontend
         dockerfile: Dockerfile.dev
     #image: nginx:1.25-alpine
     container_name: dev-prj-frontend
@@ -10,7 +10,7 @@ services:
     mem_limit: 128m
     cpus: 0.2
     volumes:
-      #- ./web/prj_frontend/dist:/usr/share/nginx/html
+      #- ./web/prj-frontend/dist:/usr/share/nginx/html
       - ./logs/prj-frontend:/var/log/nginx
     depends_on:
       - nginx-gateway
@@ -36,6 +36,8 @@ services:
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_REDIS_DATABASE: 9
+      # [P0-FIX] Redis认证密码，与Redis容器requirepass保持一致
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_default_pass_change_me}
       # AI向量服务地址【给Java用的】
       AI_SERVICE_URL: http://llama:8000
     depends_on:

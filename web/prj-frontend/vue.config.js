@@ -5,7 +5,7 @@ function resolve(dir) {
   return path.join(__dirname, dir)
 }
 
-const name = 'X工具箱后台'
+const name = 'X-box工具箱'
 
 //const port = 80 // 端口
 // 开发端口改为8081，避开系统80端口冲突

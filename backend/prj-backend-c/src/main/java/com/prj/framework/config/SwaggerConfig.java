@@ -1,5 +1,6 @@
 package com.prj.framework.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import springfox.documentation.builders.ApiInfoBuilder;
@@ -12,12 +13,16 @@ import springfox.documentation.spring.web.plugins.Docket;
 @Configuration
 public class SwaggerConfig
 {
+    // [P1-FIX] Swagger 生产环境关闭，通过配置控制
+    @Value("${swagger.enabled:false}")
+    private boolean swaggerEnabled;
+
     @Bean
     public Docket createRestApi()
     {
         return new Docket(DocumentationType.OAS_30)
-                // 是否启用Swagger
-                .enable(true)
+                // [P1-FIX] 根据配置决定是否启用Swagger，生产环境默认关闭
+                .enable(swaggerEnabled)
                 // 用来指定Swagger信息
                 .apiInfo(apiInfo())
                 .select()

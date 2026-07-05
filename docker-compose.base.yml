@@ -48,7 +48,8 @@ services:
     volumes:
       - ./db/redis_data:/data
       - ./logs/redis:/var/log/redis
-    command: redis-server --dbfilename dump.rdb --appendonly no
+    # [P0-FIX] Redis添加认证密码，防止未授权访问
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_default_pass_change_me} --dbfilename dump.rdb --appendonly no
     ports:
       - "127.0.0.1:63790:6379"
     networks:

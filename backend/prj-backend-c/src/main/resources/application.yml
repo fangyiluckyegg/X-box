@@ -26,7 +26,8 @@ spring:
     #数据源
     url: jdbc:mysql://mysql:3306/prj_dev?characterEncoding=utf8&useSSL=true&serverTimezone=GMT%2B8
     username: prj_user
-    password: Prj@Dev789
+    # [P0-FIX] DB密码环境变量化，生产环境必须通过SPRING_DATASOURCE_PASSWORD覆盖
+    password: ${SPRING_DATASOURCE_PASSWORD:Prj@Dev789}
     # 初始连接数
     initialSize: 5
     # 最小连接池数量
@@ -35,6 +36,12 @@ spring:
     maxActive: 20
     # 配置获取连接等待超时的时间
     maxWait: 10000
+    # [P0-FIX] Druid监控控制台认证配置，防止未授权访问
+    druid:
+      stat-view-servlet:
+        enabled: true
+        login-username: ${DRUID_USERNAME:druid_admin}
+        login-password: ${DRUID_PASSWORD:Druid@Dev2024}
  
   # redis 配置
   redis:
@@ -42,6 +49,8 @@ spring:
     host: redis
     # 端口，默认为6379
     port: 6379
+    # [P0-FIX] Redis认证密码，生产环境必须通过REDIS_PASSWORD环境变量覆盖
+    password: ${REDIS_PASSWORD:redis_default_pass_change_me}
   # sentinel控制台的工作地址和端口
   cloud:
     nacos:
@@ -59,8 +68,8 @@ ribbon:
 token:
     # token自定义标识
     header: Authorization
-    # 密钥
-    secret: springbootVue123
+    # [P0-FIX] JWT密钥环境变量化，生产环境必须通过JWT_SECRET设置至少256位强密钥
+    secret: ${JWT_SECRET:please-set-a-strong-secret-key-at-least-256-bits}
     # 有效期
     expireTime: 30
   
@@ -76,3 +85,7 @@ pagehelper:
   helperDialect: mysql
   supportMethodsArguments: true
   params: count=countSql 
+
+# [P1-FIX] Swagger 生产关闭，开发环境可开启
+swagger:
+  enabled: ${SWAGGER_ENABLED:false}
