@@ -8,6 +8,9 @@ services:
       - "8081:8081"
     mem_limit: 1g
     cpus: 0.5
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
     stdin_open: true
     tty: true # VSCode终端交互必需
     volumes:
@@ -31,6 +34,9 @@ services:
     mem_limit: 2g
     cpus: 2
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
     working_dir: /workspace/backend/prj-backend-c
     # 修复 TTY /dev/tty 缺失报错（VSCode DevContainer 必须）
     stdin_open: true
@@ -74,6 +80,9 @@ services:
     container_name: dev-prj-llama
     mem_limit: 6g
     cpus: 2
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
     # Ollama TUI工具需要终端设备，修复 /dev/tty 报错
     stdin_open: true
     tty: true
