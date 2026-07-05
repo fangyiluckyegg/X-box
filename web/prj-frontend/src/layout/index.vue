@@ -27,6 +27,12 @@ export default {
     ...mapState({
       sidebar: state => state.app.sidebar
     }),
+    ...mapState({
+      needTagsView: state => state.settings.needTagsView
+    }),
+    theme() {
+      return (this.$store && this.$store.state && this.$store.state.settings && this.$store.state.settings.theme) || '#43c985'
+    },
     classObj() {
       return {
         hideSidebar: !this.sidebar.opened,

@@ -7,10 +7,10 @@ import Layout from '@/layout'
 export const constantRoutes = [
 
         {
-            path: '',
-            component: Layout,
-            name: '员工管理',
-            meta: { title: '比对工具箱' },
+          path: '/',
+          component: Layout,
+          name: '比对工具箱',
+          meta: { title: '比对工具箱' },
             children: [
             {
               path: '/employee',
@@ -21,10 +21,10 @@ export const constantRoutes = [
           ]
         },
         {
-            path: '',
-            component: Layout,
-            name: '员工管理',
-            meta: { title: '员工管理' },
+          path: '/',
+          component: Layout,
+          name: '员工管理-KPI',
+          meta: { title: '员工管理' },
             children: [
             {
               path: '/employee_kpi',
