@@ -7,8 +7,8 @@ services:
     container_name: dev-prj-frontend
     ports:
       - "8081:80"
-    mem_limit: 128m
-    cpus: 0.2
+    mem_limit: 512m
+    cpus: 0.5
     volumes:
       #- ./web/prj-frontend/dist:/usr/share/nginx/html
       - ./logs/prj-frontend:/var/log/nginx
@@ -27,6 +27,7 @@ services:
     restart: no
     volumes:
       - ./logs/prj-backend-c:/app/logs
+      - prj-maven-cache:/root/.m2
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
@@ -79,4 +80,8 @@ services:
 networks:
   dev-network:
     driver: bridge
+
+# Maven依赖缓存卷（避免每次重启重新下载）
+volumes:
+  prj-maven-cache:
 

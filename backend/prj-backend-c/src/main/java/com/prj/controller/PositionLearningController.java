@@ -1,6 +1,6 @@
 package com.prj.controller;
 
-import com.prj.common.ResponseResult;
+import com.prj.common.core.domain.AjaxResult;
 import com.prj.service.UploadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,14 +47,15 @@ public class PositionLearningController {
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/docUpload/uploadDoc")
-    public ResponseResult<String> uploadDoc(@RequestParam("file") MultipartFile file) {
+    // [P1-FIX] 统一使用 AjaxResult 替代 ResponseResult，消除双响应类
+    public AjaxResult uploadDoc(@RequestParam("file") MultipartFile file) {
         String filename = null;
         try {
             filename = uploadService.uploadDoc(file);
-            return ResponseResult.ok(filename, "文件上传成功");
+            return AjaxResult.success("文件上传成功", filename);
         } catch (IOException e) {
             logger.error("文件上传失败: {}", e.getMessage());
-            return ResponseResult.failed(e.getMessage(), "文件上传失败");
+            return AjaxResult.error("文件上传失败");
         }
     }
 

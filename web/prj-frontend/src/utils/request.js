@@ -22,8 +22,9 @@ service.interceptors.request.use(config => {
 
   return config
 }, error => {
+    // [P1-FIX] axios 1.x 拦截器 error handler 必须返回 Promise.reject，否则错误会被静默吞没
     console.log(error)
-    Promise.reject(error)
+    return Promise.reject(error)
 })
 
 // 响应response拦截器
@@ -59,11 +60,12 @@ service.interceptors.response.use(res => {
     }
   },
   error => {
+    // [P1-FIX] axios 1.x 适配：error.message 可能为 undefined（如请求取消），增加空值保护
     let { message } = error;
-    if (message == "Network Error") {
+    if (message === "Network Error") {
       message = "后端接口连接异常";
     }
-    else if (message.includes("timeout")) {
+    else if (message && message.includes("timeout")) {
       message = "系统接口请求超时";
     }
     Message({

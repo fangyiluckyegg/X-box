@@ -63,10 +63,11 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter
                         "/**/*.js",
                         "/profile/**"
                 ).permitAll()
-                .antMatchers("/swagger-ui.html").anonymous()
-                .antMatchers("/swagger-resources/**").anonymous()
+                // [P1-FIX] springdoc-openapi 路径匹配（替代 Springfox 的 /swagger-ui.html 和 /swagger-resources/**）
+                .antMatchers("/swagger-ui/**").anonymous()
+                .antMatchers("/v3/api-docs/**").anonymous()
                 .antMatchers("/webjars/**").anonymous()
-                .antMatchers("/*/api-docs").anonymous()
+                .antMatchers("/doc.html").anonymous()
                 // [P0-FIX] Druid控制台要求ADMIN角色认证，移除anonymous
                 .antMatchers("/druid/**").hasRole("ADMIN")
                 .anyRequest().authenticated()

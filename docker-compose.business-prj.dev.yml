@@ -47,15 +47,19 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
-      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+      # [FIX] 移除 JAVA_TOOL_OPTIONS JDWP 调试代理 — spring-boot:run 会 fork 第二个 JVM，
+      #        两个 JVM 都会拾取 JAVA_TOOL_OPTIONS 并尝试绑定同一 5005 端口，导致 "Address in use" 崩溃。
+      #        如需远程调试，请改用 -Dspring-boot.run.jvmArguments 传参（仅作用于 forked JVM）。
+      # JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/prj_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
       SPRING_REDIS_DATABASE: 9
+      # [P0-FIX] Redis认证密码，与Redis容器requirepass保持一致
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_default_pass_change_me}
       AI_SERVICE_URL: http://llama:8000
     ports:
       - "8080:8080"
-      - "5005:5005"
     depends_on:
       - mysql
       - redis
