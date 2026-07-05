@@ -17,10 +17,7 @@ spring:
   application:
     name: hrmanager
     
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: validate
+  # [P1-FIX] 移除 spring.jpa 配置（JPA依赖已移除，0个@Entity/@Repository，仅MyBatis使用）
   datasource:
     driverClassName: com.mysql.cj.jdbc.Driver
     #数据源
@@ -51,18 +48,7 @@ spring:
     port: 6379
     # [P0-FIX] Redis认证密码，生产环境必须通过REDIS_PASSWORD环境变量覆盖
     password: ${REDIS_PASSWORD:redis_default_pass_change_me}
-  # sentinel控制台的工作地址和端口
-  cloud:
-    nacos:
-      discovery:
-        #server-addr: 127.0.0.1:8858,127.0.0.1:8868
-        server-addr: nacos:8858,nacos:8868
-        #暂时不用nacos!关闭当前单体服务向 Nacos 注册实例，不再发起 TCP 连接，Connection refused 报错直接消失
-        register-enabled: false
-
-# 负载均衡
-ribbon:
-  NFLoadBalancerRuleClassName: com.netflix.loadbalancer.RoundRibbonRule
+  # [P1-FIX] 移除 spring.cloud.nacos 和 ribbon 配置（Spring Cloud 依赖已移除，单体架构无需服务发现与负载均衡）
 
 # token配置
 token:
@@ -86,6 +72,7 @@ pagehelper:
   supportMethodsArguments: true
   params: count=countSql 
 
-# [P1-FIX] Swagger 生产关闭，开发环境可开启
-swagger:
-  enabled: ${SWAGGER_ENABLED:false}
+# [P1-FIX] springdoc-openapi 配置（替代 Springfox）
+springdoc:
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}

@@ -1,5 +1,6 @@
-# 编译阶段：完整JDK打包
-FROM eclipse-temurin:21-jdk-alpine AS builder
+# [P1-FIX] 生产环境：JDK 11 多阶段构建，JRE 运行时优化镜像大小
+# 编译阶段
+FROM eclipse-temurin:11-jdk-alpine AS builder
 WORKDIR /app
 COPY . .
 
@@ -7,38 +8,23 @@ COPY . .
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 安装Maven并打包项目
-#RUN apk update && apk add --no-cache maven
-#WORKDIR /app/backend/bibutong_server
-#RUN mvn clean package -Dmaven.test.skip=true
-# 安装Maven并打包项目
 RUN apk update && apk add --no-cache maven
 WORKDIR /app/backend/prj-backend-c
 RUN mvn clean package -Dmaven.test.skip=true
 
-
 # 运行阶段：轻量JRE
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:11-jre-alpine
 WORKDIR /app
 
-# 1. 系统预装python、pip、预编译好的scikit-learn（sklearn）
-# 无需gcc/g++、无需meson、无需cython编译，零构建报错
-RUN apk update && apk add --no-cache python3 py3-pip py3-scikit-learn && ln -sf /usr/bin/python3 /usr/bin/python
+# 安装Python依赖（AI推理需要）
+RUN apk add --no-cache python3 py3-pip py3-scikit-learn && ln -sf /usr/bin/python3 /usr/bin/python
+RUN pip install --no-cache-dir --break-system-packages pandas ollama openpyxl -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 复制AI推理脚本目录并授权
-#COPY --from=builder /app/backend/bibutong_server/src/ai-infer /app/ai-infer
-#RUN chmod -R 755 /app/ai-infer
-# 复制AI推理脚本目录并授权
+# 复制AI推理脚本
 COPY --from=builder /app/backend/prj-backend-c/src/ai-infer /app/ai-infer
 RUN chmod -R 755 /app/ai-infer
 
-# 2. 仅安装纯Python无编译依赖：pandas、ollama、openpyxl
-# RUN pip install --no-cache-dir --break-system-packages pandas ollama -i https://pypi.tuna.tsinghua.edu.cn/simple
-# 新增 openpyxl 用于读取xlsx
-RUN pip install --no-cache-dir --break-system-packages pandas ollama openpyxl -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-# 拷贝jar包
-#COPY --from=builder /app/backend/bibutong_server/target/*.jar app.jar
 # 拷贝jar包
 COPY --from=builder /app/backend/prj-backend-c/target/*.jar app.jar
 
-ENTRYPOINT ["java","-Xmx1800M","-jar","app.jar"]
+ENTRYPOINT ["java","-Xmx1800M","-jar","/app/app.jar"]

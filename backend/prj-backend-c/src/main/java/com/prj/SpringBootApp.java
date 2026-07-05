@@ -2,10 +2,9 @@ package com.prj;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+// [P1-FIX] 移除 @EnableDiscoveryClient 及 Spring Cloud 依赖（Nacos注册已关闭，单体架构无需服务发现）
 
 
-@EnableDiscoveryClient
 @SpringBootApplication
 public class SpringBootApp
 {

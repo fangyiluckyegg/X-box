@@ -25,20 +25,7 @@
     <!-- 依赖声明 -->
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>Hoxton.SR8</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.alibaba.cloud</groupId>
-                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
-                <version>2.2.1.RELEASE</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+            <!-- [P1-FIX] 移除 Spring Cloud / Spring Cloud Alibaba 依赖管理（Nacos注册关闭、Sentinel无规则、Ribbon单实例无意义） -->
 
             <!-- io常用工具类 -->
             <dependency>
@@ -47,11 +34,11 @@
                 <version>2.11.0</version>
             </dependency>
 
-            <!-- collections工具类 -->
+            <!-- [P1-FIX] commons-collections 3.2.2 → commons-collections4 4.4（修复CVE-2015-7501反序列化RCE漏洞） -->
             <dependency>
-                <groupId>commons-collections</groupId>
-                <artifactId>commons-collections</artifactId>
-                <version>3.2.2</version>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-collections4</artifactId>
+                <version>4.4</version>
             </dependency>
 
             <!-- [P0-FIX] 阿里JSON解析器 fastjson2（修复fastjson 1.x反序列化RCE漏洞） -->
@@ -68,32 +55,46 @@
                 <version>2.17.2</version>
             </dependency>
 
+            <!-- [P1-FIX] logback 1.2.3 → 1.2.13（修复CVE-2023-6378反序列化漏洞） -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-core</artifactId>
-                <version>1.2.3</version>
+                <version>1.2.13</version>
             </dependency>
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
-                <version>1.2.3</version>
+                <version>1.2.13</version>
             </dependency>
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-access</artifactId>
-                <version>1.2.3</version>
+                <version>1.2.13</version>
             </dependency>
+            <!-- [P1-FIX] logstash-logback-encoder 5.1 → 6.6（兼容logback 1.2.13） -->
             <dependency>
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
-                <version>5.1</version>
+                <version>6.6</version>
             </dependency>
 
-            <!-- Token生成与解析-->
+            <!-- [P1-FIX] jjwt 0.9.1 → 0.12.6（修复不安全API，拆分为jjwt-api/jjwt-impl/jjwt-jackson三模块） -->
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt</artifactId>
-                <version>0.9.1</version>
+                <artifactId>jjwt-api</artifactId>
+                <version>0.12.6</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>0.12.6</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>0.12.6</version>
+                <scope>runtime</scope>
             </dependency>
 
             <!-- 验证码 -->
@@ -120,17 +121,9 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- nacos依赖包 -->
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
-        </dependency>
+        <!-- [P1-FIX] 移除 nacos-discovery 依赖（register-enabled: false，单体架构无需服务注册发现） -->
 
-        <!-- Sentinel依赖包 -->
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
-        </dependency>
+        <!-- [P1-FIX] 移除 Sentinel 依赖（无规则配置，单体架构无需流控） -->
 
         <!-- SpringBoot AOP和拦截器 -->
         <dependency>
@@ -144,17 +137,11 @@
             <artifactId>kaptcha</artifactId>
          </dependency>
 
-        <!-- swagger3,设定接口文档组件的依赖--> 
+        <!-- [P1-FIX] springdoc-openapi 1.7.0 替代废弃的 Springfox 3.0.0（兼容 Spring Boot 2.x） -->
         <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-boot-starter</artifactId>
-            <version>3.0.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.swagger</groupId>
-            <artifactId>swagger-models</artifactId>
-            <version>1.6.2</version>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>1.7.0</version>
         </dependency>
 
         <!-- 集成mybatis 组件 -->
@@ -170,18 +157,14 @@
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
 
-        <!-- 阿里数据库连接池 -->
+        <!-- [P1-FIX] Druid 1.2.8 → 1.2.23（修复CVE-2023-2262 SQL注入风险） -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid-spring-boot-starter</artifactId>
-            <version>1.2.8</version>
+            <version>1.2.23</version>
         </dependency>
 
-        <!-- jpa驱动包 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
+        <!-- [P1-FIX] 移除 spring-boot-starter-data-jpa（0个@Entity/@Repository，仅用于ddl-auto:validate，纯属冗余） -->
 
         <dependency>
             <groupId>org.springframework</groupId>
@@ -194,10 +177,18 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- Token生成与解析-->
+        <!-- [P1-FIX] jjwt 0.12.6 多模块依赖（jjwt-api编译期 + jjwt-impl/jjwt-jackson运行期） -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt</artifactId>
+            <artifactId>jjwt-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
         </dependency>
 
         <!-- pagehelper 分页插件 -->
@@ -237,10 +228,11 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- [P1-FIX] gson 2.8.0 → 2.10.1（修复CVE-2022-25647反序列化漏洞） -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.8.0</version>
+            <version>2.10.1</version>
         </dependency>
 
     </dependencies>

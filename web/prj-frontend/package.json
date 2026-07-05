@@ -10,7 +10,7 @@
     "lint": "eslint --ext .js,.vue src"
   },
   "dependencies": {
-    "axios": "^0.24.0",
+    "axios": "^1.7.9",
     "core-js": "^3.27.2",
     "element-ui": "^2.15.6",
     "js-cookie": "^3.0.1",
@@ -18,7 +18,8 @@
     "vue": "^2.6.12",
     "vue-meta": "^2.4.0",
     "vue-router": "^3.4.9",
-    "vuex": "^3.6.0"
+    "vuex": "^3.6.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "4.4.6",

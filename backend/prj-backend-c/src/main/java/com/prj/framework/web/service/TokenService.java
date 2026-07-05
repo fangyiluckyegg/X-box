@@ -3,6 +3,8 @@ package com.prj.framework.web.service;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.nio.charset.StandardCharsets;
+import javax.crypto.SecretKey;
 import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
@@ -17,7 +19,8 @@ import com.prj.common.core.redis.RedisCache;
 import com.prj.common.utils.uuid.IdUtils;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+// [P1-FIX] jjwt 0.12.x 移除 SignatureAlgorithm，改用 Jwts.SIG + Keys
+import io.jsonwebtoken.security.Keys;
 
 @Component
 public class TokenService
@@ -113,12 +116,24 @@ public class TokenService
         redisCache.setCacheObject(userKey, loginUser, expireTime, TimeUnit.MINUTES);
     }
 
+    // [P1-FIX] jjwt 0.12.x 需要使用 SecretKey 对象，密钥长度需 ≥ 32 字节（256 bits）
+    //          使用 Keys.hmacShaKeyFor() 从字节数组构建密钥
+    private SecretKey getSigningKey()
+    {
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
     // 生成token
+    // [P1-FIX] jjwt 0.12.x API 适配：
+    //   setClaims(Map) → claims(Map)
+    //   signWith(SignatureAlgorithm.HS512, String) → signWith(SecretKey, Jwts.SIG.HS256)
     private String createToken(Map<String, Object> claims)
     {
         String token = Jwts.builder()
-                .setClaims(claims)
-                .signWith(SignatureAlgorithm.HS512, secret).compact();
+                .claims(claims)
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
         return token;
     }
 
@@ -126,12 +141,16 @@ public class TokenService
      * @param token 令牌
      * @return 数据声明
      */
+    // [P1-FIX] jjwt 0.12.x API 适配：
+    //   parser().setSigningKey(String) → parser().verifyWith(SecretKey).build()
+    //   parseClaimsJws(token).getBody() → parseSignedClaims(token).getPayload()
     private Claims parseToken(String token)
     {
         return Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody();
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     /** 从令牌中获取用户名
