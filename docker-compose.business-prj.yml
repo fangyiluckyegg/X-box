@@ -71,7 +71,6 @@ services:
       TZ: Asia/Shanghai
       OLLAMA_HOST: 0.0.0.0  # 新增，允许外部容器访问
     ports:
-      - "0.0.0.0:8000:8000"
       - "11434:11434" # 暴露ollama标准端口【给Python用的】
     # 只保留ollama原生启动命令，不再调用sh
     # 容器启动后后台起服务，自动下载模型，前台常驻运行

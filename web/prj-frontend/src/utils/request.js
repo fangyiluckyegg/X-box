@@ -8,8 +8,8 @@ import errorCode from '@/utils/errorCode'
 const service = axios.create({
   // 定义公共的请求前缀
   baseURL: process.env.VUE_APP_BASE_API,
-  // 超时
-  timeout: 2000
+  // 超时（10s 适合大多数 CRUD 接口；耗时接口如 Excel 比对/下载在调用处单独覆盖）
+  timeout: 10000
 })
 
 // 请求request拦截器，查看请求是否带token

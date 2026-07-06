@@ -1,8 +1,5 @@
 <template>
   <div class="compare-page">
-    <div style="background:#ffefef;padding:8px;border:1px solid #ffd0d0;color:#a00;margin-bottom:12px;">
-      调试：组件已渲染（若看不到此条，请查看控制台错误）
-    </div>
     <!-- 操作栏：双Excel上传 + 功能按钮 -->
     <div class="operate-row">
       <!-- 原始数据上传 -->
@@ -98,7 +95,6 @@
 </template>
 
 <script>
-import * as XLSX from 'xlsx'
 import { Message, Loading } from 'element-ui'
 import { compareExcelApi, downloadCompareResultApi } from '@/api/compare'
 

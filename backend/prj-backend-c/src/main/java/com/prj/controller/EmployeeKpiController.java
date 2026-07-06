@@ -6,6 +6,7 @@ import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.core.page.TableDataInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -17,7 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.prj.domain.EmployeeKpi;
 import com.prj.service.IEmployeeKpiService;
 
+import javax.validation.Valid;
 
+
+// [P0-FIX] 添加 @Validated 开启控制器级别输入校验
+@Validated
 @RestController
 @RequestMapping("/employee_kpi")
 public class EmployeeKpiController extends BaseController
@@ -48,7 +53,8 @@ public class EmployeeKpiController extends BaseController
     /** 新增员工评价管理     */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public AjaxResult add(@RequestBody EmployeeKpi employeeKpi)
+    // [P0-FIX] @Valid 触发 EmployeeKpi 上的 JSR-303 约束校验
+    public AjaxResult add(@Valid @RequestBody EmployeeKpi employeeKpi)
     {
         return toAjax(employeeKpiService.insertEmployeeKpi(employeeKpi));
     }
@@ -56,7 +62,8 @@ public class EmployeeKpiController extends BaseController
     /** 修改员工评价管理     */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping
-    public AjaxResult edit(@RequestBody EmployeeKpi employeeKpi)
+    // [P0-FIX] @Valid 触发 EmployeeKpi 上的 JSR-303 约束校验
+    public AjaxResult edit(@Valid @RequestBody EmployeeKpi employeeKpi)
     {
         return toAjax(employeeKpiService.updateEmployeeKpi(employeeKpi));
     }

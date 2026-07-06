@@ -34,7 +34,7 @@
           <img :src="codeUrl" @click="getCode" class="login-code-img"/>
         </div>
       </el-form-item>
-      <el-checkbox v-model="loginForm.rememberMe" style="margin:0px 0px 20px 0px;">记住密码</el-checkbox>
+      <el-checkbox v-model="loginForm.rememberMe" style="margin:0px 0px 20px 0px;">记住用户名</el-checkbox>
       <el-form-item style="width:100%;">
         <el-button
           :loading="loading" type="primary"
@@ -90,11 +90,10 @@ export default {
     },
     getCookie() {
       const username = Cookies.get("username");
-      const password = Cookies.get("password");
       const rememberMe = Cookies.get('rememberMe')
       this.loginForm = {
         username: username === undefined ? this.loginForm.username : username,
-        password: password === undefined ? this.loginForm.password : password,
+        password: this.loginForm.password,
         rememberMe: rememberMe === undefined ? false : Boolean(rememberMe)
       };
     },
@@ -103,12 +102,11 @@ export default {
         if (valid) {
           this.loading = true;
           if (this.loginForm.rememberMe) {
+            // [P0-FIX] 记住密码功能改为仅记住用户名，不再存储密码到Cookie
             Cookies.set("username", this.loginForm.username, { expires: 10 });
-            Cookies.set("password", this.loginForm.password, { expires: 10 });
             Cookies.set('rememberMe', this.loginForm.rememberMe, { expires: 10 });
           } else {
             Cookies.remove("username");
-            Cookies.remove("password");
             Cookies.remove('rememberMe');
           }
           this.$store.dispatch("Login", this.loginForm).then(() => {
