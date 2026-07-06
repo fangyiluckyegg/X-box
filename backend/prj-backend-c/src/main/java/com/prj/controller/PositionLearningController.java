@@ -10,6 +10,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.validation.annotation.Validated;
 
 import java.io.IOException;
 import org.springframework.core.io.Resource;
@@ -26,6 +27,8 @@ import java.net.URLEncoder;
 
 /** 文件上传控制器 */
 // [P0-FIX] 移除@CrossOrigin(origins="*")，由全局CorsFilter统一管控跨域
+// [P0-FIX] 添加 @Validated 开启控制器级别输入校验
+@Validated
 @RequestMapping("/api/positionLearning")
 @RestController
 public class PositionLearningController {

@@ -1,7 +1,12 @@
 FROM node:18-alpine
 WORKDIR /app
-COPY . .
+
+# 【关键分层优化】先只复制依赖文件，利用缓存，仅package变更才重装依赖
+COPY package.json package-lock.json ./
 RUN npm install
+
+COPY . .
+
 EXPOSE 8081
 # [P2-FIX] 健康检查：验证Vite开发服务器是否正常响应（node:18-alpine 自带 wget）
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:8081/ || exit 1

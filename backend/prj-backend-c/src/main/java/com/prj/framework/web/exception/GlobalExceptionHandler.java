@@ -5,6 +5,8 @@ import javax.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.prj.common.core.domain.AjaxResult;
@@ -52,6 +54,19 @@ public class GlobalExceptionHandler
     {
         log.error(e.getMessage(), e);
         String message = e.getAllErrors().get(0).getDefaultMessage();
+        return AjaxResult.error(message);
+    }
+
+    /**
+     * [P0-FIX] @RequestBody 参数校验异常处理
+     * 当 @Valid 注解触发 JSR-303 校验失败时，返回第一个字段的错误信息
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public AjaxResult handleMethodArgumentNotValidException(MethodArgumentNotValidException e)
+    {
+        log.error("参数校验失败: {}", e.getMessage());
+        FieldError fieldError = e.getBindingResult().getFieldError();
+        String message = fieldError != null ? fieldError.getDefaultMessage() : "参数校验失败";
         return AjaxResult.error(message);
     }
 }

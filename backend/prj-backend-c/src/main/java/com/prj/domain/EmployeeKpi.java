@@ -3,6 +3,9 @@ package com.prj.domain;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
+
 
 public class EmployeeKpi
 {
@@ -11,10 +14,17 @@ public class EmployeeKpi
     /** 员工编号 */
     private Long id;
     /** 考评结果 */
+    // [P0-FIX] 输入校验：考评结果不能为空
+    @NotBlank(message = "考评结果不能为空")
+    @Size(max = 100, message = "考评结果长度不能超过100个字符")
     private String kpi;
     /** 奖金 */
+    @Size(max = 50, message = "奖金长度不能超过50个字符")
     private String bonus;
     /** 考评人 */
+    // [P0-FIX] 输入校验：考评人不能为空
+    @NotBlank(message = "考评人不能为空")
+    @Size(max = 50, message = "考评人长度不能超过50个字符")
     private String manager;
 
     public void setId(Long id) 
