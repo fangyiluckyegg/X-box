@@ -55,16 +55,6 @@
           size="large"
           icon="el-icon-search"
           :disabled="!originFile || !newFile || loading"
-          @click="uploadFiles"
-        >
-          文件上传
-        </el-button>
-
-        <el-button
-          type="primary"
-          size="large"
-          icon="el-icon-search"
-          :disabled="!originFile || !newFile || loading"
           @click="startCompare"
         >
           启动比对

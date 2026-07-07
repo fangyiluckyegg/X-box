@@ -34,8 +34,7 @@ plaintext
 server
 ├── gateway/nginx            # Nginx网关配置、路由、SSL证书
 │   ├── conf.d               
-│   │   ├── default.conf     # 默认兜底站点【可上传GIT】
-│   │   └── bibutong.conf    # 业务HTTPS路由配置（移到此处，ssl目录只做挂载）【可上传GIT】
+│   │   └── prj.conf         # 业务HTTPS路由配置（移到此处，ssl目录只做挂载）【可上传GIT】
 │   └── ssl                  # 宿主机挂载目录，仓库无证书文件
 │       ├── *.key            # 【暂缺】【不能上传GIT】
 │       ├── *.crt            # 【暂缺】【不能上传GIT】
@@ -68,29 +67,28 @@ server
 │   ├── nginx.conf           # 前端生产 Nginx 托管配置，属于部署标准文件，可提交【可上传GIT】
 │   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像【可上传GIT】
 │   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【可上传GIT】【待修改】
-├── backend/bibutong_server      
+├── backend/prj_backend-c      
 │   ├── src                  # Spring Cloud Alibaba后端源码【可上传GIT】
 │   ├── pom.xml              # Maven 主依赖配置，锁定所有 Java 三方包版本，强制提交，保证开发 / 生产依赖完全一致【可上传GIT】
-│   ├── dependency-reduced-pom.xml   # Maven 打包时自动生成的临时精简依赖文件，属于运行产物【不能上传GIT，待删除】
 │   ├── Dockerfile.prod      # 生产环境-线上CI流水线专用多阶段构建镜像，仅保留JRE，无编译工具，用于打包纯净生产镜像【可上传GIT】
 │   └── Dockerfile.dev       # 开发环境-单阶段 JDK 镜像，预装 Maven/Python，供 VSCode Dev Containers 挂载源码调试）【待修改】
 ├── logs                     # 全容器统一日志挂载目录，容器运行日志【不能上传GIT】
 │   ├── nginx
 │   ├── mysql                # 【暂缺】
 │   ├── redis                # 【暂缺】
-│   ├── bibutong-front
-│   ├── bibutong-backend
-│   └── llama
+│   ├── llama
+│   ├── prj-backend-c
+│   └── prj-frontend
 ├── scripts                  # 运维启停、备份、清理脚本
 │   ├── *.bat                # Windows批处理启停脚本（ai_switch、base_start、stop_business、switch_bibutong）【可上传GIT】
 │   ├── db_reset.sql         # 开发库重置脚本【可上传GIT】
 │   └── backup_dev.bat       # 定时备份脚本【可上传GIT】
 ├── backup                   # 数据库、配置文件备份存档【暂缺】
 ├── .devcontainer/
-│   ├── devcontainer.json    # VSCode远程容器配置，绑定bibutong-backend服务【可上传GIT】
-│   └── .gitignore           # 是否可以合并【待确定】
+│   ├── devcontainer-lock.json  # VSCode远程容器开发配置，绑定prj项目服务【可上传GIT】
+│   └── devcontainer.json    # VSCode远程容器配置，绑定prj项目服务【可上传GIT】
 ├── .env.dev                 # 本地开发环境变量【不能上传GIT】
-├── .env.prod                # 线上环境变量【可上传GIT】【暂无，待处理】
+├── .env.dev.example         # 【暂无，待处理】【可上传GIT】
 ├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重【可上传GIT】
 ├── .dockerignore            # 构建Docker镜像时统一屏蔽日志、模型、环境变量、编译产物，开发/生产Dockerfile共用【可上传GIT】
 ├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】

@@ -10,10 +10,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <!-- [P0-FIX] Spring Boot 2.2.8 → 2.7.18（2.x 末版，修复大量已公开CVE） -->
         <version>2.7.18</version>
     </parent>
-
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -23,11 +21,8 @@
         <maven.compiler.target>11</maven.compiler.target>
     </properties>
 
-    <!-- 依赖声明 -->
     <dependencyManagement>
         <dependencies>
-            <!-- [P1-FIX] 移除 Spring Cloud / Spring Cloud Alibaba 依赖管理（Nacos注册关闭、Sentinel无规则、Ribbon单实例无意义） -->
-
             <!-- io常用工具类 -->
             <dependency>
                 <groupId>commons-io</groupId>
@@ -35,28 +30,46 @@
                 <version>2.11.0</version>
             </dependency>
 
-            <!-- [P1-FIX] commons-collections 3.2.2 → commons-collections4 4.4（修复CVE-2015-7501反序列化RCE漏洞） -->
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-collections4</artifactId>
                 <version>4.4</version>
             </dependency>
 
-            <!-- [P0-FIX] 阿里JSON解析器 fastjson2（修复fastjson 1.x反序列化RCE漏洞） -->
+            <!-- fastjson2 统一高版本，修复漏洞 -->
             <dependency>
                 <groupId>com.alibaba.fastjson2</groupId>
                 <artifactId>fastjson2</artifactId>
                 <version>2.0.53</version>
             </dependency>
 
-            <!-- [P0-FIX] log4j升级到2.17.2 修复CVE-2021-44228 (Log4Shell) -->
+            <!-- OkHttp Ollama调用依赖统一版本管控 -->
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>4.12.0</version>
+            </dependency>
+
+            <!-- POI Excel读写完整套件 -->
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi</artifactId>
+                <version>5.2.3</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>5.2.3</version>
+            </dependency>
+
+            <!-- log4j -->
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-api</artifactId>
                 <version>2.17.2</version>
             </dependency>
 
-            <!-- [P1-FIX] logback 1.2.3 → 1.2.13（修复CVE-2023-6378反序列化漏洞） -->
+            <!-- logback -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-core</artifactId>
@@ -72,14 +85,13 @@
                 <artifactId>logback-access</artifactId>
                 <version>1.2.13</version>
             </dependency>
-            <!-- [P1-FIX] logstash-logback-encoder 5.1 → 6.6（兼容logback 1.2.13） -->
             <dependency>
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
                 <version>6.6</version>
             </dependency>
 
-            <!-- [P1-FIX] jjwt 0.9.1 → 0.12.6（修复不安全API，拆分为jjwt-api/jjwt-impl/jjwt-jackson三模块） -->
+            <!-- JJWT jwt工具 -->
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
@@ -105,28 +117,26 @@
                 <version>2.3.2</version>
             </dependency>
 
+            <!-- gson -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>2.10.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-
-        <!-- SpringBoot Web依赖包 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- [P1-FIX] 移除 nacos-discovery 依赖（register-enabled: false，单体架构无需服务注册发现） -->
-
-        <!-- [P1-FIX] 移除 Sentinel 依赖（无规则配置，单体架构无需流控） -->
-
-        <!-- SpringBoot AOP和拦截器 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
@@ -136,51 +146,48 @@
         <dependency>
             <groupId>com.github.penggle</groupId>
             <artifactId>kaptcha</artifactId>
-         </dependency>
+        </dependency>
 
-        <!-- [P1-FIX] springdoc-openapi 1.7.0 替代废弃的 Springfox 3.0.0（兼容 Spring Boot 2.x） -->
+        <!-- 接口文档 -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-ui</artifactId>
             <version>1.7.0</version>
         </dependency>
 
-        <!-- 集成mybatis 组件 -->
+        <!-- MyBatis -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>2.2.0</version>
         </dependency>
 
-        <!-- Mysql驱动包 -->
-        <!-- [P0-FIX] 显式锁定 mysql-connector-java 8.0.33，修复 CVE-2023-22102 反序列化RCE -->
+        <!-- MySQL -->
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.33</version>
         </dependency>
 
-        <!-- [P1-FIX] Druid 1.2.8 → 1.2.23（修复CVE-2023-2262 SQL注入风险） -->
+        <!-- Druid连接池 -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>druid-spring-boot-starter</artifactId>
             <version>1.2.23</version>
         </dependency>
 
-        <!-- [P1-FIX] 移除 spring-boot-starter-data-jpa（0个@Entity/@Repository，仅用于ddl-auto:validate，纯属冗余） -->
-
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
         </dependency>
 
-        <!-- spring security 安全认证 -->
+        <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- [P1-FIX] jjwt 0.12.6 多模块依赖（jjwt-api编译期 + jjwt-impl/jjwt-jackson运行期） -->
+        <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -194,58 +201,65 @@
             <artifactId>jjwt-jackson</artifactId>
         </dependency>
 
-        <!-- pagehelper 分页插件 -->
+        <!-- 分页插件 -->
         <dependency>
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper-spring-boot-starter</artifactId>
             <version>1.4.6</version>
         </dependency>
 
-        <!-- 自定义验证注解 -->
+        <!-- 参数校验 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!--常用工具类 -->
+        <!-- 工具类 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
-        <!-- [P0-FIX] Apache POI for Excel read/write（CompareController单位名称比对功能） -->
+        <!-- POI Excel读写（补齐基础poi包） -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.2.3</version>
         </dependency>
 
-        <!-- [P0-FIX] fastjson2 替代 fastjson 1.x -->
+        <!-- fastjson2 统一管理版本，不再重复写version -->
         <dependency>
             <groupId>com.alibaba.fastjson2</groupId>
             <artifactId>fastjson2</artifactId>
         </dependency>
 
-        <!-- Jaxb -->
         <dependency>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
         </dependency>
 
-        <!-- redis 缓存组件 -->
+        <!-- Redis -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- [P1-FIX] gson 2.8.0 → 2.10.1（修复CVE-2022-25647反序列化漏洞） -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.10.1</version>
+        </dependency>
+
+        <!-- Ollama http客户端 OkHttp -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
         </dependency>
 
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -253,5 +267,5 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
-    </build> 
+    </build>
 </project>

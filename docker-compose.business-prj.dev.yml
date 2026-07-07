@@ -63,7 +63,7 @@ services:
       SPRING_REDIS_DATABASE: 9
       # [P0-FIX] Redis认证密码，与Redis容器requirepass保持一致
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_default_pass_change_me}
-      AI_SERVICE_URL: http://llama:8000
+      AI_SERVICE_URL: http://dev-prj-llama:11434
     ports:
       - "8080:8080"
     depends_on:
