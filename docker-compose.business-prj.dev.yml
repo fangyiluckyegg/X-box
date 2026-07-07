@@ -54,8 +54,8 @@ services:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
       # [FIX] 移除 JAVA_TOOL_OPTIONS JDWP 调试代理 — spring-boot:run 会 fork 第二个 JVM，
-      #        两个 JVM 都会拾取 JAVA_TOOL_OPTIONS 并尝试绑定同一 5005 端口，导致 "Address in use" 崩溃。
-      #        如需远程调试，请改用 -Dspring-boot.run.jvmArguments 传参（仅作用于 forked JVM）。
+      # 两个 JVM 都会拾取 JAVA_TOOL_OPTIONS 并尝试绑定同一 5005 端口，导致 "Address in use" 崩溃。
+      # 如需远程调试，请改用 -Dspring-boot.run.jvmArguments 传参（仅作用于 forked JVM）。
       # JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/prj_dev?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_REDIS_HOST: redis
@@ -70,38 +70,6 @@ services:
       - mysql
       - redis
       - llama
-    networks:
-      - dev-network
-
-  llama:
-    build:
-      context: ./
-      dockerfile: ./ai_llama/Dockerfile.llama
-    container_name: dev-prj-llama
-    mem_limit: 6g
-    cpus: 2
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 100
-    # Ollama TUI工具需要终端设备，修复 /dev/tty 报错
-    stdin_open: true
-    tty: true
-    volumes:
-      # Ollama官方模型持久化目录
-      - ./ai_llama:/root/.ollama
-      - ./logs/llama:/app/logs/llama
-    environment:
-      MODEL_ROOT_PATH: /model
-      TZ: Asia/Shanghai
-      OLLAMA_HOST: 0.0.0.0
-    ports:
-      - "11434:11434"
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      ollama serve &
-      until ollama list; do sleep 1; done;
-      ollama pull bge-m3:latest;
-      wait
     networks:
       - dev-network
 
