@@ -1,8 +1,37 @@
 <template>
   <div class="compare-page">
-    <!-- 操作栏：双Excel上传 + 功能按钮 -->
+    <el-dialog
+      :visible.sync="progressDialogVisible"
+      title="Excel比对实时进度"
+      width="620px"
+      :close-on-click-modal="false"
+    >
+      <div style="margin-bottom:10px;">
+        <span style="font-weight:bold;">当前阶段：</span>
+        {{ stageTextMap[progressInfo.stage] || "等待初始化" }}
+      </div>
+      <div style="margin-bottom:14px;color:#666;">
+        正在处理文本：{{ progressInfo.currentText || "-" }}
+      </div>
+      <el-progress
+        :percentage="progressInfo.percent"
+        :status="progressInfo.stage === 'done' ? 'success' : ''"
+      ></el-progress>
+      <div style="margin-top:8px;text-align:right;">
+        {{ progressInfo.done }} / {{ progressInfo.total }} 条
+      </div>
+      <template slot="footer">
+        <el-button
+          v-if="progressInfo.stage === 'done'"
+          type="success"
+          @click="progressDialogVisible = false"
+        >
+          关闭弹窗
+        </el-button>
+      </template>
+    </el-dialog>
+
     <div class="operate-row">
-      <!-- 原始数据上传 -->
       <div class="upload-item">
         <span class="label">原始数据</span>
         <el-upload
@@ -25,7 +54,6 @@
         </span>
       </div>
 
-      <!-- 比对数据上传 -->
       <div class="upload-item">
         <span class="label">比对数据</span>
         <el-upload
@@ -48,7 +76,6 @@
         </span>
       </div>
 
-      <!-- 功能按钮 -->
       <div class="actions">
         <el-button
           type="primary"
@@ -59,7 +86,6 @@
         >
           启动比对
         </el-button>
-
         <el-button
           size="large"
           icon="el-icon-download"
@@ -71,22 +97,20 @@
       </div>
     </div>
 
-    <!-- 比对结果表格（可选） -->
     <div v-if="compareResult.length" class="result-table">
       <h3>比对差异结果</h3>
       <el-table border :data="compareResult" style="width:100%">
-        <el-table-column label="关键字段" prop="key" />
-        <el-table-column label="原始值" prop="originVal" />
-        <el-table-column label="新值" prop="newVal" />
-        <el-table-column label="差异类型" prop="diffType" />
+        <el-table-column label="原始数据值" prop="originVal" />
+        <el-table-column label="新比对数据值" prop="newVal" />
+        <el-table-column label="匹配结果" prop="diffType" />
       </el-table>
     </div>
   </div>
 </template>
 
 <script>
-import { Message, Loading } from 'element-ui'
-import { compareExcelApi, downloadCompareResultApi } from '@/api/compare'
+import { Message } from 'element-ui'
+import { compareExcelApi, downloadCompareResultApi, getExcelCompareProgressApi } from '@/api/compare'
 
 export default {
   name: 'EmployeeCompare',
@@ -96,7 +120,27 @@ export default {
       newFile: null,
       loading: false,
       hasCompareResult: false,
-      compareResult: []
+      compareResult: [],
+      progressDialogVisible: false,
+      progressInfo: {
+        total: 0,
+        done: 0,
+        percent: 0,
+        currentText: '',
+        stage: ''
+      },
+      progressTimer: null,
+      stageTextMap: {
+        vector_calc: "向量计算中",
+        match_compare: "相似度匹配比对",
+        done: "比对任务全部完成"
+      }
+    }
+  },
+  beforeDestroy() {
+    if (this.progressTimer) {
+      clearInterval(this.progressTimer)
+      this.progressTimer = null
     }
   },
   methods: {
@@ -125,20 +169,14 @@ export default {
       Message.success('比对数据文件已选择')
       params.onSuccess({})
     },
-    uploadFiles() {
-      if (!this.originFile || !this.newFile) {
-        Message.warning('请先选择原始数据和比对数据文件')
-        return
-      }
-      this.startCompare()
-    },
     async startCompare() {
       if (!this.originFile || !this.newFile) {
         Message.warning('请先选择原始数据和比对数据文件')
         return
       }
+      this.progressDialogVisible = true
       this.loading = true
-      const loadingInstance = Loading.service({ text: '正在比对Excel数据，请稍候...' })
+      this.startPollProgress()
       const formData = new FormData()
       formData.append('originExcel', this.originFile)
       formData.append('newExcel', this.newFile)
@@ -146,14 +184,30 @@ export default {
         const res = await compareExcelApi(formData)
         this.compareResult = res.data.list
         this.hasCompareResult = true
-        Message.success('数据比对完成')
       } catch (err) {
         Message.error('比对失败：' + (err.msg || '服务异常'))
         this.hasCompareResult = false
       } finally {
         this.loading = false
-        loadingInstance.close()
       }
+    },
+    startPollProgress() {
+      if (this.progressTimer) clearInterval(this.progressTimer)
+      this.progressTimer = setInterval(async () => {
+        const res = await getExcelCompareProgressApi()
+        if (!res.data) {
+          clearInterval(this.progressTimer)
+          this.progressTimer = null
+          this.progressDialogVisible = false
+          return
+        }
+        Object.assign(this.progressInfo, res.data)
+        if (res.data.stage === 'done') {
+          clearInterval(this.progressTimer)
+          this.progressTimer = null
+          Message.success('全部比对完成，下方可查看表格或下载结果')
+        }
+      }, 1500)
     },
     async downloadResult() {
       try {
@@ -228,16 +282,26 @@ export default {
   gap: 12px;
   align-items: center;
 }
-
 @media (max-width: 900px) {
   .operate-row {
     gap: 12px;
   }
-  .label { font-size: 16px }
-  .upload-box { max-width: 360px }
-  .actions { width: 100%; justify-content: flex-start; margin-left: 0 }
+  .label {
+    font-size: 16px;
+  }
+  .upload-box {
+    max-width: 360px;
+  }
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
 }
 .result-table {
   margin-top: 30px;
+}
+::v-deep .el-dialog {
+  z-index: 9999 !important;
 }
 </style>
