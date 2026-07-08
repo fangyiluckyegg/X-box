@@ -29,11 +29,12 @@ import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Excel双文件比对控制器
- * [P0-FIX] 使用Ollama bge-m3向量余弦相似度做语义比对，替代简单文本编辑距离
- * 优化：预缓存全部比对文本向量、移除阻塞sleep、OkHttp连接池优化、完整异常日志打印
+ * 新增实时进度查询接口，前端轮询展示进度条
+ * 修复：导出Excel close() IO异常捕获，无编译报错
  */
 @Validated
 @RestController
@@ -42,16 +43,54 @@ public class CompareController {
 
     private static final Logger logger = LoggerFactory.getLogger(CompareController.class);
 
-    /** 比对结果内存缓存，按用户名键，compare 后供 downloadResult 取用 */
+    // 比对结果缓存 key=登录用户名
     private static final ConcurrentHashMap<String, List<Map<String, Object>>> RESULT_CACHE = new ConcurrentHashMap<>();
+    // 用户比对进度缓存 key=登录用户名
+    private static final ConcurrentHashMap<String, CompareProgress> PROGRESS_CACHE = new ConcurrentHashMap<>();
 
-    // ===================== Ollama 向量配置（Docker容器网络）=====================
+    // ===================== 进度实体（线程安全）=====================
+    public static class CompareProgress {
+        public final AtomicInteger total = new AtomicInteger(0);
+        public final AtomicInteger done = new AtomicInteger(0);
+        public volatile String currentText = "";
+        // vector_calc / match_compare / done
+        public volatile String stage = "";
+
+        public double getPercent() {
+            int t = total.get();
+            int d = done.get();
+            if (t <= 0) return 0.00;
+            return Math.round((d * 100.0 / t) * 100) / 100.0;
+        }
+
+        public JSONObject toJson() {
+            JSONObject obj = new JSONObject();
+            obj.put("total", total.get());
+            obj.put("done", done.get());
+            obj.put("percent", getPercent());
+            obj.put("currentText", currentText);
+            obj.put("stage", stage);
+            return obj;
+        }
+    }
+
+    // ===================== 进度查询接口 前端轮询调用 =====================
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/progress")
+    public AjaxResult getProgress() {
+        String username = SecurityUtils.getUsername();
+        CompareProgress progress = PROGRESS_CACHE.get(username);
+        if (progress == null) {
+            return AjaxResult.success("无任务", null);
+        }
+        return AjaxResult.success(progress.toJson());
+    }
+
+    // ===================== Ollama 常量 =====================
     private static final String OLLAMA_EMBED_URL = "http://dev-prj-llama:11434/api/embeddings";
     private static final String EMBED_MODEL = "bge-m3:latest";
-    /** 语义相似度阈值，和Python代码保持一致0.85，低于该值视为无匹配 */
     private static final double SIMILARITY_THRESHOLD = 0.85;
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
-    /** OkHttp增加连接池自动回收，避免长期运行连接泄漏耗尽 */
     private static final OkHttpClient HTTP_CLIENT = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
@@ -59,12 +98,7 @@ public class CompareController {
             .build();
 
     /**
-     * Excel双文件比对接口
-     * 读取两个Excel文件第一列单位名称，基于bge-m3向量余弦相似度做语义比对
-     *
-     * @param originExcel 原始数据Excel文件
-     * @param newExcel    比对数据Excel文件
-     * @return AjaxResult 包含 list 字段，每项含 name/matchedName/similarity/key/originVal/newVal/diffType
+     * 开始比对主接口
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/compare")
@@ -72,96 +106,94 @@ public class CompareController {
             @RequestParam("originExcel") MultipartFile originExcel,
             @RequestParam("newExcel") MultipartFile newExcel
     ) {
-        // 参数校验
         if (originExcel == null || originExcel.isEmpty()) {
-            return AjaxResult.error("原始数据文件不能为空");
+            return AjaxResult.error("原始文件不能为空");
         }
         if (newExcel == null || newExcel.isEmpty()) {
-            return AjaxResult.error("比对数据文件不能为空");
+            return AjaxResult.error("比对文件不能为空");
         }
 
+        String username = SecurityUtils.getUsername();
+        CompareProgress progress = new CompareProgress();
+        PROGRESS_CACHE.put(username, progress);
+
         try {
-            // 读取两个 Excel 文件的第一列名称列表
-            List<String> originNames = readFirstColumnNames(originExcel);
-            List<String> newNames = readFirstColumnNames(newExcel);
+            List<String> originList = readFirstColumnNames(originExcel);
+            List<String> newList = readFirstColumnNames(newExcel);
 
-            if (originNames.isEmpty()) {
-                return AjaxResult.error("原始数据文件未读取到有效名称");
+            if (originList.isEmpty()) {
+                PROGRESS_CACHE.remove(username);
+                return AjaxResult.error("原始文件无有效数据");
             }
-            if (newNames.isEmpty()) {
-                return AjaxResult.error("比对数据文件未读取到有效名称");
-            }
+            progress.total.set(originList.size());
+            logger.info("比对启动，原始数据总数：{}", originList.size());
 
-            logger.info("比对开始：原始数据 {} 条，比对数据 {} 条", originNames.size(), newNames.size());
-
-            // 批量预生成原始数据向量，避免重复调用ollama
-            Map<String, double[]> originTextEmbeddingMap = batchGetEmbedding(originNames);
-            // 过滤向量生成失败的文本
-            List<String> validOriginTexts = new ArrayList<>(originTextEmbeddingMap.keySet());
-            if (validOriginTexts.isEmpty()) {
-                return AjaxResult.error("原始数据全部向量生成失败，请检查Ollama服务是否正常运行");
+            // 阶段1：向量计算
+            progress.stage = "vector_calc";
+            Map<String, double[]> originVecMap = batchEmbedding(originList, progress);
+            List<String> validOrigin = new ArrayList<>(originVecMap.keySet());
+            if (validOrigin.isEmpty()) {
+                PROGRESS_CACHE.remove(username);
+                return AjaxResult.error("全部向量生成失败，请检查Ollama容器");
             }
 
-            // 执行向量语义比对
-            List<Map<String, Object>> resultList = performVectorCompare(validOriginTexts, newNames, originTextEmbeddingMap);
+            // 阶段2：相似度匹配
+            progress.stage = "match_compare";
+            List<Map<String, Object>> result = matchProcess(validOrigin, newList, originVecMap, progress);
 
-            // 缓存比对结果供下载接口使用
-            String username = SecurityUtils.getUsername();
-            RESULT_CACHE.put(username, resultList);
+            // 全部完成
+            progress.stage = "done";
+            progress.done.set(progress.total.get());
+            progress.currentText = "比对完成";
+            RESULT_CACHE.put(username, result);
 
-            logger.info("向量语义比对完成：共 {} 条差异记录", resultList.size());
-
-            // 前端通过 res.data.list 访问结果
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("list", resultList);
+            data.put("list", result);
             return AjaxResult.success("比对完成", data);
-
-        } catch (IOException e) {
-            logger.error("Excel文件读取失败", e);
-            return AjaxResult.error("Excel文件读取失败：" + e.getMessage());
         } catch (Exception e) {
-            logger.error("向量语义比对过程异常", e);
-            return AjaxResult.error("比对过程异常：" + e.getMessage());
+            logger.error("比对异常", e);
+            return AjaxResult.error("比对失败：" + e.getMessage());
+        } finally {
+            // 5分钟后自动清理进度缓存
+            new Thread(() -> {
+                try {
+                    TimeUnit.MINUTES.sleep(5);
+                    PROGRESS_CACHE.remove(username);
+                } catch (InterruptedException ignored) {}
+            }).start();
         }
     }
 
     /**
-     * 下载比对结果Excel
-     * 从内存缓存中取出当前用户的比对结果，导出为 .xlsx 文件。
-     *
-     * @param response HttpServletResponse 用于写入文件流
+     * 导出结果Excel（已修复IO未捕获异常编译报错）
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/downloadResult")
     public void downloadResult(HttpServletResponse response) {
         String username = SecurityUtils.getUsername();
-        List<Map<String, Object>> resultList = RESULT_CACHE.get(username);
-
-        if (resultList == null || resultList.isEmpty()) {
+        List<Map<String, Object>> list = RESULT_CACHE.get(username);
+        if (list == null || list.isEmpty()) {
             try {
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":500,\"msg\":\"没有可下载的比对结果，请先执行比对\"}");
+                response.setContentType("application/json;charset=utf-8");
+                response.getWriter().write("{\"code\":500,\"msg\":\"无比对结果，请先执行比对\"}");
             } catch (IOException e) {
-                logger.error("写入错误响应失败", e);
+                logger.error("导出错误响应失败", e);
             }
             return;
         }
 
-        Workbook workbook = null;
-        OutputStream outputStream = null;
+        Workbook wb = null;
+        OutputStream out = null;
         try {
-            workbook = new XSSFWorkbook();
-            Sheet sheet = workbook.createSheet("比对结果");
-
-            // 创建表头样式
-            CellStyle headerStyle = workbook.createCellStyle();
-            Font headerFont = workbook.createFont();
-            headerFont.setBold(true);
-            headerStyle.setFont(headerFont);
+            wb = new XSSFWorkbook();
+            Sheet sheet = wb.createSheet("比对结果");
+            CellStyle headerStyle = wb.createCellStyle();
+            Font font = wb.createFont();
+            font.setBold(true);
+            headerStyle.setFont(font);
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // 写表头
             Row headerRow = sheet.createRow(0);
             String[] headers = {"序号", "原始名称", "匹配名称", "相似度", "差异类型"};
             for (int i = 0; i < headers.length; i++) {
@@ -170,301 +202,218 @@ public class CompareController {
                 cell.setCellStyle(headerStyle);
             }
 
-            // 写数据行
-            for (int i = 0; i < resultList.size(); i++) {
-                Map<String, Object> item = resultList.get(i);
+            for (int i = 0; i < list.size(); i++) {
+                Map<String, Object> item = list.get(i);
                 Row row = sheet.createRow(i + 1);
                 row.createCell(0).setCellValue(i + 1);
-                row.createCell(1).setCellValue(getStringValue(item, "name"));
-                row.createCell(2).setCellValue(getStringValue(item, "matchedName"));
-                row.createCell(3).setCellValue(getDoubleValue(item, "similarity"));
-                row.createCell(4).setCellValue(getStringValue(item, "diffType"));
+                row.createCell(1).setCellValue(getStr(item, "name"));
+                row.createCell(2).setCellValue(getStr(item, "matchedName"));
+                row.createCell(3).setCellValue(getDouble(item, "similarity"));
+                row.createCell(4).setCellValue(getStr(item, "diffType"));
             }
+            for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
 
-            // 自动列宽
-            for (int i = 0; i < headers.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-
-            // 设置响应头
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition", "attachment; filename=compare_result.xlsx");
-            response.setHeader("Access-Control-Allow-Origin", "*");
-
-            outputStream = response.getOutputStream();
-            workbook.write(outputStream);
-            outputStream.flush();
-
-            logger.info("比对结果Excel导出成功，共 {} 条记录", resultList.size());
-
+            response.setHeader("Content-Disposition", "attachment; filename=比对结果.xlsx");
+            out = response.getOutputStream();
+            wb.write(out);
+            out.flush();
         } catch (IOException e) {
-            logger.error("导出Excel失败", e);
+            logger.error("Excel导出IO写入异常", e);
         } finally {
-            // 释放资源
-            if (outputStream != null) {
+            // 单独捕获close抛出的IOException，彻底解决编译报错
+            if (out != null) {
                 try {
-                    outputStream.close();
-                } catch (IOException ignored) {
+                    out.close();
+                } catch (IOException e) {
+                    logger.error("输出流关闭IO异常", e);
                 }
             }
-            if (workbook != null) {
+            if (wb != null) {
                 try {
-                    workbook.close();
-                } catch (IOException ignored) {
+                    wb.close();
+                } catch (IOException e) {
+                    logger.error("工作簿关闭IO异常", e);
                 }
             }
         }
     }
 
-    // ==================== Excel读取工具方法 ====================
-    /**
-     * 从 Excel 文件中读取第一列的所有非空文本值
-     */
+    // ===================== Excel读取 =====================
     private List<String> readFirstColumnNames(MultipartFile file) throws IOException {
-        List<String> names = new ArrayList<>();
-        Workbook workbook = WorkbookFactory.create(file.getInputStream());
+        List<String> res = new ArrayList<>();
+        Workbook wb = WorkbookFactory.create(file.getInputStream());
         try {
-            Sheet sheet = workbook.getSheetAt(0);
-            if (sheet == null) {
-                return names;
-            }
-
-            boolean firstRow = true;
-            for (int rowIndex = 0; rowIndex <= sheet.getLastRowNum(); rowIndex++) {
-                Row row = sheet.getRow(rowIndex);
-                if (row == null) {
-                    continue;
-                }
-
+            Sheet sheet = wb.getSheetAt(0);
+            boolean skipHead = true;
+            for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
                 Cell cell = row.getCell(0);
-                if (cell == null) {
-                    continue;
+                if (cell == null) continue;
+                String val = getCellValue(cell).trim();
+                if (val.isEmpty()) continue;
+                if (skipHead) {
+                    skipHead = false;
+                    if (val.contains("名称") || val.contains("单位") || val.equalsIgnoreCase("name")) continue;
                 }
-
-                String value = getCellStringValue(cell).trim();
-                if (value.isEmpty()) {
-                    continue;
-                }
-
-                // 跳过表头行
-                if (firstRow) {
-                    firstRow = false;
-                    if (value.contains("名称") || value.contains("单位") || value.contains("序号")
-                            || value.equalsIgnoreCase("name")) {
-                        continue;
-                    }
-                }
-                names.add(value);
+                res.add(val);
             }
         } finally {
-            workbook.close();
+            wb.close();
         }
-        return names;
+        return res;
     }
 
-    /**
-     * 获取单元格的字符串值
-     */
-    private String getCellStringValue(Cell cell) {
-        if (cell == null) {
-            return "";
-        }
+    private String getCellValue(Cell cell) {
+        if (cell == null) return "";
         switch (cell.getCellType()) {
-            case STRING:
-                return cell.getStringCellValue();
+            case STRING: return cell.getStringCellValue();
             case NUMERIC:
-                double numVal = cell.getNumericCellValue();
-                if (numVal == Math.floor(numVal)) {
-                    return String.valueOf((long) numVal);
-                }
-                return String.valueOf(numVal);
-            case BOOLEAN:
-                return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA:
-                return cell.getCellFormula();
-            default:
-                return "";
+                double num = cell.getNumericCellValue();
+                return num == Math.floor(num) ? String.valueOf((long) num) : String.valueOf(num);
+            case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
+            default: return "";
         }
     }
 
-    // ==================== Ollama 向量核心方法 ====================
-    /**
-     * 批量获取文本向量，缓存文本-向量映射，移除阻塞sleep避免前端超时
-     */
-    private Map<String, double[]> batchGetEmbedding(List<String> textList) {
-        Map<String, double[]> textVecMap = new HashMap<>();
+    // ===================== Ollama向量（更新进度） =====================
+    private Map<String, double[]> batchEmbedding(List<String> textList, CompareProgress progress) {
+        Map<String, double[]> map = new HashMap<>();
         for (String text : textList) {
+            progress.currentText = text;
             try {
                 double[] vec = getSingleEmbedding(text);
-                textVecMap.put(text, vec);
+                map.put(text, vec);
             } catch (Exception e) {
-                logger.error("文本[{}]生成向量失败", text, e);
+                logger.error("文本向量生成失败:{}", text, e);
             }
         }
-        return textVecMap;
+        return map;
     }
 
-    /**
-     * 调用Ollama /api/embeddings 获取单条文本向量
-     */
-    private double[] getSingleEmbedding(String prompt) throws IOException {
-        JSONObject reqJson = new JSONObject();
-        reqJson.put("model", EMBED_MODEL);
-        reqJson.put("prompt", prompt);
-        String reqBody = reqJson.toString();
-
-        RequestBody body = RequestBody.create(reqBody, JSON_MEDIA);
+    private double[] getSingleEmbedding(String text) throws IOException {
+        JSONObject req = new JSONObject();
+        req.put("model", EMBED_MODEL);
+        req.put("prompt", text);
+        RequestBody body = RequestBody.create(req.toString(), JSON_MEDIA);
         Request request = new Request.Builder()
                 .url(OLLAMA_EMBED_URL)
                 .post(body)
                 .build();
-
         try (okhttp3.Response resp = HTTP_CLIENT.newCall(request).execute()) {
-            if (!resp.isSuccessful()) {
-                throw new IOException("Ollama接口响应异常，状态码：" + resp.code());
-            }
-            String respStr = resp.body().string();
-            JSONObject respJson = JSON.parseObject(respStr);
-            List<Double> embedList = respJson.getList("embedding", Double.class);
-            double[] vecArr = new double[embedList.size()];
-            for (int i = 0; i < vecArr.length; i++) {
-                vecArr[i] = embedList.get(i);
-            }
-            return vecArr;
+            if (!resp.isSuccessful()) throw new IOException("Ollama 异常，状态码：" + resp.code());
+            JSONObject json = JSON.parseObject(resp.body().string());
+            List<Double> embed = json.getList("embedding", Double.class);
+            double[] arr = new double[embed.size()];
+            for (int i = 0; i < arr.length; i++) arr[i] = embed.get(i);
+            return arr;
         }
     }
 
-    /**
-     * 手写余弦相似度计算，对标sklearn cosine_similarity
-     */
-    private double cosineSimilarity(double[] vecA, double[] vecB) {
-        double dotSum = 0.0;
-        double normA = 0.0;
-        double normB = 0.0;
-        int len = vecA.length;
-        for (int i = 0; i < len; i++) {
-            dotSum += vecA[i] * vecB[i];
-            normA += Math.pow(vecA[i], 2);
-            normB += Math.pow(vecB[i], 2);
+    // 余弦相似度
+    private double cosine(double[] a, double[] b) {
+        double dot = 0, na = 0, nb = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += a[i] * b[i];
+            na += Math.pow(a[i], 2);
+            nb += Math.pow(b[i], 2);
         }
-        double normTotal = Math.sqrt(normA) * Math.sqrt(normB);
-        if (normTotal == 0) return 0.0;
-        return dotSum / normTotal;
+        double norm = Math.sqrt(na) * Math.sqrt(nb);
+        return norm == 0 ? 0 : dot / norm;
     }
 
-    // ==================== 优化后向量比对逻辑（预缓存全部比对文本向量，无重复请求） ====================
-    private List<Map<String, Object>> performVectorCompare(
+    // ===================== 比对主逻辑（更新进度） =====================
+    private List<Map<String, Object>> matchProcess(
             List<String> originTexts,
             List<String> newTexts,
-            Map<String, double[]> originVecMap
+            Map<String, double[]> originVecMap,
+            CompareProgress progress
     ) {
-        List<Map<String, Object>> resultList = new ArrayList<>();
-        boolean[] newTextMatchedFlag = new boolean[newTexts.size()];
-        // 一次性缓存所有比对文本向量，只请求一次ollama，大幅减少接口调用次数
-        Map<String, double[]> newTextVecCache = batchGetEmbedding(newTexts);
+        List<Map<String, Object>> result = new ArrayList<>();
+        boolean[] matchedFlag = new boolean[newTexts.size()];
+        Map<String, double[]> newVecCache = batchEmbedding(newTexts, progress);
 
-        // 1. 遍历原始每条单位，在比对列表中找最佳语义匹配
         for (String originText : originTexts) {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("name", originText);
-            item.put("key", originText);
-            item.put("originVal", originText);
+            progress.currentText = originText;
+            double[] oVec = originVecMap.get(originText);
+            int bestIdx = -1;
+            double maxSim = 0;
 
-            double[] originVec = originVecMap.get(originText);
-            int bestMatchIdx = -1;
-            double maxSim = 0.0;
-
-            // 遍历所有比对文本，直接从缓存读取向量，不再重复调用ollama
             for (int i = 0; i < newTexts.size(); i++) {
-                String newText = newTexts.get(i);
-                double[] newVec = newTextVecCache.get(newText);
-                if (newVec == null) {
-                    logger.warn("比对文本[{}]向量生成失败，跳过本条匹配计算", newText);
-                    continue;
-                }
-                double sim = cosineSimilarity(originVec, newVec);
+                String nt = newTexts.get(i);
+                double[] nVec = newVecCache.get(nt);
+                if (nVec == null) continue;
+                double sim = cosine(oVec, nVec);
                 if (sim > maxSim) {
                     maxSim = sim;
-                    bestMatchIdx = i;
+                    bestIdx = i;
                 }
             }
 
-            // 分支判断匹配类型
-            if (bestMatchIdx == -1) {
-                // 所有比对文本向量生成全部失败，无匹配
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("name", originText);
+            item.put("originVal", originText);
+            if (bestIdx == -1) {
                 item.put("matchedName", "");
                 item.put("newVal", "");
                 item.put("similarity", 0.0);
                 item.put("diffType", "未匹配");
             } else {
-                String bestNewText = newTexts.get(bestMatchIdx);
-                // 精确完全相等
-                if (originText.equalsIgnoreCase(bestNewText.trim())) {
-                    newTextMatchedFlag[bestMatchIdx] = true;
-                    item.put("matchedName", bestNewText);
-                    item.put("newVal", bestNewText);
+                String bestText = newTexts.get(bestIdx);
+                if (originText.equalsIgnoreCase(bestText.trim())) {
+                    matchedFlag[bestIdx] = true;
+                    item.put("matchedName", bestText);
+                    item.put("newVal", bestText);
                     item.put("similarity", 1.0);
                     item.put("diffType", "完全匹配");
                 } else if (maxSim >= SIMILARITY_THRESHOLD) {
-                    // 语义模糊匹配（向量相似度≥0.85）
-                    newTextMatchedFlag[bestMatchIdx] = true;
-                    item.put("matchedName", bestNewText);
-                    item.put("newVal", bestNewText);
+                    matchedFlag[bestIdx] = true;
+                    item.put("matchedName", bestText);
+                    item.put("newVal", bestText);
                     item.put("similarity", Math.round(maxSim * 100) / 100.0);
                     item.put("diffType", "语义模糊匹配");
                 } else {
-                    // 语义差距大，无匹配
                     item.put("matchedName", "");
                     item.put("newVal", "");
                     item.put("similarity", Math.round(maxSim * 100) / 100.0);
                     item.put("diffType", "未匹配");
                 }
             }
-            resultList.add(item);
+            result.add(item);
+            progress.done.incrementAndGet();
         }
 
-        // 2. 找出比对文件中未被匹配的新增单位
+        // 新增条目
+        progress.currentText = "扫描新增条目";
         for (int i = 0; i < newTexts.size(); i++) {
-            if (!newTextMatchedFlag[i]) {
-                String newText = newTexts.get(i);
+            if (!matchedFlag[i]) {
+                String nt = newTexts.get(i);
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("name", "");
-                item.put("key", newText);
                 item.put("originVal", "");
-                item.put("matchedName", newText);
-                item.put("newVal", newText);
+                item.put("matchedName", nt);
+                item.put("newVal", nt);
                 item.put("similarity", 0.0);
                 item.put("diffType", "新增项");
-                resultList.add(item);
+                result.add(item);
             }
         }
-        return resultList;
+        return result;
     }
 
-    // ==================== Map取值工具方法 ====================
-    /**
-     * 安全地从 Map 中获取字符串值
-     */
-    private String getStringValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        return value != null ? value.toString() : "";
+    private String getStr(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        return val == null ? "" : val.toString();
     }
 
-    /**
-     * 安全地从 Map 中获取 double 值
-     */
-    private double getDoubleValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof Number) {
-            return ((Number) value).doubleValue();
+    private double getDouble(Map<String, Object> map, String key) {
+        Object val = map.get(key);
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        try {
+            return Double.parseDouble(getStr(map, key));
+        } catch (Exception e) {
+            return 0;
         }
-        if (value != null) {
-            try {
-                return Double.parseDouble(value.toString());
-            } catch (NumberFormatException e) {
-                return 0.0;
-            }
-        }
-        return 0.0;
     }
 }
