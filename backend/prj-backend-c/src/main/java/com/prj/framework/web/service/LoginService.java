@@ -1,6 +1,6 @@
 package com.prj.framework.web.service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 //import com.prj.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;

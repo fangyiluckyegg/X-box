@@ -7,18 +7,20 @@
     <artifactId>prj-backend</artifactId>
     <version>1.0.0</version>
 
+    <!-- [P1-UPGRADE] Spring Boot 2.7.18 → 3.2.12（需 JDK 17，jakarta 命名空间） -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.18</version>
+        <version>3.2.12</version>
     </parent>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
-        <java.version>11</java.version>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <!-- [P1-UPGRADE] JDK 11 → 17（Spring Boot 3 最低要求） -->
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <dependencyManagement>
@@ -27,7 +29,8 @@
             <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
-                <version>2.11.0</version>
+                <!-- [P1-UPGRADE] CVE 修复 2.11.0 → 2.16.1 -->
+                <version>2.16.1</version>
             </dependency>
 
             <dependency>
@@ -66,29 +69,18 @@
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-api</artifactId>
-                <version>2.17.2</version>
+                <!-- [P1-UPGRADE] CVE 修复 2.17.2 → 2.23.1 -->
+                <version>2.23.1</version>
             </dependency>
 
-            <!-- logback -->
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-core</artifactId>
-                <version>1.2.13</version>
-            </dependency>
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-classic</artifactId>
-                <version>1.2.13</version>
-            </dependency>
-            <dependency>
-                <groupId>ch.qos.logback</groupId>
-                <artifactId>logback-access</artifactId>
-                <version>1.2.13</version>
-            </dependency>
+            <!-- [P1-UPGRADE] 移除 logback-core/classic/access 显式锁版，
+                 交 Boot 3.2 托管（1.4.x/1.5.x = SLF4J 2），避免与 jakarta 栈冲突 -->
+
+            <!-- logstash-logback-encoder：6.6 → 7.4（必须，7.x 才兼容 SLF4J 2 / logback 1.4+） -->
             <dependency>
                 <groupId>net.logstash.logback</groupId>
                 <artifactId>logstash-logback-encoder</artifactId>
-                <version>6.6</version>
+                <version>7.4</version>
             </dependency>
 
             <!-- JJWT jwt工具 -->
@@ -114,6 +106,7 @@
             <dependency>
                 <groupId>com.github.penggle</groupId>
                 <artifactId>kaptcha</artifactId>
+                <!-- [P1-UPGRADE] 先保留 2.3.2 验证；若启动报 servlet API 冲突再处理 -->
                 <version>2.3.2</version>
             </dependency>
 
@@ -149,30 +142,35 @@
         </dependency>
 
         <!-- 接口文档 -->
+        <!-- [P1-UPGRADE] springdoc-openapi-ui:1.7.0 → springdoc-openapi-starter-webmvc-ui:2.3.0
+             （artifactId 改名，2.x 基于 jakarta，支持 /v3/api-docs 与 /swagger-ui.html） -->
         <dependency>
             <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>1.7.0</version>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
         </dependency>
 
         <!-- MyBatis -->
+        <!-- [P1-UPGRADE] mybatis-spring-boot-starter 2.2.0 → 3.0.3（适配 Boot 3 / jakarta） -->
         <dependency>
             <groupId>org.mybatis.spring.boot</groupId>
             <artifactId>mybatis-spring-boot-starter</artifactId>
-            <version>2.2.0</version>
+            <version>3.0.3</version>
         </dependency>
 
         <!-- MySQL -->
+        <!-- [P1-UPGRADE] mysql:mysql-connector-java → com.mysql:mysql-connector-j:8.0.33 -->
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
             <version>8.0.33</version>
         </dependency>
 
         <!-- Druid连接池 -->
+        <!-- [P1-UPGRADE] druid-spring-boot-starter:1.2.23 → druid-spring-boot-3-starter:1.2.23（jakarta 迁移版，必须） -->
         <dependency>
             <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-starter</artifactId>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
             <version>1.2.23</version>
         </dependency>
 
@@ -202,13 +200,14 @@
         </dependency>
 
         <!-- 分页插件 -->
+        <!-- [P1-UPGRADE] pagehelper-spring-boot-starter 1.4.6 → 2.1.0（Boot 3 starter，配置兼容） -->
         <dependency>
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper-spring-boot-starter</artifactId>
-            <version>1.4.6</version>
+            <version>2.1.0</version>
         </dependency>
 
-        <!-- 参数校验 -->
+        <!-- 参数校验（Boot 3 引入 jakarta.validation） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
@@ -236,12 +235,9 @@
             <artifactId>fastjson2</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-        </dependency>
+        <!-- [P1-UPGRADE] 移除 javax.xml.bind:jaxb-api（全仓无 JAXB 用法，Boot 3 不再需要） -->
 
-        <!-- Redis -->
+        <!-- Redis（Boot 3 托管 lettuce，5.0.14 本轮不升级） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -258,6 +254,12 @@
             <artifactId>okhttp</artifactId>
         </dependency>
 
+        <!-- [P1-UPGRADE] 冒烟测试基线：@SpringBootTest contextLoads -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

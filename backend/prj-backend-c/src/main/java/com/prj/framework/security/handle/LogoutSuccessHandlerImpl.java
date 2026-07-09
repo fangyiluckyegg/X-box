@@ -1,8 +1,8 @@
 package com.prj.framework.security.handle;
 
 import java.io.IOException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import com.prj.framework.web.service.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;

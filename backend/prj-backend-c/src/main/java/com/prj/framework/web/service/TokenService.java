@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
