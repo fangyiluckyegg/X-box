@@ -61,6 +61,9 @@ services:
     container_name: dev-llama
     mem_limit: 6g
     cpus: 2
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
     volumes:
       #- ./ai_llama:/model
       - ./ai_llama:/root/.ollama  # 模型挂载目录修正：官方镜像模型存在/root/.ollama
@@ -71,7 +74,7 @@ services:
       TZ: Asia/Shanghai
       OLLAMA_HOST: 0.0.0.0  # 新增，允许外部容器访问
     ports:
-      - "11434:11434" # 暴露ollama标准端口【给Python用的】
+      - "127.0.0.1:11434:11434" # 暴露ollama标准端口【给Python用的，仅绑定回环地址防未授权访问】
     # 只保留ollama原生启动命令，不再调用sh
     # 容器启动后后台起服务，自动下载模型，前台常驻运行
     entrypoint: ["/bin/sh", "-c"]

@@ -9,6 +9,6 @@ COPY . .
 
 EXPOSE 8081
 # [P2-FIX] 健康检查：验证Vite开发服务器是否正常响应（node:18-alpine 自带 wget）
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:8081/ || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://127.0.0.1:8081/ || exit 1
 # 常驻启动vite热更新服务
 CMD ["npm", "run", "dev"]
