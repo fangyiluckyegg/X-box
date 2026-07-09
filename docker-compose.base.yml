@@ -86,7 +86,7 @@ services:
       TZ: Asia/Shanghai
       OLLAMA_HOST: 0.0.0.0
     ports:
-      - "11434:11434"
+      - "127.0.0.1:11434:11434"
     entrypoint: ["/bin/sh", "-c"]
     command: >
       ollama serve &
