@@ -1,5 +1,5 @@
-# [P1-FIX] 开发环境：JDK 11（匹配 pom.xml java.version=11），支持热重载
-FROM eclipse-temurin:11-jdk-alpine
+# [P1-FIX] 开发环境：JDK 17（匹配 pom.xml java.version=17，Spring Boot 3 要求），支持热重载
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
 
 # 替换阿里云Alpine软件源

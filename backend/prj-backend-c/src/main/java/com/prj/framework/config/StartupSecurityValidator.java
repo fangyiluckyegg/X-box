@@ -44,7 +44,8 @@ public class StartupSecurityValidator implements ApplicationRunner
     public StartupSecurityValidator(Environment environment,
             @Value("${token.secret}") String jwtSecret,
             @Value("${spring.datasource.password}") String dbPassword,
-            @Value("${spring.redis.password}") String redisPassword,
+            // [P1-UPGRADE] Spring Boot 3 / Spring Data Redis 3：spring.redis.password → spring.data.redis.password
+            @Value("${spring.data.redis.password}") String redisPassword,
             @Value("${spring.datasource.druid.stat-view-servlet.login-password}") String druidPassword)
     {
         this.environment = environment;

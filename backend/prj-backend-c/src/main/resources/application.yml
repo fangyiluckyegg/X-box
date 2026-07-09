@@ -43,14 +43,17 @@ spring:
         login-username: ${DRUID_USERNAME:druid_admin}
         login-password: ${DRUID_PASSWORD:Druid@Dev2024}
  
-  # redis 配置
-  redis:
-    # 地址s
-    host: redis
-    # 端口，默认为6379
-    port: 6379
-    # [P0-FIX] Redis认证密码，生产环境必须通过REDIS_PASSWORD环境变量覆盖
-    password: ${REDIS_PASSWORD:redis_default_pass_change_me}
+  # [P1-UPGRADE] Spring Boot 3 / Spring Data Redis 3：redis 配置前缀由 spring.redis.* 改为 spring.data.redis.*
+  data:
+    redis:
+      # 地址
+      host: redis
+      # 端口，默认为6379
+      port: 6379
+      # [P0-FIX] Redis认证密码，生产环境必须通过REDIS_PASSWORD环境变量覆盖(对应 spring.data.redis.password)
+      password: ${REDIS_PASSWORD:redis_default_pass_change_me}
+      # [P0-FIX] Redis库索引，对应 spring.data.redis.database
+      database: 9
   # [P1-FIX] 移除 spring.cloud.nacos 和 ribbon 配置（Spring Cloud 依赖已移除，单体架构无需服务发现与负载均衡）
 
 # token配置

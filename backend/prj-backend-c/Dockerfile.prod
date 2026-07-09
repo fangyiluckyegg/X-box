@@ -1,6 +1,6 @@
-# [P1-FIX] 生产环境：JDK 11 多阶段构建，JRE 运行时优化镜像大小
+# [P1-FIX] 生产环境：JDK 17 多阶段构建（Spring Boot 3 要求 JDK 17），JRE 运行时优化镜像大小
 # 编译阶段
-FROM eclipse-temurin:11-jdk-alpine AS builder
+FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
 COPY . .
 
@@ -10,10 +10,12 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # 安装Maven并打包项目
 RUN apk update && apk add --no-cache maven
 WORKDIR /app/backend/prj-backend-c
+# 使用阿里云 Maven 镜像加速依赖下载（规避中央仓库/Docker Hub 拉取超时）
+COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
 RUN mvn clean package -Dmaven.test.skip=true
 
-# 运行阶段：轻量JRE
-FROM eclipse-temurin:11-jre-alpine
+# 运行阶段：轻量 JRE（Spring Boot 3 要求 JDK 17 编译，运行时只需 JRE 17）
+FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 
 # [P2-FIX] 创建非root用户，提升生产环境安全性
