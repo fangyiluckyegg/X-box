@@ -14,6 +14,11 @@ import java.util.concurrent.TimeUnit;
  * 该账号被视为锁定 {@code lockTimeMinutes} 分钟。登录成功时调用 {@link #clearFailures(String)} 清除计数。
  * </p>
  * <p>
+ * [C8] 在原有<b>用户名维度</b>基础上新增<b>IP 维度</b>失败计数与锁定，
+ * 两者并存：任一维度达到阈值即视为锁定，登录成功时两个维度计数同时清除。
+ * IP 维度采用<b>递增锁定时长</b>（失败越多次，锁定越久），进一步抬高暴力破解成本。
+ * </p>
+ * <p>
  * 阈值与锁定时长可通过配置覆盖（默认值与历史 {@code LoginService} 中硬编码保持一致）：
  * <ul>
  *   <li>{@code security.login-max-attempts}（默认 5）</li>
@@ -24,14 +29,16 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AccountLockService
 {
-    /** Redis 中失败计数键前缀（与历史实现保持一致）。 */
+    /** Redis 中用户名维度失败计数键前缀（与历史实现保持一致）。 */
     private static final String LOGIN_FAIL_KEY = "login_fail:";
+    /** Redis 中 IP 维度失败计数键前缀（C8 新增）。 */
+    private static final String LOGIN_FAIL_IP_KEY = "login_fail_ip:";
 
     /** 允许的最大连续失败次数，达到即视为锁定。 */
     @Value("${security.login-max-attempts:5}")
     private int maxLoginAttempts;
 
-    /** 锁定时长（分钟），同时作为失败计数的 Redis TTL。 */
+    /** 锁定时长（分钟），同时作为用户名维度失败计数的 Redis TTL。 */
     @Value("${security.login-lock-minutes:15}")
     private int lockTimeMinutes;
 
@@ -51,6 +58,22 @@ public class AccountLockService
     }
 
     /**
+     * [C8] 判断客户端 IP 是否已被锁定（IP 维度失败次数达到阈值）。
+     *
+     * @param ip 客户端 IP（为 {@code null}/空时直接返回 {@code false}）
+     * @return 已锁定返回 {@code true}，否则返回 {@code false}
+     */
+    public boolean isIpLocked(String ip)
+    {
+        if (ip == null || ip.isBlank())
+        {
+            return false;
+        }
+        Integer failCount = redisCache.getCacheObject(LOGIN_FAIL_IP_KEY + ip);
+        return failCount != null && failCount >= maxLoginAttempts;
+    }
+
+    /**
      * 记录一次登录失败：递增失败计数并设置 TTL（锁定时长）。
      * <p>计数达到阈值即视为锁定，后续请求会被 {@link #isLocked(String)} 拦截。</p>
      *
@@ -65,6 +88,37 @@ public class AccountLockService
     }
 
     /**
+     * [C8] 记录一次 IP 维度登录失败：递增 IP 失败计数并设置<b>递增</b>锁定时长 TTL。
+     *
+     * @param ip 客户端 IP（为 {@code null}/空时直接返回，不做记录）
+     */
+    public void recordIpLoginFailure(String ip)
+    {
+        if (ip == null || ip.isBlank())
+        {
+            return;
+        }
+        String key = LOGIN_FAIL_IP_KEY + ip;
+        Integer currentFailCount = redisCache.getCacheObject(key);
+        int newFailCount = (currentFailCount == null ? 0 : currentFailCount) + 1;
+        // 递增锁定时长：失败越多次，锁定越久（封顶 8 倍基础时长）
+        int durationMinutes = computeLockMinutes(newFailCount);
+        redisCache.setCacheObject(key, newFailCount, durationMinutes, TimeUnit.MINUTES);
+    }
+
+    /**
+     * 计算 IP 维度锁定时长：基础时长 * (1 + 已失败次数/阈值)，封顶 8 倍。
+     *
+     * @param failCount 当前累计失败次数（含本次）
+     * @return 锁定时长（分钟）
+     */
+    private int computeLockMinutes(int failCount)
+    {
+        int multiplier = 1 + (failCount / Math.max(1, maxLoginAttempts));
+        return lockTimeMinutes * Math.min(multiplier, 8);
+    }
+
+    /**
      * 清除指定账号的失败计数（登录成功时调用）。
      *
      * @param username 用户名
@@ -72,6 +126,20 @@ public class AccountLockService
     public void clearFailures(String username)
     {
         redisCache.deleteObject(LOGIN_FAIL_KEY + username);
+    }
+
+    /**
+     * [C8] 清除指定 IP 的失败计数（登录成功时调用）。
+     *
+     * @param ip 客户端 IP（为 {@code null}/空时直接返回）
+     */
+    public void clearIpFailures(String ip)
+    {
+        if (ip == null || ip.isBlank())
+        {
+            return;
+        }
+        redisCache.deleteObject(LOGIN_FAIL_IP_KEY + ip);
     }
 
     /**
