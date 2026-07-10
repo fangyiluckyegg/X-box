@@ -3,9 +3,11 @@ package com.prj.common.core.domain.model;
 import com.alibaba.fastjson2.annotation.JSONField;  // [P0-FIX] fastjson2 迁移
 import com.prj.common.core.domain.entity.User;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Collections;
 
 public class LoginUser implements UserDetails
 {
@@ -110,6 +112,6 @@ public class LoginUser implements UserDetails
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities()
     {
-        return null;
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"));
     }
 }
