@@ -26,8 +26,11 @@ public class PageParamUtil
     public static PageDomain createPageRequest() //通过getParameter方法获取从前端传递过来的pageNum、pageSize、orderByColumn、isAsc等参数
     {
         PageDomain pageDomain = new PageDomain();
-        pageDomain.setPageNum(Integer.valueOf(getParameter(PAGENUM)));
-        pageDomain.setPageSize(Integer.valueOf(getParameter(PAGESIZE)));
+        // [P1-11-FIX] 参数缺失时 NPE 防护，提供默认值 pageNum=1, pageSize=10
+        String pageNumStr = getParameter(PAGENUM);
+        String pageSizeStr = getParameter(PAGESIZE);
+        pageDomain.setPageNum(pageNumStr != null ? Integer.valueOf(pageNumStr) : 1);
+        pageDomain.setPageSize(pageSizeStr != null ? Integer.valueOf(pageSizeStr) : 10);
         pageDomain.setOrderByColumn(getParameter(ORDERCOLUMN));
         pageDomain.setIsAsc(getParameter(ISASC));
         return pageDomain;

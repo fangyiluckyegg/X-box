@@ -25,3 +25,16 @@ CREATE TABLE user_info (
   password VARCHAR(150) DEFAULT '',
   PRIMARY KEY (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=100 COMMENT='用户信息表';
+
+-- [P1-15-FIX] employee_kpi 表 DDL（字段与 EmployeeKpi.java 一致）
+CREATE TABLE employee_kpi (
+  id BIGINT AUTO_INCREMENT COMMENT '员工编号',
+  kpi VARCHAR(100) NOT NULL COMMENT '考评结果',
+  bonus VARCHAR(50) DEFAULT '' COMMENT '奖金',
+  manager VARCHAR(50) NOT NULL COMMENT '考评人',
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工评价管理表';
+
+-- [P2-13-FIX] 默认管理员账号（密码 admin123 的 BCrypt 哈希）
+INSERT INTO user_info (user_name, nick_name, password) VALUES
+('admin', '管理员', '$2a$10$7JB720yubVSZvUI0E5d8c.6JtwGV9a0JxN3z9AG8JOq2tZ8N.MZvK');

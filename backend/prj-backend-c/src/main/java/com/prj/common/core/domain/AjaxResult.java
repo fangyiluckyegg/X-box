@@ -2,6 +2,7 @@ package com.prj.common.core.domain;
 
 import java.util.HashMap;
 
+@Deprecated
 public class AjaxResult extends HashMap<String, Object>
 {
     private static final long serialVersionUID = 1L;

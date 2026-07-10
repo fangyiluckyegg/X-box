@@ -144,6 +144,12 @@ export default {
       form: {},
       // 表单校验
       rules: {
+        kpi: [
+          { required: true, message: "考评结果不能为空", trigger: "blur" }
+        ],
+        manager: [
+          { required: true, message: "考评人不能为空", trigger: "blur" }
+        ]
       }
     };
   },
