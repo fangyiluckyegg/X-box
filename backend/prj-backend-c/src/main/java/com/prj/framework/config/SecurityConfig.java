@@ -52,8 +52,9 @@ public class SecurityConfig
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception
     {
-        // [P1-FIX] CSRF 当前禁用，因 Token 存储在 Cookie 中存在 CSRF 风险。
-        // 已通过前端 SameSite=Lax Cookie 缓解。后续应评估恢复 CSRF Token 或改为 Authorization Header 方案。
+        // [C11] CSRF 当前禁用。本系统采用无状态鉴权：令牌通过 Authorization: Bearer <JWT> 请求头传递，
+        // 而非 Cookie，因此传统 CSRF（依赖 Cookie 自动携带）风险较低。后续如需进一步加固，
+        // 可恢复 CSRF Token 或维持 Bearer Header + SameSite 策略。
         httpSecurity
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -76,7 +77,8 @@ public class SecurityConfig
                 .requestMatchers("/v3/api-docs/**").permitAll()
                 .requestMatchers("/webjars/**").permitAll()
                 .requestMatchers("/doc.html").permitAll()
-                // [P0-FIX] Druid控制台要求ADMIN角色认证，移除anonymous
+                // [C11/C13] Druid 监控控制台：要求 ADMIN 角色（双保险，配合 LoginUser.getAuthorities 的 ROLE_ADMIN 映射）。
+                // 必须存在至少一个 role='ADMIN' 的真实用户（见 init.sql / migrate_role.sql）才能访问。
                 .requestMatchers("/druid/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
