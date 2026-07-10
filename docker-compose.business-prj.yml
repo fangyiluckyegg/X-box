@@ -1,3 +1,12 @@
+# ============================================================
+# 业务应用栈（DEV / 开发内网）
+#
+# ⚠️ 本文件是"开发/内网"编排，并非生产环境！文件名虽带 business-prj，但 SPRING_PROFILES_ACTIVE=dev。
+#    真正的生产部署请使用：docker-compose.prod.yml（prod profile + 外部化密钥 + 无 dev- 前缀）。
+#
+# 运行方式（与 base 共用基础设施）：
+#   docker compose -f docker-compose.base.yml -f docker-compose.business-prj.yml up -d
+# ============================================================
 services:
   prj-frontend:
     build:
@@ -46,15 +55,17 @@ services:
       # [P0-FIX] Redis认证密码，与Redis容器requirepass保持一致
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_default_pass_change_me}
       # AI向量服务地址【给Java用的】
-      AI_SERVICE_URL: http://llama:11434
+      # [C14] AI 服务名全局统一为 dev-prj-llama（消除 llama / dev-prj-llama 漂移）
+      AI_SERVICE_URL: http://dev-prj-llama:11434
     depends_on:
       - mysql
       - redis
-      - llama
+      - dev-prj-llama
     networks:
       - dev-network
 
-  llama:
+  # [C14] AI 服务名全局统一为 dev-prj-llama（消除 llama / dev-prj-llama 漂移）
+  dev-prj-llama:
     build:
       context: ./
       dockerfile: ./ai_llama/Dockerfile.llama
@@ -88,4 +99,3 @@ networks:
 # Maven依赖缓存卷（避免每次重启重新下载）
 volumes:
   prj-maven-cache:
-
