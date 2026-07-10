@@ -64,7 +64,8 @@ services:
     networks:
       - dev-network
 
-  llama:
+  # [C14] AI 服务名全局统一为 dev-prj-llama（消除 llama / dev-prj-llama 漂移）
+  dev-prj-llama:
     build:
       context: ./
       dockerfile: ./ai_llama/Dockerfile.llama

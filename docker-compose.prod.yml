@@ -1,0 +1,144 @@
+# ============================================================
+# 生产环境编排（C5 / C14）—— 真正的 prod 部署文件
+#
+# 特点：
+#   - 后端使用 prod profile（SPRING_PROFILES_ACTIVE=prod），启用严格密钥校验
+#   - 所有敏感凭证经 env_file (.env.prod) 外部化，禁止明文进仓库
+#   - 容器名去除 dev- 前缀；restart: unless-stopped（强重启策略）；无 TTY / 不挂载源码
+#   - AI 服务名全局统一为 dev-prj-llama
+#
+# 使用：
+#   cp .env.prod .env.prod.local  # 填入真实强随机密钥后
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# 说明：本文件为自包含生产栈（含 nginx/mysql/redis/llama/backend/frontend），
+#       不依赖 docker-compose.base.yml，避免 dev- 前缀基础设施混入生产。
+# ============================================================
+services:
+  prj-nginx:
+    image: nginx:1.25-alpine
+    container_name: prj-nginx
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 50
+    volumes:
+      - ./gateway/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./gateway/nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    ports:
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:443:443"
+    networks:
+      - prj-network
+
+  prj-mysql:
+    env_file: .env.prod
+    image: mysql:8.0
+    container_name: prj-mysql
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+    volumes:
+      - ./db/mysql_data:/var/lib/mysql
+      - ./db/mysql_init:/docker-entrypoint-initdb.d:ro
+      - ./logs/mysql:/var/log/mysql
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: ${MYSQL_DATABASE:prj_prod}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    command:
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "127.0.0.1:33060:3306"
+    networks:
+      - prj-network
+
+  prj-redis:
+    image: redis:5.0.14-alpine
+    container_name: prj-redis
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    volumes:
+      - ./db/redis_data:/data
+      - ./logs/redis:/var/log/redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-change-me} --dbfilename dump.rdb --appendonly no
+    ports:
+      - "127.0.0.1:63790:6379"
+    networks:
+      - prj-network
+
+  # [C14] AI 服务名全局统一为 dev-prj-llama
+  prj-llama:
+    build:
+      context: ./
+      dockerfile: ./ai_llama/Dockerfile.llama
+    image: prj-llama:prod
+    container_name: dev-prj-llama
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    volumes:
+      - ./ai_llama:/root/.ollama
+      - ./logs/llama:/app/logs/llama
+    environment:
+      MODEL_ROOT_PATH: /model
+      TZ: Asia/Shanghai
+      OLLAMA_HOST: 0.0.0.0:11434
+    ports:
+      - "127.0.0.1:11434:11434"
+    entrypoint: ["ollama", "serve"]
+    networks:
+      - prj-network
+
+  prj-backend:
+    env_file: .env.prod
+    build:
+      context: .
+      dockerfile: ./backend/prj-backend-c/Dockerfile.prod
+    container_name: prj-backend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+    environment:
+      TZ: Asia/Shanghai
+      # [C2] 生产启用 prod profile，触发严格密钥校验（弱/缺失即启动失败）
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://prj-mysql:3306/${MYSQL_DATABASE:prj_prod}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATA_REDIS_HOST: prj-redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_DATABASE: 9
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      AI_SERVICE_URL: http://dev-prj-llama:11434
+    depends_on:
+      - prj-mysql
+      - prj-redis
+      - prj-llama
+    networks:
+      - prj-network
+
+  prj-frontend:
+    build:
+      context: ./web/prj-frontend
+      dockerfile: Dockerfile.prod
+    container_name: prj-frontend
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 200
+    volumes:
+      - ./logs/prj-frontend:/var/log/nginx
+    depends_on:
+      - prj-nginx
+    networks:
+      - prj-network
+
+networks:
+  prj-network:
+    driver: bridge
