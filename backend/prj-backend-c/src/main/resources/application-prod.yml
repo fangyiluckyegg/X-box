@@ -1,0 +1,57 @@
+# ============================================================
+# 生产环境配置（Spring Profile: prod）
+# 激活方式：SPRING_PROFILES_ACTIVE=prod（仅生产 compose 设置，禁止写死 dev）
+# 所有敏感凭证通过环境变量 / .env.prod 注入；缺失关键凭证将启动失败（fail-fast）。
+# dev 行为不受影响，prod 才严格化，降低线上回滚风险。
+# ============================================================
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  # [C12] 信任前置 Nginx 转发的真实客户端 IP
+  forward-headers-strategy: native
+
+spring:
+  main:
+    allow-circular-references: true
+  application:
+    name: hrmanager
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/prj_prod?characterEncoding=utf8&useSSL=true&serverTimezone=GMT%2B8}
+    username: ${SPRING_DATASOURCE_USERNAME:prj_user}
+    # [C2/C3] 生产必须提供强口令；缺失即启动失败（占位符无法解析）
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    druid:
+      stat-view-servlet:
+        enabled: true
+        login-username: ${DRUID_USERNAME:druid_admin}
+        # [C2/C3] 生产必须提供强口令；缺失即启动失败
+        login-password: ${DRUID_PASSWORD}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      # [C2/C3] 生产必须提供强口令；缺失即启动失败
+      password: ${REDIS_PASSWORD}
+      database: ${SPRING_DATA_REDIS_DATABASE:9}
+
+token:
+  header: Authorization
+  # [C2/C3] 生产必须提供 ≥32 字节强密钥；缺失即启动失败
+  secret: ${JWT_SECRET}
+  expireTime: 30
+
+# 生产关闭 swagger（不暴露接口文档）
+springdoc:
+  swagger-ui:
+    enabled: false
+    path: /swagger-ui.html
+  api-docs:
+    enabled: false
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.prj: info
+    org.springframework: warn
