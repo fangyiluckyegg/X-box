@@ -84,15 +84,10 @@ services:
     environment:
       MODEL_ROOT_PATH: /model
       TZ: Asia/Shanghai
-      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_HOST: 0.0.0.0:11434
     ports:
       - "127.0.0.1:11434:11434"
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      ollama serve &
-      until ollama list; do sleep 1; done;
-      ollama pull bge-m3:latest;
-      wait
+    entrypoint: ["ollama", "serve"]
     networks:
       - dev-network
 

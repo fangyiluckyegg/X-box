@@ -1,12 +1,13 @@
 # 官方ollama基础镜像，自带ollama二进制
-FROM ollama/ollama:latest
+# 0.1.17 过旧无法加载 bge-m3:latest 新格式 GGUF；先临时用 latest 验证通过(0.31.2)，现固定该版本恢复可复现性
+FROM ollama/ollama:0.31.2
 
 WORKDIR /app
 
 # 时区
 ENV TZ=Asia/Shanghai
-ENV OLLAMA_HOST=http://0.0.0.0:11434
+# [P2-8-FIX] ollama 0.1.17 使用 host:port 格式（非 URL 格式）
+ENV OLLAMA_HOST=0.0.0.0:11434
 
 # 暴露ollama默认端口11434
 EXPOSE 11434
-EXPOSE 8000

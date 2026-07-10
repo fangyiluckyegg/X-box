@@ -80,7 +80,7 @@ public class SecurityConfig
                 .requestMatchers("/druid/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
-            .headers(h -> h.frameOptions(frameOptions -> frameOptions.disable()));
+            .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
 
         httpSecurity.logout(logout -> logout.logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler));
         // [P1-UPGRADE] 在 UsernamePasswordAuthenticationFilter 前插入 JWT 过滤器；其前插入 CORS 过滤器
