@@ -109,9 +109,19 @@ public class LoginUser implements UserDetails
         return true;
     }
 
+    /**
+     * [C1] 按真实角色映射授权。
+     * <p>user.role 仅存单一角色字面量：ADMIN → ROLE_ADMIN；其余（含 null / USER / 未知）一律授予最小权限 ROLE_USER，
+     * 避免角色缺失或未知时误赋 ADMIN。所有 {@code @PreAuthorize("hasRole('ADMIN')")} 仅对 role='ADMIN' 用户放行。</p>
+     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities()
     {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        String role = (user != null) ? user.getRole() : null;
+        if ("ADMIN".equalsIgnoreCase(role))
+        {
+            return Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
     }
 }

@@ -16,13 +16,15 @@ CREATE USER IF NOT EXISTS 'prj_user'@'%' IDENTIFIED BY 'Prj@Dev789';
 GRANT ALL PRIVILEGES ON prj_dev.* TO 'prj_user'@'%';
 FLUSH PRIVILEGES;
 
--- [P0-FIX] 修正Oracle语法为MySQL 8语法
+-- [P1-15-FIX] 修正Oracle语法为MySQL 8语法
 -- NUMBER -> BIGINT/INT, VARCHAR2 -> VARCHAR, GENERATED ALWAYS AS IDENTITY -> AUTO_INCREMENT
 CREATE TABLE user_info (
   user_id BIGINT AUTO_INCREMENT,
   user_name VARCHAR(45) NOT NULL,
   nick_name VARCHAR(45) NOT NULL,
   password VARCHAR(150) DEFAULT '',
+  -- [C1] 最小角色列：仅存单一角色字面量 ADMIN / USER
+  role VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT '用户角色 ADMIN/USER',
   PRIMARY KEY (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=100 COMMENT='用户信息表';
 
@@ -36,5 +38,6 @@ CREATE TABLE employee_kpi (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工评价管理表';
 
 -- [P2-13-FIX] 默认管理员账号（密码 admin123 的 BCrypt 哈希）
-INSERT INTO user_info (user_name, nick_name, password) VALUES
-('admin', '管理员', '$2a$10$7JB720yubVSZvUI0E5d8c.6JtwGV9a0JxN3z9AG8JOq2tZ8N.MZvK');
+-- [C1] role='ADMIN'：保证管理员在 @PreAuthorize("hasRole('ADMIN')") 与 /druid/** 判定中放行
+INSERT INTO user_info (user_name, nick_name, password, role) VALUES
+('admin', '管理员', '$2a$10$7JB720yubVSZvUI0E5d8c.6JtwGV9a0JxN3z9AG8JOq2tZ8N.MZvK', 'ADMIN');

@@ -9,10 +9,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="userName"     column="user_name"    />
 		<result property="nickName"     column="nick_name"    />
 		<result property="password"     column="password"     />
+		<!-- [C1] 新增角色列映射 -->
+		<result property="role"         column="role"         />
 	</resultMap>
 
 	<select id="selectUserByUserName" parameterType="String" resultMap="UserResult">
-		select u.user_id, u.user_name, u.nick_name, u.password
+		select u.user_id, u.user_name, u.nick_name, u.password, u.role
 		from user_info u
 		where u.user_name = #{userName}
 	</select>
