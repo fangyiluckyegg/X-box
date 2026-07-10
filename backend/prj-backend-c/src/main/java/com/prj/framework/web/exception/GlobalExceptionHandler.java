@@ -9,6 +9,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.exception.ServiceException;
 
@@ -24,6 +27,15 @@ public class GlobalExceptionHandler
         log.error(e.getMessage(), e);
         Integer code = e.getCode();
         return code != null ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
+    }
+
+    // [P1-4] 方法级安全（@PreAuthorize）拒绝访问：必须返回 403，而非被兜底异常处理器吞掉返回 200
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public AjaxResult handleAccessDeniedException(AccessDeniedException e, HttpServletRequest request)
+    {
+        log.warn("请求地址'{}',访问被拒绝(AccessDenied).", request.getRequestURI());
+        return AjaxResult.error("没有权限访问该资源");
     }
 
     // 处理运行期异常
