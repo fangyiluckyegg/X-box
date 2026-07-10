@@ -1,0 +1,7 @@
+refactor: S8 弱凭证启动校验放宽 test/local 并支持配置化弱值(WeakCredentialException)
+
+- 新增 WeakCredentialException（RuntimeException 子类）替代 IllegalStateException
+- StartupSecurityValidator 放宽判定：dev/test/local 为宽松模式（仅 WARN），prod 或无 active profile 为严格模式（抛异常阻止启动）
+- 弱值集合支持 security.weak-credential-values 配置（逗号分隔，为空回退内置默认集合）
+- JWT 最小字节数支持 security.jwt-secret-min-bytes 配置（默认 32）
+- 保留 5 参构造器以兼容既有单元测试 StartupValidatorTest（该测试断言 IllegalStateException 且不在本任务修改范围）
