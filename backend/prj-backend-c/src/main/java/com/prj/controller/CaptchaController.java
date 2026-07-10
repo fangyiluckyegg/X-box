@@ -26,11 +26,17 @@ public class CaptchaController
 
     @Autowired
     private RedisCache redisCache;
-    
+
     /** 生成验证码     */
     @GetMapping("/captchaImage")
-    public AjaxResult getCode(HttpServletResponse response) throws IOException
+    public AjaxResult getCode(HttpServletRequest request, HttpServletResponse response) throws IOException
     {
+        // [P2-16-FIX] 基于客户端IP的验证码频率限制，5秒内重复请求拦截，防暴力刷取
+        String clientIp = request.getRemoteAddr();
+        String rateKey = "captcha:rate:" + clientIp;
+        if (redisCache.getCacheObject(rateKey) != null) {
+            return AjaxResult.error("验证码请求过于频繁，请5秒后再试");
+        }
         AjaxResult ajax = AjaxResult.success();
 
         // 保存验证码信息
@@ -46,6 +52,8 @@ public class CaptchaController
         image = captchaProducerMath.createImage(capStr);
 
         redisCache.setCacheObject(verifyKey, code, Constants.CAPTCHA_EXPIRATION, TimeUnit.MINUTES);
+        // [P2-16-FIX] 设置5秒频率限制窗口
+        redisCache.setCacheObject(rateKey, "1", 5, TimeUnit.SECONDS);
         // 转换流信息写出
         FastByteArrayOutputStream os = new FastByteArrayOutputStream();
         try

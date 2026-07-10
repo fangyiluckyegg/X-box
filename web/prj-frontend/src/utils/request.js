@@ -23,7 +23,7 @@ service.interceptors.request.use(config => {
   return config
 }, error => {
     // [P1-FIX] axios 1.x 拦截器 error handler 必须返回 Promise.reject，否则错误会被静默吞没
-    console.log(error)
+    if (process.env.NODE_ENV === 'development') console.log(error)
     return Promise.reject(error)
 })
 

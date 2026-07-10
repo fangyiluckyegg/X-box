@@ -1,5 +1,6 @@
 import request from '@/utils/request'
 
+// TODO: 后端 EmployeeController 尚未实现，以下接口调用会 404，待后端补齐后再启用
 // 查询员工信息管理列表
 export function listEmployee(query) {
   return request({

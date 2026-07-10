@@ -37,17 +37,23 @@ public class UploadProperties {
         this.allowType = allowType;
     }
 
-    @Value("${spring.servlet.multipart.max-file-size}")  
+    @Value("${spring.servlet.multipart.max-file-size}")
     private String maxFileSize;
-    
+
     @Value("${spring.servlet.multipart.max-request-size}")
     private String maxRequestSize;
-    
+
     private long maxSize;
+
+    // [P2-11-FIX] 启动时预解析 maxSize 并缓存，避免每次调用 getMaxSize() 都重新解析字符串
+    @javax.annotation.PostConstruct
+    public void init() {
+        this.maxSize = DataSize.parse(maxFileSize).toBytes();
+    }
+
     public long getMaxSize() {
         // [P1-FIX] 替换 System.out.println 为 SLF4J logger
         logger.debug("maxFileSize: {}", maxFileSize);
-        this.maxSize = DataSize.parse(maxFileSize).toBytes();
         return maxSize;
     }
 

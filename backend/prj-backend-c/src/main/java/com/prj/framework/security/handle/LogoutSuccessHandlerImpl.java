@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import com.prj.framework.web.service.TokenService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
@@ -15,6 +17,8 @@ import com.prj.common.core.domain.model.LoginUser;
 @Configuration
 public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
 {
+    private static final Logger logger = LoggerFactory.getLogger(LogoutSuccessHandlerImpl.class);
+
     @Autowired
     private TokenService tokenService;
 
@@ -32,9 +36,11 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
         response.setContentType("application/json");
         response.setCharacterEncoding("utf-8");
         try {
-            response.getWriter().print("退出成功");
+            // [P1-24-FIX] 返回 JSON 格式，与前端响应拦截器一致，避免 code=undefined
+            response.getWriter().print("{\"code\":200,\"msg\":\"退出成功\"}");
         } catch (IOException e) {
-            e.printStackTrace();
+            // [P1-16-FIX] 替换 printStackTrace 为结构化日志
+            logger.error("退出登录处理异常", e);
         }
     }
 }
