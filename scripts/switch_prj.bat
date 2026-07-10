@@ -16,7 +16,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml
 :: # 清理旧构建缓存、故障容器
 :: docker builder prune -f
 :: 清理旧容器镜像
-:: docker-compose down --rmi all -v
+:: docker-compose.base.yml down --rmi all -v
 
 echo ==============================
 echo 当前开发项目：Prj（含Llama AI推理）
