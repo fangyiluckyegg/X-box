@@ -4,6 +4,7 @@ import com.google.code.kaptcha.Producer;
 import com.prj.common.constant.Constants;
 import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.core.redis.RedisCache;
+import com.prj.common.utils.IpUtils;
 import com.prj.common.utils.sign.Base64;
 import com.prj.common.utils.uuid.IdUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,8 @@ public class CaptchaController
     public AjaxResult getCode(HttpServletRequest request, HttpServletResponse response) throws IOException
     {
         // [P2-16-FIX] 基于客户端IP的验证码频率限制，5秒内重复请求拦截，防暴力刷取
-        String clientIp = request.getRemoteAddr();
+        // [C8/C12] 统一通过 IpUtils 解析真实客户端 IP（优先 X-Forwarded-For / X-Real-IP）
+        String clientIp = IpUtils.getClientIp(request);
         String rateKey = "captcha:rate:" + clientIp;
         if (redisCache.getCacheObject(rateKey) != null) {
             return AjaxResult.error("验证码请求过于频繁，请5秒后再试");

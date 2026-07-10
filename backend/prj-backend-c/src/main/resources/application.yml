@@ -5,6 +5,9 @@ server:
   servlet:
     # 应用的访问路径
     context-path: /
+  # [C12] 信任前置 Nginx 转发的 X-Forwarded-For / X-Real-IP，使容器内获取真实客户端 IP。
+  # 仅部署在 Nginx 单跳内网时启用，避免 IP 伪造。
+  forward-headers-strategy: native
 
 # 日志配置
 logging:
