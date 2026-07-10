@@ -1,11 +1,8 @@
 package com.prj.framework.web.service;
 
 import jakarta.annotation.Resource;
-
-//import com.prj.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
@@ -20,11 +17,6 @@ import com.prj.common.exception.user.UserPasswordNotMatchException;
 @Component
 public class LoginService
 {
-    // [P1-FIX] 暴力破解防护：5 次失败后锁定 15 分钟
-    private static final int MAX_LOGIN_ATTEMPTS = 5;
-    private static final int LOCK_TIME_MINUTES = 15;
-    private static final String LOGIN_FAIL_KEY = "login_fail:";
-
     @Autowired
     private TokenService tokenService;
 
@@ -34,51 +26,54 @@ public class LoginService
     @Autowired
     private RedisCache redisCache;
 
-    // @Autowired
-    //private IUserService userService;
+    // [P1-S9] 锁定逻辑抽取到 AccountLockService，统一失败计数与防用户枚举
+    @Autowired
+    private AccountLockService accountLockService;
 
     //验证用户身份
     public String login(String username, String password, String code, String uuid)
     {
-        // [P1-FIX] 暴力破解防护：检查账号是否被锁定
-        String lockKey = LOGIN_FAIL_KEY + username;
-        Integer failCount = redisCache.getCacheObject(lockKey);
-        if (failCount != null && failCount >= MAX_LOGIN_ATTEMPTS)
+        // [P1-S9] 暴力破解防护：检查账号是否被锁定
+        if (accountLockService.isLocked(username))
         {
-            throw new ServiceException("账号已锁定，请 " + LOCK_TIME_MINUTES + " 分钟后重试");
+            throw new ServiceException("账号已锁定，请 " + accountLockService.getLockMinutes() + " 分钟后重试");
         }
 
-        validateCaptcha(username, code, uuid);
-
-        // 用户验证
-        Authentication authentication = null;
         try
         {
+            // [P1-S9-2] 验证码校验与用户认证纳入同一 try：
+            // 验证码失败同样计入失败次数（堵住"用验证码失败无限猜密码"的绕过），但不泄露用户名存在性。
+            validateCaptcha(username, code, uuid);
+
             // 该方法会去调用UserDetailsServiceImpl.loadUserByUsername
-            authentication = authenticationManager
+            Authentication authentication = authenticationManager
                     .authenticate(new UsernamePasswordAuthenticationToken(username, password));
+
+            LoginUser loginUser = (LoginUser) authentication.getPrincipal();
+            // [P1-S9] 登录成功，清除失败计数
+            accountLockService.clearFailures(username);
+            // 生成token
+            return tokenService.createToken(loginUser);
+        }
+        catch (CaptchaException e)
+        {
+            // [P1-S9-2] 验证码错误：计入失败次数后原样抛出（类型不变，避免影响既有 P1-4 校验）
+            accountLockService.recordLoginFailure(username);
+            throw e;
+        }
+        catch (CaptchaExpireException e)
+        {
+            // 验证码失效：同样计入失败次数后原样抛出
+            accountLockService.recordLoginFailure(username);
+            throw e;
         }
         catch (Exception e)
         {
-            if (e instanceof BadCredentialsException)
-            {
-                // [P1-FIX] 递增失败计数，超过阈值锁定账号
-                Integer currentFailCount = redisCache.getCacheObject(lockKey);
-                int newFailCount = (currentFailCount == null ? 0 : currentFailCount) + 1;
-                redisCache.setCacheObject(lockKey, newFailCount, LOCK_TIME_MINUTES, java.util.concurrent.TimeUnit.MINUTES);
-                throw new UserPasswordNotMatchException();
-            }
-            else
-            {
-                throw new ServiceException(e.getMessage());
-            }
+            // [P1-S9-1] 防用户枚举：用户不存在（loadUserByUsername 抛 ServiceException）与凭据错误
+            // （BadCredentialsException）统一归一化为 UserPasswordNotMatchException，避免侧信道暴露用户名是否存在。
+            accountLockService.recordLoginFailure(username);
+            throw new UserPasswordNotMatchException();
         }
-
-        LoginUser loginUser = (LoginUser) authentication.getPrincipal();
-        // [P1-FIX] 登录成功，清除失败计数
-        redisCache.deleteObject(LOGIN_FAIL_KEY + username);
-        // 生成token
-        return tokenService.createToken(loginUser);
     }
 
     // 检查验证码
