@@ -1,8 +1,19 @@
-# 屏蔽mysql套接字与数据目录
+# 后端多阶段构建的上下文是仓库根目录（Dockerfile.prod 中 COPY . .），
+# 仅需 backend 源码与 Maven 配置；排除其余模块与体积目录，显著缩小构建上下文、加速构建。
+web/
+ai_llama/
+gateway/
+db/
+scripts/
+docs/
+deliverables/
+*.md
+.git/
+.gitignore
+.env*
 db/mysql_data/
-*.sock
-*.sock.lock
-# 可选：过滤编译缓存、日志、容器挂载数据
 target/
 logs/
 tmp/
+*.sock
+*.sock.lock

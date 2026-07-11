@@ -148,7 +148,7 @@ main() {
     fi
 
     # 3) 幂等拉取：仅当模型不存在时才 pull
-    #    （配合 ./ai_llama:/root/.ollama 持久化，二次启动跳过，不重复拉取）
+    #    （模型已烘焙进镜像 [C16]，启动即命中；此处兜底仅对未烘焙/切换 OLLAMA_MODEL 场景生效）
     if OLLAMA_HOST="$OLLAMA_PROBE_HOST" "$OLLAMA_BIN" show "$MODEL_NAME" >/dev/null 2>&1; then
         log "模型 ${MODEL_NAME} 已存在，跳过拉取（幂等）。"
     else

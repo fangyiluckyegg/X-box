@@ -40,4 +40,4 @@ CREATE TABLE employee_kpi (
 -- [P2-13-FIX] 默认管理员账号（密码 admin123 的 BCrypt 哈希）
 -- [C1] role='ADMIN'：保证管理员在 @PreAuthorize("hasRole('ADMIN')") 与 /druid/** 判定中放行
 INSERT INTO user_info (user_name, nick_name, password, role) VALUES
-('admin', '管理员', '$2a$10$7JB720yubVSZvUI0E5d8c.6JtwGV9a0JxN3z9AG8JOq2tZ8N.MZvK', 'ADMIN');
+('admin', '管理员', '$2a$10$PzPW0yfIE7eW55U0Y3tQnec4UJ86QDlJFIiGwYCXZ73E/SU3YpfBS', 'ADMIN');

@@ -77,7 +77,6 @@ services:
     pids_limit: 100
     volumes:
       #- ./ai_llama:/model
-      - ./ai_llama:/root/.ollama  # 模型挂载目录修正：官方镜像模型存在/root/.ollama
       - ./logs/llama:/app/logs
     environment:
       MODEL_ROOT_PATH: /model
@@ -85,8 +84,9 @@ services:
       OLLAMA_HOST: 0.0.0.0:11434  # 允许外部容器访问（ollama 0.1.17 使用 host:port 格式）
     ports:
       - "127.0.0.1:11434:11434" # 暴露ollama标准端口【给Python用的，仅绑定回环地址防未授权访问】
-    # 使用 ollama 官方镜像默认 CMD (ollama serve)，不自动拉取模型避免启动卡住
-    entrypoint: ["ollama", "serve"]
+    # [C15] 改用包装脚本替换裸 ollama serve：运行时幂等检查业务模型（镜像已含则跳过 pull，
+    # 命中即秒级就绪；未烘焙/切换 OLLAMA_MODEL 时自动拉取，避免 /api/embeddings 404）。
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
 
     networks:
       - dev-network

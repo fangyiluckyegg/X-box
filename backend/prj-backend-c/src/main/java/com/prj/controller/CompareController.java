@@ -154,11 +154,15 @@ public class CompareController {
             logger.error("比对异常", e);
             return AjaxResult.error("比对失败：" + e.getMessage());
         } finally {
-            // 5分钟后自动清理进度缓存
+            // 5分钟后自动清理进度与结果缓存。
+            // [CODE-REVIEW-FIX] 原实现仅清理 PROGRESS_CACHE，RESULT_CACHE（按用户名缓存的比对结果）
+            // 永不回收，导致静态 Map 随比对次数无限增长，形成内存泄漏。此处一并回收，
+            // 将其生命周期与既有 5 分钟进度窗口对齐（超时后前端再下载会提示"无比对结果"，属预期行为）。
             new Thread(() -> {
                 try {
                     TimeUnit.MINUTES.sleep(5);
                     PROGRESS_CACHE.remove(username);
+                    RESULT_CACHE.remove(username);
                 } catch (InterruptedException ignored) {}
             }).start();
         }
