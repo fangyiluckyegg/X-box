@@ -1,15 +1,22 @@
 # ============================================================
-# 生产环境编排（C5 / C14）—— 真正的 prod 部署文件
+# 生产环境编排（C5 / C14）—— Apple Silicon (Mac mini) 适配版
 #
 # 特点：
 #   - 后端使用 prod profile（SPRING_PROFILES_ACTIVE=prod），启用严格密钥校验
 #   - 所有敏感凭证经 env_file (.env.prod) 外部化，禁止明文进仓库
-#   - 容器名去除 dev- 前缀；restart: unless-stopped（强重启策略）；无 TTY / 不挂载源码
+#   - 容器名去除 dev- 前缀；restart: unless-stopped；无 TTY / 不挂载源码
 #   - AI 服务名全局统一为 dev-prj-llama
 #
+# 本次 Apple Silicon 适配改动（相对原 prod）：
+#   - redis 5.0.14-alpine -> redis:7-alpine（Redis 5 已 EOL，官方 arm64 镜像缺失，Mac 上会拉取失败）
+#   - 所有服务显式 platform: linux/arm64（避免 amd64 模拟退化，保证原生性能）
+#   - 补充 mem_limit / cpus 资源限制（防止 Mac 内存被单容器吃满）
+#   - mysql / redis 增加健康检查；后端 depends_on 等待二者 healthy 再启动
+#   - 网关 X-Forwarded-For 已改为覆盖式（见 gateway/nginx/conf.d/prj.conf），防客户端伪造 IP
+#
 # 使用：
-#   cp .env.prod .env.prod.local  # 填入真实强随机密钥后
-#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#   cp .env.prod .env.prod.local  # 填入真实强随机密钥后（不要提交 .env.prod 到 Git）
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
 # 说明：本文件为自包含生产栈（含 nginx/mysql/redis/llama/backend/frontend），
 #       不依赖 docker-compose.base.yml，避免 dev- 前缀基础设施混入生产。
@@ -17,11 +24,14 @@
 services:
   prj-nginx:
     image: nginx:1.25-alpine
+    platform: linux/arm64
     container_name: prj-nginx
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 50
+    mem_limit: 256m
+    cpus: 0.5
     volumes:
       - ./gateway/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./gateway/nginx/ssl:/etc/nginx/ssl:ro
@@ -35,11 +45,14 @@ services:
   prj-mysql:
     env_file: .env.prod
     image: mysql:8.0
+    platform: linux/arm64
     container_name: prj-mysql
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
+    mem_limit: 1g
+    cpus: 1.0
     volumes:
       - ./db/mysql_data:/var/lib/mysql
       - ./db/mysql_init:/docker-entrypoint-initdb.d:ro
@@ -51,61 +64,100 @@ services:
     command:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=512M
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
     ports:
       - "127.0.0.1:33060:3306"
     networks:
       - prj-network
 
   prj-redis:
-    image: redis:5.0.14-alpine
+    image: redis:7-alpine
+    platform: linux/arm64
     container_name: prj-redis
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 100
+    mem_limit: 512m
+    cpus: 0.5
     volumes:
       - ./db/redis_data:/data
       - ./logs/redis:/var/log/redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-change-me} --dbfilename dump.rdb --appendonly no
+    # 注意：${REDIS_PASSWORD} 由 compose 在解析时用 .env.prod 的值替换（单 $ 为 compose 插值）
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 384mb --maxmemory-policy allkeys-lru --dbfilename dump.rdb --appendonly no
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     ports:
       - "127.0.0.1:63790:6379"
     networks:
       - prj-network
 
   # [C14] AI 服务名全局统一为 dev-prj-llama
+  # ⚠️ 容器内 Ollama 无法使用 Mac 的 GPU（Metal），仅 CPU 推理，速度慢。
+  #    推荐改为 Mac 原生运行 Ollama（见部署指南第 6 节），本服务可注释移除。
   prj-llama:
     build:
       context: ./
       dockerfile: ./ai_llama/Dockerfile.llama
     image: prj-llama:prod
+    platform: linux/arm64
     container_name: dev-prj-llama
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 100
+    mem_limit: 6g
+    cpus: 2.0
+    # [C16] 不再 bind 挂载 ./ai_llama:/root/.ollama —— 该挂载会在运行时整层覆盖
+    # 容器内 /root/.ollama，遮蔽镜像构建期已烘焙的 bge-m3:latest（方案A：镜像自包含）。
+    # 模型完全由镜像提供，启动即用、离线可复现。
     volumes:
-      - ./ai_llama:/root/.ollama
       - ./logs/llama:/app/logs/llama
     environment:
       MODEL_ROOT_PATH: /model
       TZ: Asia/Shanghai
       OLLAMA_HOST: 0.0.0.0:11434
+      # [C15] 与后端 CompareController 写死的模型名保持一致（单一来源）
+      OLLAMA_MODEL: bge-m3:latest
     ports:
       - "127.0.0.1:11434:11434"
-    entrypoint: ["ollama", "serve"]
+    # [C15] 改用包装脚本替换裸 ollama serve：运行时幂等检查业务模型（镜像已含则跳过 pull，
+    # 命中即秒级就绪；未烘焙/切换 OLLAMA_MODEL 时自动拉取，避免 /api/embeddings 404）。
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
+    # [C15] 健康检查：确认 bge-m3:latest 已就绪（或已标记降级）方视为 healthy，
+    # 放行依赖它的后端启动，实现 up 完即可对比。
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -f /tmp/ollama-model-unavailable ]; then exit 0; fi; OLLAMA_HOST=127.0.0.1:11434 ollama list 2>/dev/null | grep -q 'bge-m3:latest'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 180s
     networks:
       - prj-network
 
-  prj-backend:
+  prj-backend-c:
     env_file: .env.prod
     build:
       context: .
       dockerfile: ./backend/prj-backend-c/Dockerfile.prod
+    platform: linux/arm64
     container_name: prj-backend
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
+    mem_limit: 2g
+    cpus: 2.0
     environment:
       TZ: Asia/Shanghai
       # [C2] 生产启用 prod profile，触发严格密钥校验（弱/缺失即启动失败）
@@ -117,9 +169,12 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AI_SERVICE_URL: http://dev-prj-llama:11434
     depends_on:
-      - prj-mysql
-      - prj-redis
-      - prj-llama
+      prj-mysql:
+        condition: service_healthy
+      prj-redis:
+        condition: service_healthy
+      prj-llama:
+        condition: service_started
     networks:
       - prj-network
 
@@ -127,11 +182,14 @@ services:
     build:
       context: ./web/prj-frontend
       dockerfile: Dockerfile.prod
+    platform: linux/arm64
     container_name: prj-frontend
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
+    mem_limit: 256m
+    cpus: 0.5
     volumes:
       - ./logs/prj-frontend:/var/log/nginx
     depends_on:

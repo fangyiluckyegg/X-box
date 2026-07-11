@@ -12,8 +12,21 @@ ENV OLLAMA_HOST=0.0.0.0:11434
 # 暴露ollama默认端口11434
 EXPOSE 11434
 
-# [C15] Ollama 启动包装脚本：容器启动时幂等拉取业务模型 bge-m3:latest，
-# 避免"容器在跑但模型未拉取导致 /api/embeddings 404"的运行时故障。
-# 不写进构建期（RUN）以规避镜像构建卡住，符合原 Dockerfile 不自动 pull 的初衷。
+# [C16] 构建期把业务模型 bge-m3:latest 烘焙进镜像，使镜像自包含：
+# 启动即无需联网 pull，离线可复现、秒级就绪。
+# 注意：本构建步骤需要构建环境可访问 Ollama 模型仓库（联网）；若离线 CI 构建会失败。
+# 模型名与 docker-compose 的 OLLAMA_MODEL、后端 CompareController.EMBED_MODEL 三者必须一致。
+RUN ollama serve >/tmp/ollama-build.log 2>&1 & \
+    SERVE_PID=$! && \
+    for i in $(seq 1 30); do \
+      if curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then break; fi; \
+      sleep 1; \
+    done && \
+    ollama pull bge-m3:latest && \
+    kill $SERVE_PID
+
+# [C15] Ollama 启动包装脚本：容器启动时幂等检查业务模型 bge-m3:latest。
+# [C16] 模型已在构建期烘焙进镜像（见上方 RUN ollama pull），故运行时一般直接命中、跳过 pull；
+# 此处保留为兜底（如改用未烘焙的基础镜像或切换 OLLAMA_MODEL 时自动拉取），避免 /api/embeddings 404。
 COPY docker/ollama/docker-entrypoint-llama.sh /app/docker-entrypoint-llama.sh
 RUN chmod +x /app/docker-entrypoint-llama.sh

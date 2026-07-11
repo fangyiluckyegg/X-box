@@ -14,6 +14,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.exception.ServiceException;
+import com.prj.common.exception.user.UserException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler
@@ -27,6 +28,15 @@ public class GlobalExceptionHandler
         log.error(e.getMessage(), e);
         Integer code = e.getCode();
         return code != null ? AjaxResult.error(code, e.getMessage()) : AjaxResult.error(e.getMessage());
+    }
+
+    // [FIX] 用户类异常（密码不匹配 / 验证码错误 / 验证码失效）返回真实业务文案，
+    // 避免被 RuntimeException 兜底处理器误判为“系统内部错误”返回 500
+    @ExceptionHandler(UserException.class)
+    public AjaxResult handleUserException(UserException e, HttpServletRequest request)
+    {
+        log.error("请求地址'{}',发生用户异常: {}", request.getRequestURI(), e.getMessage());
+        return AjaxResult.error(e.getMessage());
     }
 
     // [P1-4] 方法级安全（@PreAuthorize）拒绝访问：必须返回 403，而非被兜底异常处理器吞掉返回 200

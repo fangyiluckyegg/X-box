@@ -88,8 +88,6 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      # Ollama官方模型持久化目录
-      - ./ai_llama:/root/.ollama
       - ./logs/llama:/app/logs/llama
     environment:
       MODEL_ROOT_PATH: /model

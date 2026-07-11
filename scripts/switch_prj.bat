@@ -5,7 +5,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml
 echo 启动Prj前端、后端、AI向量服务
 docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
-:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --force-recreate mysql
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build prj-frontend
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build prj-backend-c
 :: docker compose -f docker-compose.business-prj.dev.yml restart prj-backend-c
