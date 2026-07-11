@@ -8,7 +8,7 @@ COPY . .
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 安装Maven并打包项目
-RUN apk update && apk add --no-cache maven
+RUN apk update && apk add --no-cache maven wget
 WORKDIR /app/backend/prj-backend-c
 # 使用阿里云 Maven 镜像加速依赖下载（规避中央仓库/Docker Hub 拉取超时）
 COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
@@ -20,10 +20,6 @@ WORKDIR /app
 
 # [P2-FIX] 创建非root用户，提升生产环境安全性
 RUN addgroup -S appuser && adduser -S appuser -G appuser
-
-# 安装Python依赖（AI推理需要）+ wget（HEALTHCHECK需要）
-RUN apk add --no-cache python3 py3-pip py3-scikit-learn wget && ln -sf /usr/bin/python3 /usr/bin/python
-RUN pip install --no-cache-dir --break-system-packages pandas ollama openpyxl -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制AI推理脚本
 COPY --from=builder /app/backend/prj-backend-c/src/ai-infer /app/ai-infer
