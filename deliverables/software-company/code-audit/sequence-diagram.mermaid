@@ -1,0 +1,43 @@
+sequenceDiagram
+    autonumber
+    actor U as 客户端
+    participant C as CaptchaController
+    participant L as LoginService
+    participant AL as AccountLockService
+    participant AM as AuthenticationManager
+    participant UD as UserDetailsServiceImpl
+    participant M as UserMapper
+    participant T as TokenService
+    participant R as RedisCache
+    participant F as JwtAuthenticationTokenFilter
+    participant CT as EmployeeKpiController
+
+    Note over U,CT: === 登录阶段 ===
+    U->>C: GET /captchaImage (clientIp via IpUtils)
+    C->>R: setCacheObject(captcha:rate:ip)
+    U->>L: POST /login(username,password,code,uuid,clientIp)
+    L->>AL: isLocked(username) / isIpLocked(ip)
+    AL-->>L: false
+    L->>AM: authenticate(UsernamePasswordAuthenticationToken)
+    AM->>UD: loadUserByUsername(username)
+    UD->>M: selectUserByUserName(username)  // 含 role 列
+    M-->>UD: User(含 role)
+    UD-->>AM: LoginUser(user)  // getAuthorities() 依 role 构建 ROLE_xxx
+    AM-->>L: Authentication(authorities=ROLE_xxx)
+    L->>AL: clearFailures(username/ip)
+    L->>T: createToken(loginUser)
+    T->>R: setCacheObject(login_tokens:uuid, loginUser)  // JSON 序列化, 不含 password
+    T-->>L: JWT(uuid)
+    L-->>U: token
+
+    Note over U,CT: === 后续请求阶段（每次） ===
+    U->>F: GET /employee_kpi/list + Authorization: Bearer <JWT>
+    F->>T: getLoginUser(req)  // 解析 JWT → uuid
+    T->>R: getCacheObject(login_tokens:uuid)
+    R-->>T: LoginUser(user, role)
+    T-->>F: LoginUser
+    F->>F: new UsernamePasswordAuthenticationToken(loginUser,null,loginUser.getAuthorities())
+    F->>F: SecurityContext.setAuthentication(...)
+    F->>CT: 放行
+    CT->>CT: @PreAuthorize("hasRole('ADMIN')") 判定 authorities
+    CT-->>U: 200 / 403
