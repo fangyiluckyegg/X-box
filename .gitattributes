@@ -1,0 +1,8 @@
+# [C15] 锁定 shell 脚本为 LF 换行。
+# 原因：本仓库 core.autocrlf=true（Windows 默认），若不加约束，git checkout/pull
+# 会把脚本的工作副本转成 CRLF；而 ollama/ollama:0.31.2 基于 Alpine，容器内
+# /bin/sh 无法容忍 CRLF——shebang 或命令行尾部 \r 会导致启动脚本直接失败，
+# 使"容器启动幂等拉取模型"的修复在 X-box 机器上静默失效（容器起不来）。
+# 仅针对会因此崩溃的文件类型（*.sh）；Dockerfile / compose 的 CRLF 由 Docker/YAML
+# 解析器容忍，无需强制。
+*.sh text eol=lf
