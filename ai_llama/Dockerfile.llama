@@ -15,5 +15,5 @@ EXPOSE 11434
 # [C15] Ollama 启动包装脚本：容器启动时幂等拉取业务模型 bge-m3:latest，
 # 避免"容器在跑但模型未拉取导致 /api/embeddings 404"的运行时故障。
 # 不写进构建期（RUN）以规避镜像构建卡住，符合原 Dockerfile 不自动 pull 的初衷。
-COPY ai_llama/docker-entrypoint-llama.sh /app/docker-entrypoint-llama.sh
+COPY docker/ollama/docker-entrypoint-llama.sh /app/docker-entrypoint-llama.sh
 RUN chmod +x /app/docker-entrypoint-llama.sh
