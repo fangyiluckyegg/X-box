@@ -34,6 +34,8 @@ services:
     volumes:
       - ./db/mysql_data:/var/lib/mysql
       - ./db/mysql_init:/docker-entrypoint-initdb.d
+      # [C1] 挂载幂等补列包装脚本目录（刻意不进入 initdb.d，避免首次初始化被官方 entrypoint 误执行）
+      - ./db/mysql_scripts:/mysql_scripts
       - ./logs/mysql:/var/log/mysql
     environment:
       TZ: Asia/Shanghai
@@ -41,6 +43,12 @@ services:
       - "127.0.0.1:33060:3306"
     networks:
       - dev-network
+    # [C1] 存量库漏列修复：用包装脚本替换官方 entrypoint，使每次启动（含存量 volume 不清）都幂等补 user_info.role 列。
+    # 官方 docker-entrypoint.sh 仍由包装脚本后台调用，首次初始化 / 优雅关闭等官方行为保持不变；
+    # compose 的 command（mysqld 参数）会作为 $@ 透传给包装脚本、再透传给官方 entrypoint。
+    entrypoint:
+      - /bin/bash
+      - /mysql_scripts/docker-entrypoint-wrapper.sh
     command:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci

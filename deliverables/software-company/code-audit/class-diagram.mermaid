@@ -1,0 +1,75 @@
+classDiagram
+    class User {
+        +Long userId
+        +String userName
+        +String nickName
+        +String password  // @JSONField(serialize=false) 不落缓存
+        +String role      // 'ADMIN' | 'USER'  (C1 新增)
+        +getUserId() Long
+        +getUserName() String
+        +getPassword() String
+        +getRole() String
+    }
+
+    class LoginUser {
+        +Long userId
+        +String token
+        +Long loginTime
+        +Long expireTime
+        -User user
+        +getAuthorities() Collection~GrantedAuthority~
+        +getPassword() String  // @JSONField(serialize=false)
+        +getUsername() String
+        +getUser() User
+    }
+
+    class Role {
+        <<enumeration>>
+        ADMIN
+        USER
+    }
+
+    class UserDetailsServiceImpl {
+        +loadUserByUsername(String) UserDetails
+        +createLoginUser(User) UserDetails
+    }
+
+    class UserMapper {
+        +selectUserByUserName(String) User
+    }
+
+    class AccountLockService {
+        +isLocked(String) boolean
+        +isIpLocked(String) boolean
+        +recordLoginFailure(String, String) void
+        +clearFailures(String) void
+    }
+
+    class LoginService {
+        +login(String, String, String, String, String) String
+    }
+
+    class TokenService {
+        +createToken(LoginUser) String
+        +getLoginUser(HttpServletRequest) LoginUser
+    }
+
+    class JwtAuthenticationTokenFilter {
+        +doFilterInternal(...) void
+    }
+
+    class EmployeeKpiController {
+        +add(EmployeeKpi) AjaxResult  @PreAuthorize("hasRole('ADMIN')")
+        +edit(EmployeeKpi) AjaxResult  @PreAuthorize("hasRole('ADMIN')")
+        +remove(Long[]) AjaxResult     @PreAuthorize("hasRole('ADMIN')")
+    }
+
+    User "1" *-- "1" LoginUser : 组合(被包装)
+    LoginUser ..> Role : getAuthorities() 据 user.role 映射
+    UserDetailsServiceImpl ..> UserMapper : selectUserByUserName
+    UserDetailsServiceImpl ..> LoginUser : createLoginUser(user)
+    LoginService ..> UserDetailsServiceImpl : authenticate
+    LoginService ..> AccountLockService : 锁定判定
+    LoginService ..> TokenService : createToken
+    JwtAuthenticationTokenFilter ..> TokenService : getLoginUser
+    JwtAuthenticationTokenFilter ..> EmployeeKpiController : 注入 Authentication(含 authorities)
