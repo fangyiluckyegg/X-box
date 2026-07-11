@@ -14,10 +14,6 @@ COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
 # 复制项目文件
 COPY . .
 
-# 安装Python依赖（AI推理需要）
-RUN apk add --no-cache python3 py3-pip py3-scikit-learn && ln -sf /usr/bin/python3 /usr/bin/python
-RUN pip install --no-cache-dir --break-system-packages pandas ollama openpyxl -i https://pypi.tuna.tsinghua.edu.cn/simple
-
 WORKDIR /app/backend/prj-backend-c
 
 # [P1-FIX] 开发模式：使用 spring-boot:run 支持热重载，不预先打包
