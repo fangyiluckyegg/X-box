@@ -39,6 +39,7 @@ services:
       - ./logs/mysql:/var/log/mysql
     environment:
       TZ: Asia/Shanghai
+      MYSQL_DATABASE: prj_dev
     ports:
       - "127.0.0.1:33060:3306"
     networks:
@@ -78,7 +79,7 @@ services:
       context: ./
       dockerfile: ./ai_llama/Dockerfile.llama
     container_name: dev-prj-llama
-    mem_limit: 6g
+    mem_limit: 4g
     cpus: 2
     security_opt:
       - no-new-privileges:true
@@ -94,9 +95,22 @@ services:
       MODEL_ROOT_PATH: /model
       TZ: Asia/Shanghai
       OLLAMA_HOST: 0.0.0.0:11434
+      # [C15] 与后端 CompareController 写死的模型名保持一致；
+      # 单一来源，日后改模型名只改此处即可（包装脚本会读取 OLLAMA_MODEL 作为 MODEL_NAME 兜底）。
+      OLLAMA_MODEL: bge-m3:latest
     ports:
       - "127.0.0.1:11434:11434"
-    entrypoint: ["ollama", "serve"]
+    # [C15] 用包装脚本替换裸 `ollama serve`：启动时幂等拉取业务模型，
+    # 消除"容器在跑但模型未拉取导致 /api/embeddings 404"的运行时故障。
+    entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
+    # [C15] 健康检查：模型已拉取（或已标记不可用降级）即视为 healthy，
+    # 放行依赖它的后端启动，实现 up 完即可对比，无需手动 pull。
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -f /tmp/ollama-model-unavailable ]; then exit 0; fi; OLLAMA_HOST=127.0.0.1:11434 ollama list 2>/dev/null | grep -q 'bge-m3:latest'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 180s
     networks:
       - dev-network
 

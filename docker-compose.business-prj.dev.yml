@@ -70,9 +70,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - mysql
-      - redis
-      - dev-prj-llama
+      mysql:
+        condition: service_started
+      redis:
+        condition: service_started
+      dev-prj-llama:
+        condition: service_healthy
     networks:
       - dev-network
 
