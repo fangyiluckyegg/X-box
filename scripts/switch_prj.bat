@@ -18,6 +18,30 @@ docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml
 :: 清理旧容器镜像
 :: docker-compose.base.yml down --rmi all -v
 
+:: 重部署 runbook（在你 X-box 机器上）
+:: 1. 停掉并删容器+卷（连带清掉旧的 Ollama 模型卷）
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml down -v
+
+:: 2. 清镜像（验证 C16 从零构建，这步会触发重新联网拉 bge-m3）
+:: docker image prune -a -f        # 或只 rmi 相关镜像
+
+:: 3. 删本地代码 + 重新克隆+切到整改分支（关键！默认是 main 旧代码）
+:: rm -rf /path/to/X-box
+:: git clone <repo-url> X-box && cd X-box
+:: http版本
+:: git clone https://github.com/fangyiluckyegg/X-box.git X-box
+:: cd X-box
+:: git checkout feature/xbox-ollama-bake-and-dev-fixes
+:: ssh版本
+:: git clone git@github.com:fangyiluckyegg/X-box.git X-box
+:: cd X-box
+:: git checkout feature/xbox-ollama-bake-and-dev-fixes
+
+:: 5. 重新构建+部署（构建机需联网）
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
+
+
+
 echo ==============================
 echo 当前开发项目：Prj（含Llama AI推理）
 echo 无需AI可执行ai_switch.bat关闭llama容器释放内存

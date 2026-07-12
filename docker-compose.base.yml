@@ -32,7 +32,10 @@ services:
       - no-new-privileges:true
     pids_limit: 200
     volumes:
-      - ./db/mysql_data:/var/lib/mysql
+      # [C17] MySQL 数据目录改用命名卷（mysql_data），避免 bind 挂载到 Windows NTFS（大小写不敏感）
+      # 导致 MySQL 8.0 全新初始化时 redo 日志创建失败（Cannot create redo log files ... corrupt）。
+      # 命名卷位于 Docker Desktop Linux 虚拟机 ext4（大小写敏感），可正常建库；init.sql 仍由 mysql_init 挂载自动执行。
+      - mysql_data:/var/lib/mysql
       - ./db/mysql_init:/docker-entrypoint-initdb.d
       # [C1] 挂载幂等补列包装脚本目录（刻意不进入 initdb.d，避免首次初始化被官方 entrypoint 误执行）
       - ./db/mysql_scripts:/mysql_scripts
@@ -117,3 +120,7 @@ services:
 networks:
   dev-network:
     driver: bridge
+
+# [C17] 命名卷声明：MySQL 数据目录（避免 NTFS 大小写不敏感导致的 redo 日志初始化失败）
+volumes:
+  mysql_data:
