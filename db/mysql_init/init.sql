@@ -1,3 +1,10 @@
+-- ============================================================
+-- 初始化脚本：Prj 开发库（db/mysql_init/init.sql）
+-- 职责：创建 prj_dev 数据库、业务账号 prj_user，并建 user_info / employee_kpi 表，
+--       写入默认管理员 admin。由 MySQL 官方镜像在首次初始化时自动执行（initdb.d）。
+-- 说明：含 [C17] 显式 USE、[P0-FIX] 开发默认密码、[P1-15-FIX] Oracle→MySQL 语法修正等历史修复标注。
+-- ============================================================
+
 -- 创建Bibutong开发库
 #CREATE DATABASE IF NOT EXISTS bibutong_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 #-- 创建Bibutong业务专用账号

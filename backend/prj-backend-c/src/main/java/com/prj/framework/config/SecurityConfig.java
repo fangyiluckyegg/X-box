@@ -19,6 +19,21 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.web.filter.CorsFilter;
 
+/**
+ * Spring Security 主安全配置。
+ *
+ * <p>职责：
+ * 声明无状态（JWT）安全体系——
+ * - 禁用 CSRF（令牌走 Bearer Header，非 Cookie）；
+ * - 会话策略为 STATELESS；
+ * - 配置请求授权：仅 {@code /login}、{@code /captchaImage}、静态资源、swagger/druid（部分）等白名单 permitAll，其余均需认证；
+ * - 注册 {@link JwtAuthenticationTokenFilter}（在用户名密码过滤器前）与全局 {@code CorsFilter}；
+ * - 暴露 {@link AuthenticationManager} 与 {@link BCryptPasswordEncoder} Bean。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code JwtAuthenticationTokenFilter}、{@code LogoutSuccessHandlerImpl}、{@code UserDetailsServiceImpl}（userDetailsService）、{@code CorsFilter}（来自 ResourcesConfig）。
+ * - 被依赖：Spring Security 框架在启动时装配整个过滤器链；配合 {@code @PreAuthorize} 方法级鉴权（@EnableMethodSecurity）。
+ */
 // [P0-FIX] @EnableMethodSecurity（Spring Security 5.6+ / 6 推荐方式，功能等价旧 @EnableGlobalMethodSecurity）
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)

@@ -1,3 +1,10 @@
+# ============================================================
+# 镜像：前端生产环境（web/prj-frontend/Dockerfile.prod）
+# 职责：多阶段构建——node 阶段打包生成 dist，nginx 阶段托管静态资源（:80），
+#       并复制 SPA 路由配置（try_files 兜底 index.html）以支持前端路由刷新。
+# 说明：生产镜像仅含 nginx + 静态产物，体积精简。
+# ============================================================
+
 # 构建阶段：node打包dist
 FROM node:18-alpine AS builder
 WORKDIR /app

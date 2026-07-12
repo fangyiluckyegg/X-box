@@ -18,6 +18,21 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.prj.common.core.domain.model.LoginUser;
 import com.prj.common.utils.SecurityUtils;
 
+/**
+ * JWT 认证过滤器（无状态鉴权核心）。
+ *
+ * <p>职责：
+ * 作为 Spring Security 过滤器链的一环（{@code OncePerRequestFilter}，每个请求仅执行一次），
+ * 从请求中解析并校验 JWT，还原出 {@link LoginUser} 后写入 {@code SecurityContextHolder}，
+ * 使后续 {@code @PreAuthorize}、{@code SecurityUtils.getLoginUser()} 等可获取当前用户。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code TokenService}（解析/校验 token 与登录态）、{@code SecurityUtils}（取当前认证信息）。
+ * - 被依赖：{@code SecurityConfig}（注册到 UsernamePasswordAuthenticationFilter 之前）。
+ *
+ * <p>流程：仅当请求携带有效 loginUser 且当前上下文尚无认证信息时，才校验并写入，
+ * token 校验失败仅告警并放行（由后续授权拦截器处理 401）。
+ */
 @Component
 public class JwtAuthenticationTokenFilter extends OncePerRequestFilter
 {

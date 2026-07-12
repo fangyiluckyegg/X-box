@@ -1,3 +1,10 @@
+# ============================================================
+# 镜像：后端 Spring Boot 生产环境（backend/prj-backend-c/Dockerfile.prod）
+# 职责：多阶段构建——编译阶段 Maven 打包，运行阶段使用轻量 JRE 17 运行 jar；
+#       创建非 root 用户提升安全性，并拷贝 AI 推理脚本目录。
+# 说明：Spring Boot 3 要求 JDK 17 编译，运行时只需 JRE 17。
+# ============================================================
+
 # [P1-FIX] 生产环境：JDK 17 多阶段构建（Spring Boot 3 要求 JDK 17），JRE 运行时优化镜像大小
 # 编译阶段
 FROM eclipse-temurin:17-jdk-alpine AS builder

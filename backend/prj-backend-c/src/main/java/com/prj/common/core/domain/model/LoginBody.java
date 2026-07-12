@@ -3,6 +3,18 @@ package com.prj.common.core.domain.model;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * 登录请求体模型（DTO）。
+ *
+ * <p>职责：
+ * 承载前端登录提交的用户名、密码、验证码与 uuid，并通过 JSR-303 注解声明输入校验规则，
+ * 由 LoginController 的 {@code @Valid} 在绑定请求时触发。
+ *
+ * <p>与其他模块的关联：
+ * - 被依赖：{@code LoginController}（接收请求体）、{@code LoginService}（消费字段进行登录校验）。
+ *
+ * <p>安全说明：用户名/密码/验证码的非空与长度约束见上方 [P0-FIX] 备注，防止空/超长输入。
+ */
 public class LoginBody
 {
     /**     * 用户名     */
@@ -18,40 +30,48 @@ public class LoginBody
     /**     * 验证码     */
     @NotBlank(message = "验证码不能为空")
     private String code;
-    /**     * 唯一标识     */
+    /**     * 唯一标识（前端获取验证码时拿到的 uuid，用于服务端匹配缓存中的验证码答案）     */
     private String uuid = "";
 
+    /** 获取用户名。 */
     public String getUsername()
     {
         return username;
     }
+    /** 设置用户名。 */
     public void setUsername(String username)
     {
         this.username = username;
     }
 
+    /** 获取密码。 */
     public String getPassword()
     {
         return password;
     }
+    /** 设置密码。 */
     public void setPassword(String password)
     {
         this.password = password;
     }
 
+    /** 获取验证码。 */
     public String getCode()
     {
         return code;
     }
+    /** 设置验证码。 */
     public void setCode(String code)
     {
         this.code = code;
     }
 
+    /** 获取uuid。 */
     public String getUuid()
     {
         return uuid;
     }
+    /** 设置uuid（默认空串）。 */
     public void setUuid(String uuid)
     {
         this.uuid = uuid;

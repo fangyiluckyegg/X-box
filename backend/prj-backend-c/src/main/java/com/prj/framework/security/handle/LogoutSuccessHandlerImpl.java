@@ -14,6 +14,18 @@ import org.springframework.security.web.authentication.logout.LogoutSuccessHandl
 import com.prj.common.core.domain.model.LoginUser;
 
 
+/**
+ * 登出成功处理器。
+ *
+ * <p>职责：
+ * 实现 Spring Security 的 {@code LogoutSuccessHandler}，在用户登出时：
+ * 1) 通过 {@code TokenService} 删除 Redis 中的登录态缓存；
+ * 2) 向前端返回统一 JSON 响应（{@code {"code":200,"msg":"退出成功"}}），与前端响应拦截器对齐。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code TokenService}（删除登录态）。
+ * - 被依赖：{@code SecurityConfig}（配置为 logout 成功处理器）。
+ */
 @Configuration
 public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
 {

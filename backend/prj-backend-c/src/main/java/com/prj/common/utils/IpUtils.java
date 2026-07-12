@@ -14,6 +14,10 @@ import jakarta.servlet.http.HttpServletRequest;
  * 依赖 {@code server.forward-headers-strategy=native} 开启，仅信任前置 Nginx 这一跳，避免 IP 伪造。
  * 凡需客户端 IP（验证码频限、登录锁定）的场景，统一调用本工具，禁止直接使用 {@code getRemoteAddr()}。
  * </p>
+ *
+ * <p>与其他模块的关联：
+ * - 被依赖：{@code CaptchaController}（验证码请求频率限制按客户端 IP）、
+ *           {@code LoginController}（登录锁定按客户端 IP）。
  */
 public class IpUtils
 {
@@ -58,6 +62,7 @@ public class IpUtils
         return ip;
     }
 
+    /** 判断字符串是否为空或值为 "unknown"（大小写不敏感）。 */
     private static boolean isBlank(String s)
     {
         return s == null || s.isBlank() || UNKNOWN.equalsIgnoreCase(s);

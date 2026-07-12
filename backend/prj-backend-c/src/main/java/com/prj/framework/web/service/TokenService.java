@@ -23,6 +23,23 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.WeakKeyException;
 
+/**
+ * Token（JWT）业务服务。
+ *
+ * <p>职责：
+ * 负责登录态与 JWT 的全生命周期管理——
+ * - 从请求中解析 token、还原 {@link LoginUser}（{@link #getLoginUser}）；
+ * - 创建 token 并将登录态写入 Redis（{@link #createToken} / {@link #refreshToken}）；
+ * - 校验/续期 token（{@link #verifyToken}）；
+ * - 删除登录态（登出）。
+ * JWT 使用 HS256 签名，密钥来自配置 {@code token.secret}。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code RedisCache}（存登录态）、{@code IdUtils}（生成 token 标识）、{@code Constants}（key 前缀）。
+ * - 被依赖：{@code JwtAuthenticationTokenFilter}、{@code LoginService}、{@code LogoutSuccessHandlerImpl}。
+ *
+ * <p>说明：jjwt 0.12.x API 适配（SecretKey + Jwts.SIG.HS256）见各方法 [P1-FIX] 备注。
+ */
 @Component
 public class TokenService
 {
@@ -50,6 +67,7 @@ public class TokenService
     private RedisCache redisCache;
 
     // 获取用户身份信息
+    /** 从请求中解析 token 并还原 Redis 中的 LoginUser；解析失败或为空时返回 null。 */
     public LoginUser getLoginUser(HttpServletRequest request)
     {
         // 获取请求携带的令牌
@@ -81,6 +99,7 @@ public class TokenService
     }
 
     //删除用户的登录信息
+    /** 删除指定 token 对应的 Redis 登录态。 */
     public void delLoginUser(String token)
     {
         if (StringUtils.isNotEmpty(token))
@@ -91,6 +110,7 @@ public class TokenService
     }
 
     // 创建token
+    /** 创建 token：生成随机 token 标识→刷新 Redis 登录态→返回仅含 token 标识的 JWT（payload 只放 uuid，敏感信息存 Redis）。 */
     public String createToken(LoginUser loginUser)
     {
         String token = IdUtils.fastUUID();
@@ -103,6 +123,7 @@ public class TokenService
     }
 
     // 验证并刷新用户的token有效期
+    /** 校验并在临近过期（<=10 分钟）时自动续期登录态有效期。 */
     public void verifyToken(LoginUser loginUser)
     {
         long expireTime = loginUser.getExpireTime();
@@ -114,6 +135,7 @@ public class TokenService
     }
 
     // 刷新token有效期
+    /** 刷新（写入/更新）Redis 中的登录态，设置登录时间与过期时间（expireTime 分钟）。 */
     public void refreshToken(LoginUser loginUser)
     {
         loginUser.setLoginTime(System.currentTimeMillis());
@@ -125,6 +147,7 @@ public class TokenService
 
     // [P1-FIX] jjwt 0.12.x 需要使用 SecretKey 对象，密钥长度需 ≥ 32 字节（256 bits）
     //          使用 Keys.hmacShaKeyFor() 从字节数组构建密钥
+    /** 由配置密钥构建 HS256 签名所需的 SecretKey（密钥字节数需 ≥ 32）。 */
     private SecretKey getSigningKey()
     {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
@@ -135,6 +158,7 @@ public class TokenService
     // [P1-FIX] jjwt 0.12.x API 适配：
     //   setClaims(Map) → claims(Map)
     //   signWith(SignatureAlgorithm.HS512, String) → signWith(SecretKey, Jwts.SIG.HS256)
+    /** 使用 HS256 对声明（claims）签名生成 JWT 字符串。 */
     private String createToken(Map<String, Object> claims)
     {
         String token = Jwts.builder()
@@ -151,6 +175,7 @@ public class TokenService
     // [P1-FIX] jjwt 0.12.x API 适配：
     //   parser().setSigningKey(String) → parser().verifyWith(SecretKey).build()
     //   parseClaimsJws(token).getBody() → parseSignedClaims(token).getPayload()
+    /** 解析 JWT 为 Claims（payload）。 */
     private Claims parseToken(String token)
     {
         return Jwts.parser()
@@ -164,6 +189,7 @@ public class TokenService
      * @param token 令牌
      * @return 用户名
      */
+    /** 从 token 中解析 subject（用户名）；解析失败返回 null。 */
     public String getUsernameFromToken(String token)
     {
         try
@@ -183,6 +209,7 @@ public class TokenService
      * @param request
      * @return token
      */
+    /** 从请求头中提取 token，并去掉 "Bearer " 前缀。 */
     private String getToken(HttpServletRequest request)
     {
         String token = request.getHeader(header);
@@ -193,6 +220,7 @@ public class TokenService
         return token;
     }
 
+    /** 拼接 Redis 登录态 key（前缀 + token 标识）。 */
     private String getTokenKey(String uuid)
     {
         return Constants.LOGIN_TOKEN_KEY + uuid;

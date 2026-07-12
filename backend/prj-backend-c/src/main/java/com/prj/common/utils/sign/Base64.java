@@ -1,6 +1,17 @@
 package com.prj.common.utils.sign;
 
-
+/**
+ * 手写 Base64 编解码工具类（不依赖 JDK 内置 java.util.Base64）。
+ *
+ * <p>职责：
+ * 提供 byte[] 与 Base64 字符串之间的相互转换（{@link #encode}/{@link #decode}），
+ * 内部通过静态初始化构造 Base64 字母表与反向查找表实现编码/解码。
+ *
+ * <p>与其他模块的关联：
+ * - 被依赖：{@code CaptchaController}（将验证码图片字节流编码为 Base64 字符串回传前端）。
+ *
+ * <p>说明：该类为通用编解码实现，方法级注释沿用原有英文说明，此处仅补充模块级职责说明。
+ */
 public final class Base64
 {
     static private final int     BASELENGTH           = 128;

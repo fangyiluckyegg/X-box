@@ -5,6 +5,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 /**
+ * 文件上传服务接口（Service 层契约）。
+ *
+ * <p>职责：
+ * 定义文件上传业务能力，具体实现见 {@code com.prj.service.impl.UploadServiceImpl}。
+ * 供 PositionLearningController 调用，负责把上传的 MultipartFile 落盘并返回文件名。
+ */
+/**
  * 文件上传服务接口
  */
 public interface UploadService {

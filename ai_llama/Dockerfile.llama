@@ -1,5 +1,11 @@
+# ============================================================
+# 镜像：Ollama 推理服务（ai_llama/Dockerfile.llama）
+# 职责：构建自包含 Ollama 镜像，预烘焙业务嵌入模型 bge-m3:latest，
+#       供后端 CompareController 通过 /api/embeddings 进行语义向量计算。
+# 说明：模型名需与 docker-compose 的 OLLAMA_MODEL、后端 EMBED_MODEL 三者一致。
+# ============================================================
+
 # 官方ollama基础镜像，自带ollama二进制
-# 0.1.17 过旧无法加载 bge-m3:latest 新格式 GGUF；先临时用 latest 验证通过(0.31.2)，现固定该版本恢复可复现性
 FROM ollama/ollama:0.31.2
 
 WORKDIR /app

@@ -8,6 +8,18 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.TimeUnit;
 
 
+/**
+ * Redis 缓存操作封装组件（Spring Bean）。
+ *
+ * <p>职责：
+ * 对 Spring Data Redis 的 {@code RedisTemplate} 做轻量封装，提供最常用的
+ * 基本对象（String/实体等）的写入、读取与删除能力，并支持过期时间设置。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code RedisTemplate}（由 RedisConfig 提供的 Bean）。
+ * - 被依赖：{@code CaptchaController}（存/取验证码）、{@code TokenService}（存/取登录态）、
+ *           {@code AccountLockService}（存登录失败计数）等。
+ */
 @Component
 public class RedisCache
 {
@@ -37,7 +49,8 @@ public class RedisCache
     }
 
     /** 删除单个对象
-     * @param key
+     * @param key 缓存键
+     * @return 是否删除成功
      */
     public boolean deleteObject(final String key)
     {

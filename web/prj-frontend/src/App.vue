@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <router-view />   //引入router路由组件
+    <router-view />   <!-- 引入 router 路由组件 -->
   </div>
 </template>
 
