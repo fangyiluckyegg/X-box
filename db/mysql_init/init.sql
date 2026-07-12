@@ -8,6 +8,9 @@
 
 -- 创建Prj开发库
 CREATE DATABASE IF NOT EXISTS prj_dev DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- [C17] 显式选中目标库：官方 entrypoint 跑 initdb.d 时不保证自动 USE $MYSQL_DATABASE，
+-- 若缺这句，后续 CREATE TABLE 会因 "No database selected" 失败，导致库表/账号均未建出。
+USE prj_dev;
 -- [P0-FIX] 以下为开发环境默认密码，生产部署后必须执行：
 --   ALTER USER 'prj_user'@'%' IDENTIFIED BY '<新密码>';
 --   并在 application.yml 中设置 SPRING_DATASOURCE_PASSWORD 环境变量
