@@ -14,6 +14,20 @@ import com.prj.common.exception.user.CaptchaException;
 import com.prj.common.exception.user.CaptchaExpireException;
 import com.prj.common.exception.user.UserPasswordNotMatchException;
 
+/**
+ * 登录业务服务。
+ *
+ * <p>职责：
+ * 编排完整登录认证流程——验证码校验、账号/IP 维度锁定判定、Spring Security 凭据认证、
+ * 成功清锁并签发 JWT token。所有安全相关判定（防暴力破解、防用户枚举）均在此收口。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code TokenService}（签发/校验 token）、{@code AccountLockService}（失败计数与锁定）、
+ *         {@code AuthenticationManager}（凭据认证，回调 UserDetailsServiceImpl）、{@code RedisCache}（取验证码）、{@code Constants}。
+ * - 被依赖：{@code LoginController}（调用 login 完成登录）。
+ *
+ * <p>安全说明：验证码失败与密码错误统一计入失败次数并归一化为 UserPasswordNotMatchException，避免用户名枚举；锁定按用户名+IP 双维度，见 [C8]/[P1-S9] 备注。
+ */
 @Component
 public class LoginService
 {
@@ -31,6 +45,7 @@ public class LoginService
     private AccountLockService accountLockService;
 
     //验证用户身份
+    /** 兼容旧签名：无客户端 IP 时仅按用户名维度锁定（委托 5 参版本，IP 传 null）。 */
     public String login(String username, String password, String code, String uuid)
     {
         // [C8/C12] 兼容旧签名：无客户端 IP 时仅按用户名维度锁定
@@ -110,6 +125,7 @@ public class LoginService
     }
 
     // 检查验证码
+    /** 校验验证码：比对 Redis 中缓存的答案与用户提交值，校验后删除缓存（一次性）。 */
     public void validateCaptcha(String username, String code, String uuid)
     {
         String verifyKey = Constants.CAPTCHA_CODE_KEY + uuid;

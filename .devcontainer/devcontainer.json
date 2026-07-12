@@ -18,11 +18,6 @@
       11434
     ],
   "shutdownAction": "stopCompose",
-  // Docker-in-Docker is disabled here because the current Alpine-based service images
-  // do not provide bash during feature installation, which makes the build fail.
-  // "features": {
-  //   "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  // },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -41,15 +36,4 @@
       }
     }
   }
-  // Uncomment to explicitly start these services during container startup.
-  // "runServices": [
-  //   "mysql",
-  //   "redis",
-  //   "nginx-gateway",
-  //   "llama",
-  //   "prj-backend-c",
-  //   "prj-frontend"
-  // ],
-  // Temporary comment to avoid Maven compilation timeout during initialization.
-  // "postCreateCommand": "cd backend/prj-backend-c && mvn clean compile -DskipTests"
 }

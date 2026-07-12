@@ -3,7 +3,7 @@
 # docker-entrypoint-wrapper.sh
 # C1 存量库漏列修复：包装 MySQL 官方 docker-entrypoint.sh，
 # 使 MySQL 在【每次启动】（含存量库 volume 不清的场景）都幂等补
-# user_info.role 列，杜绝存量库升级路径漏列导致登录报“联系系统管理员”。
+# user_info.role 列，杜绝存量库升级路径漏列导致登录报"联系系统管理员"。
 #
 # 设计要点：
 #   1. 后台启动官方 docker-entrypoint.sh（其最终 exec mysqld），

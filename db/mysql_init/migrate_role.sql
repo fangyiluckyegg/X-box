@@ -4,6 +4,7 @@
 -- 说明：MySQL 8 不支持 ADD COLUMN IF NOT EXISTS，
 --       故通过 information_schema 判断列是否存在，避免重复执行报错。
 
+-- 动态判断是否已存在 role 列
 SET @exist = (
     SELECT COUNT(*)
     FROM information_schema.COLUMNS
@@ -12,6 +13,7 @@ SET @exist = (
       AND COLUMN_NAME  = 'role'
 );
 
+-- 不存在则执行 ALTER 新增 role 列，否则执行占位 SELECT 1（无害）
 SET @sql = IF(
     @exist = 0,
     'ALTER TABLE user_info ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT ''USER'' COMMENT ''用户角色 ADMIN/USER''',

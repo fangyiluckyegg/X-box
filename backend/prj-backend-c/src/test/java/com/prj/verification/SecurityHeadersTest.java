@@ -17,7 +17,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.awt.image.BufferedImage;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -90,7 +89,7 @@ class SecurityHeadersTest
                     assertNotNull(acao, "S6 失败：合法源应回显 Access-Control-Allow-Origin");
                     assertNotEquals("*", acao,
                             "S6 失败：合法源响应头不应为通配符 *");
-                    assertEquals("http://127.0.0.1:8081", acao,
+                    org.junit.jupiter.api.Assertions.assertEquals("http://127.0.0.1:8081", acao,
                             "S6 失败：应精确回显白名单源，实际 " + acao);
                 });
     }

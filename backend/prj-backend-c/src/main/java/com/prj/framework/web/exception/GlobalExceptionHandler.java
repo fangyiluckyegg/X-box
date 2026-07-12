@@ -16,6 +16,20 @@ import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.exception.ServiceException;
 import com.prj.common.exception.user.UserException;
 
+/**
+ * 全局异常处理器（统一响应兜底）。
+ *
+ * <p>职责：
+ * 以 {@code @RestControllerAdvice} 拦截各 Controller 抛出的异常，将其转换为统一的 {@link AjaxResult} 响应，
+ * 避免异常直接外泄为 500 堆栈。覆盖：业务异常、用户类异常、权限拒绝（403）、参数校验失败（Bind/MethodArgumentNotValid）、
+ * 运行时/兜底异常。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code AjaxResult}（统一响应）、{@code ServiceException}/{@code UserException}（业务异常类型）。
+ * - 被依赖：所有 Controller（隐式，由 Spring 自动织入）。
+ *
+ * <p>安全说明：运行时/兜底异常对外仅返回"系统内部错误"，不暴露堆栈细节，防止信息泄露（见 [P1-FIX]）。
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler
 {
@@ -69,7 +83,8 @@ public class GlobalExceptionHandler
     }
 
     /**
-     * 自定义验证异常
+     * 自定义验证异常（表单/Bean 绑定校验失败）。
+     * @return 返回第一个字段的错误文案
      */
     @ExceptionHandler(BindException.class)
     public AjaxResult handleBindException(BindException e)
@@ -82,6 +97,7 @@ public class GlobalExceptionHandler
     /**
      * [P0-FIX] @RequestBody 参数校验异常处理
      * 当 @Valid 注解触发 JSR-303 校验失败时，返回第一个字段的错误信息
+     * @return 字段校验错误文案
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public AjaxResult handleMethodArgumentNotValidException(MethodArgumentNotValidException e)

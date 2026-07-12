@@ -148,6 +148,7 @@ public class StartupSecurityValidator implements ApplicationRunner
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /** 判断单个凭证是否为空或命中弱值集合，命中则计入 weakItems。 */
     private void checkWeak(String name, String value, Set<String> weakValues, List<String> weakItems)
     {
         if (value == null || value.isBlank() || weakValues.contains(value))

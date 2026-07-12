@@ -1,3 +1,9 @@
+# ============================================================
+# 镜像：后端 Spring Boot 开发环境（backend/prj-backend-c/Dockerfile.dev）
+# 职责：使用 JDK 17 + spring-boot:run 启动，配合 docker-compose 源码挂载实现热重载。
+# 说明：Spring Boot 3 要求 JDK 17；HEALTHCHECK 探测 /captchaImage 验证服务就绪。
+# ============================================================
+
 # [P1-FIX] 开发环境：JDK 17（匹配 pom.xml java.version=17，Spring Boot 3 要求），支持热重载
 FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app

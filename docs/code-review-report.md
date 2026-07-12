@@ -1,7 +1,7 @@
 # X-box 全栈代码审查报告
 
 > 审查人：软件工程师（Kou / 寇豆码）
-> 审查范围：前端 `web/prj-frontend/src`（41 文件）、后端 `backend/prj-backend-c/src`（66 个 .java + 配置 + Mapper XML）、AI 推理脚本、Docker / Nginx / 部署编排、参考文档（项目开发说明、ai_llama/README-SECURITY.md、deliverables 既有修复方案）。
+> 审查范围：前端 `web/prj-frontend/src`（41 文件）、后端 `backend/prj-backend-c/src`（66 个 .java + 配置 + Mapper XML）、AI 推理脚本、Docker / Nginx / 部署编排、参考文档（项目开发说明、ai_llama/README-SECURITY.md、docs/archive/2026-07-code-audit 既有修复方案）。
 > 约束：本机无 JDK/Maven，仅做**源码级静态审查 + 就地编辑修复**；不编译、不 `npm install` / `mvn`；所有改动均为外科手术式精准修改，未削弱既有安全姿态（IP 锁、CORS 过滤器、安全响应头、prod 严格密钥校验等）。
 
 ---

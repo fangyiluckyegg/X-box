@@ -1,5 +1,18 @@
 package com.prj.common.utils.uuid;
 
+/**
+ * 项目内置 UUID 实现类（类似 Hutool 的 UUID 工具）。
+ *
+ * <p>职责：
+ * 提供类型 4（随机）/ 类型 3（基于名称 MD5）UUID 的生成与解析，支持"简单模式"（不带横线）字符串输出，
+ * 相比 JDK 原生可在"安全随机"与"快速随机"之间权衡。
+ *
+ * <p>与其他模块的关联：
+ * - 依赖：{@code UtilException}（算法不可用时包装抛出）。
+ * - 被依赖：{@code IdUtils}（暴露 simpleUUID/fastUUID 便捷方法）。
+ *
+ * <p>方法级注释沿用原有中文说明，此处仅补充模块级职责与关联说明。
+ */
 import com.prj.common.exception.UtilException;
 
 import java.security.MessageDigest;
