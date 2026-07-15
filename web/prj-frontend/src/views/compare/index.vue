@@ -15,7 +15,7 @@
       </div>
       <el-progress
         :percentage="progressInfo.percent"
-        :status="progressInfo.stage === 'done' ? 'success' : ''"
+        :status="progressInfo.stage === 'done' ? 'success' : undefined"
       ></el-progress>
       <div style="margin-top:8px;text-align:right;">
         {{ progressInfo.done }} / {{ progressInfo.total }} 条

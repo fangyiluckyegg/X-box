@@ -6,6 +6,7 @@
 !.env.dev.template
 !.env.prod.template
 !.env.dev.example
+!.env.prod.example
 
 # ====================== 运行日志 ======================
 logs/**
@@ -74,3 +75,31 @@ __pycache__/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# ====================== Niu_Txl 个人照片/视频/归档（禁止入库） ======================
+# [核查] 2026-07-15 扫描：1518 文件 / 1825.93 MB，其中 ~99.9% 为二进制个人数据
+# 仅排除照片/视频/压缩包/Office/隔离目录；.php/.html/.js/.css/.sql 等文本源码保留可入库
+Niu_Txl/**/*.jpg
+Niu_Txl/**/*.jpeg
+Niu_Txl/**/*.png
+Niu_Txl/**/*.gif
+Niu_Txl/**/*.bmp
+Niu_Txl/**/*.webp
+Niu_Txl/**/*.heic
+Niu_Txl/**/*.tif
+Niu_Txl/**/*.tiff
+Niu_Txl/**/*.svg
+Niu_Txl/**/*.mp4
+Niu_Txl/**/*.mov
+Niu_Txl/**/*.avi
+Niu_Txl/**/*.mkv
+Niu_Txl/**/*.webm
+Niu_Txl/**/*.zip
+Niu_Txl/**/*.rar
+Niu_Txl/**/*.7z
+Niu_Txl/**/*.tar
+Niu_Txl/**/*.gz
+Niu_Txl/**/*.docx
+Niu_Txl/**/*.xlsx
+Niu_Txl/**/*.pdf
+Niu_Txl/_quarantine/

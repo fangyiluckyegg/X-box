@@ -1,0 +1,22 @@
+# Niu_Txl/.dockerignore
+# 构建上下文为 ./Niu_Txl；此处仅控制 `docker build` 上传给 daemon 的文件，
+# 不影响运行时 bind mount（运行时 ./Niu_Txl 仍整目录挂进容器，媒体随挂载持久化）。
+# 目的：避免把 ~1.8GB 班级媒体上传给 daemon，显著加速构建。
+
+# 913MB 班级媒体：排除，媒体靠运行时 bind mount 提供（不进镜像）
+607/永远的607/
+
+# 902 大媒体（约 917MB，按需取消注释；保留 .php 源码入库）
+# 902/message/images/
+# 902/work/images/
+# 902/uploads/
+
+# 运行时访客计数器（每次访问自增，不应进镜像）
+**/counter.txt
+
+# macOS 资源叉 / 系统文件
+**/.DS_Store
+
+# 调试 / 临时产物
+index.phpecho
+**/php_errors.log

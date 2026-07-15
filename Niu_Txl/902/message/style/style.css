@@ -1,0 +1,288 @@
+@charset "utf-8";
+/* CSS Document */
+* {
+	margin: 0px;
+	padding: 0px;
+}
+body {
+	font-family: 微软雅黑;
+	font-size: 14px;
+	color: #FFF;
+	line-height: 25px;
+	background-image: url(../images/bg.jpg);
+	background-repeat: no-repeat;
+	background-position: top center;
+}
+#bg {
+	width: 800px;
+	height: auto;
+	overflow: hidden;
+	margin: 0px auto;
+}
+#box {
+	position: relative;
+	width: 800px;
+	height: auto;
+	overflow: hidden;
+	background-color: #181818;
+	top: -45px;
+	z-index: 1;
+}
+#menu {
+	height: 45px;
+	line-height: 45px;
+	background-color: #262626;
+}
+#menu li {
+	list-style-type: none;
+	float: right;
+	width: 100px;
+	border-left: solid 1px #333;
+	text-align: center;
+	font-weight: bold;
+	font-size: 16px;
+}
+#menu li a:link,#menu li a:visited {
+	color: #FFF;
+	text-decoration: none;
+}
+#menu li a:hover,#menu li a:active {
+	color: #FF9900;
+	text-decoration: underline;
+}
+#logo {
+	width: 357px;
+	height: 181px;
+	position: relative;
+	z-index: 10;
+}
+#main {
+	height: auto;
+	overflow: hidden;
+	padding: 20px;
+	background-color: #262626;
+}
+#jishu {
+	height: auto;
+	overflow: hidden;
+	background-color: #333;
+	font-size: 14px;
+	line-height: 40px;
+	padding-left: 20px;
+}
+.red01 {
+	font-size: 20px;
+	font-weight: bold;
+	color: #FF0000;
+}
+#msg {
+	height: auto;
+	overflow: hidden;
+	border: solid 1px #333;
+	padding: 5px;
+	margin-bottom: 10px;
+}
+#msg-left {
+	width: 177px;
+	height: auto;
+	text-align: center;
+	float: left;
+}
+#msg-right {
+	width: 555px;
+	height: auto;
+	min-height: 150px;
+	overflow: hidden;
+	border-left: dashed 1px #333;
+	padding-left: 15px;
+	float: left;
+}
+#msg1 {
+	height: auto;
+	overflow: hidden;
+	background-color: #333;
+	padding: 0px 5px;
+	line-height: 30px;
+}
+.font01 {
+	color: #FF0000;
+	display: inline-block;
+	float: right;
+}
+#msg1 a:link,#msg1 a:visited {
+	color: #FF0000;
+	text-decoration: underline;
+}
+#msg1 a:hover,#msg1 a:active {
+	color: #FFF;
+	text-decoration: none;
+}
+#msg-text {
+	height: auto;
+	overflow: hidden;
+	padding: 5px;
+}
+#msg2 {
+	height: auto;
+	overflow: hidden;
+}
+#msg3 {
+	height: auto;
+	overflow: hidden;
+	padding: 0px 5px;
+	border-top: dashed 1px #333;
+	text-align: right;
+	color: #FF0000;
+}
+#msg3 a:link,#msg3 a:visited {
+	color: #FF0000;
+	text-decoration: none;
+}
+#msg3 a:hover,#msg3 a:active {
+	color: #FFF;
+	text-decoration: underline;
+}
+#no-msg {
+	height: auto;
+	overflow: hidden;
+	text-align: center;
+	line-height: 30px;
+	font-weight: bold;
+}
+#bar {
+	height: auto;
+	overflow: hidden;
+	text-align: center;
+	line-height: 30px;
+	color: #999;
+}
+#bar a:link,#bar a:visited {
+	color: #999;
+	text-decoration: none;
+}
+#bar a:hover,#bar a:active {
+	color: #FFF;
+	text-decoration: underline;
+}
+#msg-reply {
+	width: 575px;
+	height: auto;
+	overflow: hidden;
+}
+#reply1 {
+	height: 10px;
+	border-bottom: solid 1px #999999;
+	background-image: url(../images/nyhf.png);
+	background-repeat: no-repeat;
+	background-position: 80px top;
+}
+#reply2 {
+	width: 563px;
+	height: auto;
+	overflow: hidden;
+	background-color: #BEBEBE;
+	border-left: solid 1px #999999;
+	border-right: solid 1px #999999;
+	border-bottom: solid 1px #999999;
+	padding: 5px;
+	color: #333;
+}
+#reply-left {
+	width: 170px;
+	height: auto;
+	text-align: center;
+	float: left;
+}
+#reply-right {
+	width: 380px;
+	height: auto;
+	min-height: 130px;
+	overflow: hidden;
+	border-left: dashed 1px #666;
+	padding-left: 12px;
+	float: left;
+}
+#reply3 {
+	height: auto;
+	overflow: hidden;
+	border-bottom: dashed 1px #666;
+}
+#reply4 {
+	height: auto;
+	overflow: hidden;
+}
+#title {
+	height: auto;
+	overflow: hidden;
+	background-color: #333;
+	font-size: 18px;
+	font-weight: bold;
+	line-height: 40px;
+	text-align: center;
+}
+#add {
+	width: auto;
+	height: auto;
+	overflow: hidden;
+	padding: 10px 20px;
+}
+#add li {
+	list-style-type: none;
+	padding: 10px 0px;
+	border-bottom: dashed 1px #333;
+}
+#add li img {
+	vertical-align: middle;
+	margin-left: 20px;
+}
+.input01 {
+	width: 240px;
+	height: 27px;
+	border: solid 1px #666;
+	padding: 0px 5px;
+}
+.input02 {
+	width: 150px;
+	height: 27px;
+	border: solid 1px #666;
+}
+.input03 {
+	width: 500px;
+	height: 100px;
+	border: solid 1px #666;
+	vertical-align: top;
+}
+#qr {
+	width: 100px;
+	height: 35px;
+	text-align: center;
+	background-color: #FF9900;
+	border: solid 1px #FF3300;
+	font-size: 15px;
+	color: #FFF;
+	font-weight: bold;
+	margin: 10px 0px 10px 250px;
+}
+#login {
+	width: 400px;
+	height: auto;
+	overflow: hidden;
+	margin: 0px auto;
+	padding-top: 15px;
+}
+#login li {
+	list-style-type: none;
+	padding: 10px 0px;
+	border-bottom: dashed 1px #333;
+}
+#dn {
+	width: 80px;
+	height: 35px;
+	text-align: center;
+	background-color: #FF9900;
+	border: solid 1px #FF3300;
+	font-size: 15px;
+	color: #FFF;
+	font-weight: bold;
+	margin: 10px 0px 10px 150px;
+}

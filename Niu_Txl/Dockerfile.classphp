@@ -1,0 +1,37 @@
+# Niu_Txl/Dockerfile.classphp
+# 607/902 班级网站运行环境：Apache + PHP 7.4 + mysqli + gd
+# 构建上下文为 ./Niu_Txl；运行时通过 bind mount 把 ./Niu_Txl 挂为 docroot（/var/www/html），
+# 因此 607/902 直接以 /607、/902 子路径对外提供服务，无需子路径重写。
+FROM php:7.4-apache
+
+USER root
+
+# gd / mysqli 所需的系统库；curl 供健康检查使用
+# 注意：php:7.4-apache 的 bundled gd 不再接受 --with-png（PNG 随 libpng-dev 自动启用），
+#       改用 --with-freetype --with-jpeg，并补装 libjpeg62-turbo-dev 以支持 JPEG 照片处理。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpng-dev libfreetype6-dev libjpeg62-turbo-dev libonig-dev libzip-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# PHP 扩展：mysqli（902 数据库连接）、gd（607 访客数图片 gd2.php）
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install mysqli gd
+
+# 启用 mod_rewrite（902 当前均为显式 .php，无强制依赖，启用备用）
+RUN a2enmod rewrite
+
+# 上传照片：调大文件 / 请求上限（607 uploadHandler.php 处理班级照片上传）
+RUN { \
+        echo "upload_max_filesize=32M"; \
+        echo "post_max_size=40M"; \
+        echo "max_execution_time=120"; \
+    } > /usr/local/etc/php/conf.d/class_uploads.ini
+
+# 健康检查：打 gd2.php（仅生成图片、不增计数，可同时验证 PHP+GD 扩展正常）
+# 不用 index.php 的原因：607/index.php 每次访问自增访客计数器（counter.txt），
+# 若用它做健康检查会把访问量刷爆；gd2.php 只出图不计数，更适合做探针。
+HEALTHCHECK --interval=15s --timeout=5s --retries=10 --start-period=30s \
+    CMD curl -fsS http://localhost/607/gd2.php >/dev/null 2>&1 || exit 1
+
+EXPOSE 80
+# 默认 CMD（apache2-foreground）由基础镜像提供

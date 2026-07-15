@@ -1,0 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="UD_rsview" value="name:P_ID;datatype:int,name:P_Name;datatype:string,name:P_Pic;datatype:string,name:P_Mail;datatype:string,name:P_Date;datatype:datetime,name:P_Content;datatype:blob,name:P_Private;datatype:int" />
+</info>

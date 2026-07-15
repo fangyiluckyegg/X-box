@@ -210,3 +210,234 @@ Redis 关闭 AOF 持久化，仅保留轻量 RDB；
 MySQL 开发环境关闭慢查询日志、大量索引缓存；
 Windows 关闭多余浏览器标签、IDE 无关插件，减少宿主机内存占用；
 定期执行日志清理脚本，避免日志文件占用磁盘与内存缓存。
+
+
+# 一、云应用服务器
+# 1.硬件：腾讯云轻量应用服务器（2核4G 6M 70G 月限流600G）
+# 2.系统：Ubuntu 22.04 server 64bit-改成windows server 2005
+# 3.功能：域名承载、frp转发
+
+# 4.拓展：后续可以试试Hermes
+# 二、家庭服务器
+# 1.硬件：mac mini m2 16+1T
+# 2.系统：macOS Sonoma 14.8.7
+# 3.功能：前端服务器、后端服务器、数据库服务器
+# 4.工具：OrbStack2.1.3（docker容器编排）、frp_0.62.1（内网穿透）、SSH/VNC（远程运维）
+# 5.项目：607/702/802班级网站（Apache+PHP+MySQL）、湖中国际部学生成长记录（微信小程序/Vue+Spring框架+MySQL)
+# 6.思路：Mac mini M2 + OrbStack + 多项目前后端 + WorkBuddy AI 应用，容器化管理
+# 系统：4GB
+# ├─ 常驻服务 
+# │     ├─ OrbStack（Docker 运行环境，开机自启） 【安装在管理员账号下，开机自启动】
+# │     ├─ frpc（内网穿透，launchd 守护-即系统后台守护，开机自启） 【安装在管理员账号下，开机自启动】
+# │     ├─ SSH / VNC（远程运维，系统防火墙严格放行）【需要再管理员账号下配置】
+# │     └─ 系统防火墙（仅开放必要端口） 【需要再管理员账号下配置】
+# └─ OrbStack Docker 容器集群（全部业务） 
+# /crh123dexiaohao/server/  
+# ├── gateway/nginx 【 0.5GB 】部署统一网关 Nginx（所有项目入口），不用每个前端开容器！全部放在一个 Nginx 里，通过路径 / 域名区分
+# ├── db/mysql 【 3GB 】 部署 MySQL 8.0（所有项目共用一个 MySQL，多库隔离），每个项目创建独立 DB：project_a_db，project_b_db，project_c_db
+# ├── db/redis 【 1GB 】 所有项目共用，分库隔离。Redis 默认 16 个库，项目分库：project-a → db0，project-b → db1，project-c → db2
+# ├── web/apache-php【 0.6GB 】 Apache2.4.54+PHP-5.2.17升7.4.33
+# ├── web/存量项目【607/702/802班级网站】【新代码后续更新下，含数据库图片表索引更新】
+# ├── backend/ 【 后端 3–5 个：6–7GB；每个项目独立容器】
+# │     ├──  project-a # 项目1
+# │     ├──  project-b # 项目2
+# │     └──  project-c # 项目3  
+# ├── frontend/ 【每个项目独立容器】
+# │     ├── project-a # 项目1
+# │     ├── project-b # 项目2
+# │     └── project-c # 项目3
+# ├── logs # 统一日志 
+# ├── scripts/ # 运维脚本（备份、SSL、定时任务）
+# └── backup # 自动备份
+# 预留：1–2GB
+# 7.系统安全策略
+# @系统基础固化（企业稳定优先）
+# （1）系统锁定 固定正式版 macOS，关闭自动系统更新，仅手动审核升级；关闭屏幕休眠、屏保 设置→电池→电源适配器： 开启防止休眠、网络唤醒、断电自启
+# （2）账号权限 新建管理员运维账号crh123dexiaohao(XY普通密码)，禁用访客；日常运维用普通权限账号，最小权限管控【luckyegg（！+XY+XY普通密码；第一个字母大写）】
+# @网络安全组网
+# （1）固定内网 IP 路由器绑定设备 MAC，分配静态内网 IP（192.168.2.111）
+# （2）防火墙策略 系统防火墙开启，仅放行业务端口，拦截陌生外联。端口规划（企业多项目标准）
+#     * 80/443 → Nginx 网关
+#     * 3306 → MySQL
+#     * 6379 → Redis
+#     * 8081 → 项目 A
+#     * 8082 → 项目 B
+#     * 8083 → 项目 C
+# （3）远程运维管控
+#     * 开启 SSH 远程登录，仅运维账号接入【crh123dexiaohao(XY普通密码)】ssh 用户名@118.25.129.219 -p 7004
+#     * 屏幕共享远程桌面：其他 Mac 用 vnc://192.168.2.111连接。 Windows 装 RealVNC Viewer【响应速率偏慢】仅运维账号接入【crh123dexiaohao(XY普通密码)】
+# （4）容器层面
+#     * 禁止容器使用 --privileged 特权模式；
+#     * 数据库、Redis 仅内网访问，不直接暴露外网；
+#     * 密码、密钥等敏感信息不要硬编码在配置文件，做好权限管控。
+# 8.服务运行规范
+# （1）开机自启：所有后端服务、容器设置开机自动启动，异常崩溃自动重启
+# （2）资源监控：实时监控 CPU、内存、磁盘、网络负载，资源超限预警提醒；进程资源限制 限定单服务 CPU、内存占用，避免单程序耗尽资源影响整体服务
+# （3）服务状态巡检：定时检测接口连通性、数据库运行状态，异常即时告警
+# （4）日常维护：日志管理 统一日志输出目录，自动切割归档，留存故障排查记录；定期清理冗余日志、校验备份文件（配置文件、docker-compose.yml 做好备份）、优化数据库索引、排查访问异常
+
+# 三、家庭开发电脑
+# 1.硬件：i7-8700K、16GB DDR4 3000MHz、RTX 2070S、三星980 m.2 Nvme 1T；256GB Intel SSD+128G SSD+3T 机械盘
+# 2.系统：win11
+# 3.功能：
+#（1）办公：WPS、百度网盘、印象笔记、微信
+#（2）开发：VScode、微信开发者工具、git、cherry studio、Utool、Workbuddy、开发环境（Docker Desktop）、workspace
+#（3）娱乐：暴雪、腾讯
+# 4.拓展：
+
+# 四、个人工作笔记本
+# 1.硬件：
+# 2.系统：
+# 3.功能：
+
+
+#第一部分：环境配置
+#一、安装frpc
+#1、临时管理员启动（立刻测 7004 SSH）
+#登录管理员账号，下载并配置frp_0.62.1 darwin_arm64（M 系列 Mac mini）
+cd ~/frp_0.62.1_darwin_arm64
+
+#配置frpc.toml
+serverAddr = "118.25.129.219"
+serverPort = 7000
+auth.token = "你的密钥"
+
+[[proxies]]
+name = "mac-ssh"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 22
+remotePort = 7004
+
+# 启动frpc,输 Mac管理员密码，出现start proxy success，Windows 再ssh crh123dexiaohao@118.25.129.219 -p 7004即可连通。
+sudo ./frpc -c frpc.toml
+
+#2、设置系统 root 开机自启（/Library/LaunchDaemons 全局管理员）
+#①移动程序到系统目录
+sudo cp -r ~/frp_0.62.1_darwin_arm64 /usr/local/frp
+#②新建 plist（toml 路径写死）
+sudo nano /Library/LaunchDaemons/frpc.plist
+#添加以下内容
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>frpc</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/frp/frpc</string>
+    <string>-c</string>
+    <string>/usr/local/frp/frpc.toml</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/var/log/frpc.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/frpc.err</string>
+</dict>
+</plist>
+#Ctrl+O保存→Ctrl+X退出。
+#赋权限 + 加载服务
+sudo chmod 644 /Library/LaunchDaemons/frpc.plist
+sudo chown root:wheel /Library/LaunchDaemons/frpc.plist
+sudo launchctl load /Library/LaunchDaemons/frpc.plist
+#验证运行
+ps aux | grep frpc
+sudo launchctl list | grep frpc
+
+#测试结果。远程登录服务器ssh 用户名@192.168.2.111；ssh 用户名@118.25.129.219 -p 7004
+
+#第二、OrbStack（Docker 运行环境，开机自启） 【安装在管理员账号下，开机自启动】
+#OrbStack 多项目部署脚本（可直接复制上线）
+#1）安装 OrbStack（必须）
+#方法 1：官网 DMG 安装（最干净，推荐）
+#1）下载
+#打开官网：https://orbstack.dev/
+#进入 Download，选 Apple Silicon（你的 M2）
+#2）安装
+#打开 .dmg
+#把 OrbStack.app 拖进 Applicatio
+#3）首次启动授权
+#Launchpad 打开 OrbStack
+#首次会提示允许虚拟化扩展 → 去「系统设置 → 隐私与安全性」点「允许」
+#菜单栏出现紫色图标，即启动成功
+#四、安装后验证（必做）
+#打开终端，直接用 docker（ OrbStack 自带，无需额外装）：
+docker --version
+docker ps
+# 跑个测试容器
+docker run -p 80:80 docker/getting-started
+#浏览器访问 http://localhost，能看到页面就说明完全正常。
+
+
+
+#第二部分:容器配置
+#一、目录布置(清空所有容器)
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
+mkdir -p ~/server/{gateway/nginx,db/mysql,db/redis,web/apache-php,backend,frontend,logs,scripts,backup}
+
+#二、部署mysql8容器:目录 db/mysql,预计空间 3GB,版本 MySQL 8.0（所有项目共用一个 MySQL，多库隔离），每个项目创建独立 DB：project_a_db，project_b_db，project_c_db
+#1.删除旧容器和相应目录
+bash
+docker rm -f mysql8
+rm -rf ~/server/db/mysql/*
+
+#2.创建容器目录
+bash
+mkdir -p ~/server/db/mysql/{data,conf,logs,backup}
+#chmod -R 777 ~/server/db/mysql
+
+#3.重新创建 MySQL8 容器,安装mysqli、mysql等函数,配置连接,数据文件外部卷挂载mysql8-data:/var/lib/mysql
+bash
+docker run -d \
+--name mysql8 \
+--restart always \
+-p 3306:3306 \
+-e MYSQL_ROOT_PASSWORD=xuyi20091010 \
+-e MYSQL_ROOT_HOST=% \
+-v mysql8-data:/var/lib/mysql \
+mysql:8.0 \
+--default-authentication-plugin=mysql_native_password \
+--character-set-server=utf8mb4 \
+--collation-server=utf8mb4_unicode_ci
+
+#4.给 root 授权（允许外部连接）
+bash
+docker exec -it mysql8 mysql -uroot -pxuyi20091010
+#进去后复制执行：
+sql
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'xuyi20091010';
+FLUSH PRIVILEGES;
+exit;
+
+#二、部署PHP74容器【 0.6GB，web/apache-php，用8080端口】Apache2.4.54 + PHP-5.2.17【太老了不支持 ARM 芯片，只能装7.4.33 】  一体化（存量项目拷贝到www目录下即可）
+#第一步：停止并删除现有 PHP 容器
+bash
+docker rm -f apache-php74
+
+#第二步：重新创建 PHP 容器 并加入 MySQL 网络，复制整条命令，直接回车：
+bash
+docker run -d \
+--name apache-php74 \
+--restart always \
+-p 8080:80 \
+-v /Users/crh123dexiaohao/server/web:/var/www/html \
+--link mysql8:mysql8 \
+php:7.4-apache
+
+#第三步：安装 mysqli（必须）
+bash
+docker exec apache-php74 docker-php-ext-install mysqli
+docker restart apache-php74
+#现在你的数据库配置文件 conn.php 保持这样 不用改
+php
+$hostname_conn = "mysql8";   ✅ 正确
+$database_conn = "你自己的库名";
+#刷新网页
+plaintext
+http://192.168.2.111:8080/902/

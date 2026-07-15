@@ -1,0 +1,16 @@
+# ===== 大媒体：禁止入库（改用 rsync 单独上 Mac，bind mount 持久化）=====
+607/永远的607/
+
+# 902 大媒体目录（在 Mac 上 `du -sh 902/*` 后按需取消注释，保留 .php 源码入库）
+# 902/message/images/
+# 902/work/images/
+# 902/uploads/
+
+# ===== 运行时上传，不入库（保留目录结构）=====
+607/永远的607/newphoto/*
+!607/永远的607/newphoto/.gitkeep
+
+# ===== 测试 / 临时 / 系统文件 =====
+index.phpecho
+**/.DS_Store
+**/counter.txt

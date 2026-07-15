@@ -1,0 +1,243 @@
+@charset "utf-8";
+/* CSS Document */
+* {
+	margin: 0px;
+	padding: 0px;
+}
+body {
+	font-family: 微软雅黑;
+	font-size: 14px;
+	color: #21242C;
+	line-height: 30px;
+	background-color: #E7E8EB;
+	background-image: url(../images/bg.jpg);
+	background-repeat: repeat-x;
+}
+#box {
+	width: 920px;
+	height: auto;
+	overflow: hidden;
+	margin: 0px auto;
+}
+#top {
+	text-align: center;
+}
+#pic1 {
+	width: 860px;
+	height: auto;
+	overflow: hidden;
+	margin: 0px auto 20px auto;
+	padding: 10px;
+	border: solid 1px #9FA0A4;
+}
+#work-box {
+	width: 100%;
+	heigh: auto;
+	overflow: hidden;
+}
+#title {
+	font-size: 20px;
+	font-weight: bold;
+	line-height: 40px;
+	color: #0D3B60;
+	border-bottom: dashed 1px #9FA0A4;
+}
+.font01 {
+	font-size: 14px;
+	color: #333;
+	font-weight: normal;
+	display:inline-block;
+	float: right;
+}
+#title a:link,#title a:visited {
+	color: #FF0000;
+	text-decoration: none;
+}
+#title a:hover,#title a:active {
+	color: #FF6600;
+	text-decoration: underline;
+}
+#pic-work {
+	height: auto;
+	overflow: hidden;
+	padding: 10px 0px;
+}
+.work1 {
+	width: 195px;
+	height: auto;
+	overflow: hidden;
+	float: left;
+	padding: 10px 10px 5px 10px;
+	line-height: 25px;
+}
+.font02 {
+	font-size: 16px;
+	font-weight: bold;
+	color: #FF9900;
+	line-height:25px;
+}
+.work1:hover {
+	background-color: #BBBEE7;
+	cursor: pointer;
+}
+.work1 img {
+	width: 195px;
+	height: 122px;
+}
+#left {
+	width: 184px;
+	height: auto;
+	overflow: hidden;
+	padding: 10px;
+	float: left;
+}
+#left-title {
+	height: 30px;
+	font-size: 16px;
+	font-weight: bold;
+	background-image:url(../images/biao.gif);
+	background-repeat: no-repeat;
+	background-position: left center;
+	padding-left: 25px;
+	border-bottom: solid 1px #9FA0A4;
+}
+#type-list {
+	padding: 10px 0px;
+}
+#type-list li {
+	list-style-position: inside;
+	list-style-type: circle;
+	border-bottom: dashed 1px #9FA0A4;
+}
+#type-list a:link,#type-list a:visited {
+	color: #56577a;
+	text-decoration: none;
+}
+#type-list a:hover,#type-list a:active {
+	color: #FF9900;
+	text-decoration: underline;
+}
+#right {
+	width: 645px;
+	height: auto;
+	overflow: hidden;
+	min-height: 220px;
+	padding-left: 10px;
+	border-left: solid 1px #9FA0A4;
+	float: left;
+}
+#bar {
+	height: auto;
+	overflow: hidden;
+	text-align: center;
+}
+a:link,a:visited {
+	color: #21242C;
+	text-decoration: none;
+}
+a:hover,a:active {
+	color: #56577A;
+	text-decoration: underline;
+}
+#work-show {
+	height: auto;
+	overflow: hidden;
+	padding: 10px 0px;
+	text-align: center;
+}
+#work-show img {
+	max-width: 860px;
+	height: auto;
+}
+.manage {
+	text-align: center;
+	color: #FF0000;
+	border-top: solid 1px #F4F4F4;
+}
+.manage a:link,.manage a:visited {
+	color: #FF0000;
+	text-decoration: underline;
+}
+.manage a:hover,.manage a:active {
+	color: #FF9900;
+	text-decoration: none;
+}
+#w-list {
+	float: right;
+	display: inline;
+	font-size: 14px;
+	font-weight: normal;
+}
+.input02 {
+	width: 120px;
+	height: 25px;
+	border: solid 1px #9FA0A4;
+}
+#qd {
+	width: 60px;
+	height: 25px;
+	background-color: #65677E;
+	border: solid 1px #1E1E2A;
+	color: #FFF;
+	font-weight: bold;
+	text-align: center;
+	margin-left: 5px;
+}
+#pic-work form {
+	padding: 0px 20px;
+}
+#pic-work li {
+	list-style-type: none;
+	padding: 5px 0px;
+	border-bottom: dashed 1px #9FA0A4;
+}
+.input01 {
+	width: 240px;
+	height: 25px;
+	border: solid 1px #9FA0A4;
+	padding-left: 5px;
+}
+#button1 {
+	width: 75px;
+	height: 25px;
+	text-align: center;
+	background-color: #F4F4F4;
+	border: solid 1px #999;
+}
+#pic-work li img {
+	vertical-align: bottom;
+}
+.qrtj {
+	width: 100px;
+	height: 35px;
+	text-align: center;
+	background-color: #FF9900;
+	border: solid 1px #FF3300;
+	font-size: 15px;
+	color: #FFF;
+	margin: 10px 0px 10px 150px;
+}
+#pic-work dt {
+	width: 475px;
+	background-image: url(../images/biao2.gif);
+	background-repeat: no-repeat;
+	background-position: left center;
+	padding-left: 20px;
+	border-bottom: dashed 1px #9FA0A4;
+	float: left;
+}
+#pic-work dd {
+	width: 150px;
+	text-align: center;
+	border-bottom: dashed 1px #9FA0A4;
+	float: left;
+	color: #FF0000;
+}
+.link01:link,.link01:visited {
+	color: #FF0000;
+	text-decoration: underline;
+}
+.link01:hover,.link01:active {
+	color: #FF9900;
+	text-decoration: none;
+}

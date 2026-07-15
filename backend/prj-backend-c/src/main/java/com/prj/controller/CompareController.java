@@ -11,6 +11,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -70,6 +73,18 @@ public class CompareController {
     // 用户比对进度缓存 key=登录用户名
     /** 比对进度缓存：key=登录用户名，value=当前用户的进度对象（线程安全）。 */
     private static final ConcurrentHashMap<String, CompareProgress> PROGRESS_CACHE = new ConcurrentHashMap<>();
+
+    /**
+     * [P3] 共享的缓存清理调度线程池（单例、守护线程）。
+     * 替代原 {@code compareExcel} 中每请求派生 {@code new Thread().start()} 的做法，
+     * 避免高并发下线程堆积、且无需额外 JVM 关闭钩子（守护线程随 JVM 退出而终止）。
+     */
+    private static final ScheduledExecutorService CLEANUP_SCHEDULER =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "compare-cache-cleaner");
+                t.setDaemon(true);
+                return t;
+            });
 
     // ===================== 进度实体（线程安全）=====================
     /**
@@ -207,13 +222,11 @@ public class CompareController {
             // [CODE-REVIEW-FIX] 原实现仅清理 PROGRESS_CACHE，RESULT_CACHE（按用户名缓存的比对结果）
             // 永不回收，导致静态 Map 随比对次数无限增长，形成内存泄漏。此处一并回收，
             // 将其生命周期与既有 5 分钟进度窗口对齐（超时后前端再下载会提示"无比对结果"，属预期行为）。
-            new Thread(() -> {
-                try {
-                    TimeUnit.MINUTES.sleep(5);
-                    PROGRESS_CACHE.remove(username);
-                    RESULT_CACHE.remove(username);
-                } catch (InterruptedException ignored) {}
-            }).start();
+            // [P3] 改为共享守护线程池调度，避免每请求派生线程（高并发下线程堆积）。
+            CLEANUP_SCHEDULER.schedule(() -> {
+                PROGRESS_CACHE.remove(username);
+                RESULT_CACHE.remove(username);
+            }, 5, TimeUnit.MINUTES);
         }
     }
 
@@ -302,13 +315,27 @@ public class CompareController {
      * @return 首列有效文本列表（已去除首尾空白）
      * @throws IOException 文件流读取失败时抛出
      */
+    /** [P4] Excel 读取行数硬上限（5万行），防止恶意/超大文件导致 OOM（DoS）。 */
+    private static final int MAX_EXCEL_ROWS = 50_000;
+
     private List<String> readFirstColumnNames(MultipartFile file) throws IOException {
         List<String> res = new ArrayList<>();
+        // [P4] zip bomb 防护：设置最小解压比阈值（默认 0.01，放宽到 0.005），
+        // 过低比例的 OOXML 压缩包在读取时抛异常，避免解压膨胀耗尽内存。
+        ZipSecureFile.setMinInflateRatio(0.005);
         Workbook wb = WorkbookFactory.create(file.getInputStream());
         try {
             Sheet sheet = wb.getSheetAt(0);
+            // [P4] 行数上限防护：超过 MAX_EXCEL_ROWS 直接拒绝，避免 OOM（DoS）
+            if (sheet.getLastRowNum() > MAX_EXCEL_ROWS) {
+                throw new IllegalArgumentException("Excel 行数超过上限 " + MAX_EXCEL_ROWS);
+            }
             boolean skipHead = true;
             for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                // [P4] 双重保护：循环内再次校验当前行号，即便 LastRowNum 估算不准也不超量读取
+                if (r > MAX_EXCEL_ROWS) {
+                    throw new IllegalArgumentException("Excel 行数超过上限 " + MAX_EXCEL_ROWS);
+                }
                 Row row = sheet.getRow(r);
                 if (row == null) continue;
                 Cell cell = row.getCell(0);

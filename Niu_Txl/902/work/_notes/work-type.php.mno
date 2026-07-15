@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<info>
+	<infoitem key="UD_rstype" value="name:t_id;datatype:int,name:t_name;datatype:string" />
+	<infoitem key="UD_rstype2" value="name:t_name;datatype:string" />
+	<infoitem key="UD_rspic" value="name:p_id;datatype:int,name:t_id;datatype:int,name:p_src;datatype:string,name:p_name;datatype:string,name:p_date;datatype:date" />
+</info>

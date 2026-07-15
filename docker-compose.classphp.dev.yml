@@ -1,0 +1,34 @@
+# 开发环境 PHP 服务（Niu_Txl / 902/message / 607）
+# 与 base.yml(business-prj.dev.yml) 共用 dev-mysql 与 dev-network，开发阶段无需触碰 prod 文件。
+# 启动：docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml -f docker-compose.classphp.dev.yml --env-file .env.dev up -d
+services:
+  prj-php:
+    build:
+      context: ./Niu_Txl
+      dockerfile: Dockerfile.classphp
+    container_name: dev-prj-php
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 512m
+    cpus: 1.0
+    env_file:
+      - .env.dev          # 注入 CLASS_DB_* 到容器，conn.php 经 getenv 读取
+    volumes:
+      - ./Niu_Txl:/var/www/html
+      - ./logs/prj-php:/var/log/apache2
+    environment:
+      CLASS_DB_HOST: dev-mysql     # dev 永远连 base 的 dev-mysql
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:1181:80"       # 与 prod 端口一致，避免改 nginx upstream
+    depends_on:
+      mysql:
+        condition: service_started
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge

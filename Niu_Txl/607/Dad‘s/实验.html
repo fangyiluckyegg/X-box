@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>登录</title>
+ 
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+          integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+    <style>
+ 
+        body { /*大主背景图*/
+            background-image: url("C:\xampp\nginx\html\永远的607");
+            background-size: cover;
+            background-position-x: center;
+        }
+ 
+        .layout { /*设置登录窗口部分的样式*/
+            width: 900px;
+            height: 530px;
+ 
+            position: relative;
+            box-sizing: border-box;
+            margin-left: 190px;
+            margin-top: 110px;
+            padding: 1px;
+ 
+            border: 8px solid silver;
+            border-radius: 2px;
+            background-image: url("image/跳跃男孩.jpg");
+            background-size: 1300px;
+            background-position-x: center;
+            background-position-y: -125px;
+ 
+            z-index: 1;
+        }
+ 
+        .layout::after { /*设置背景虚图层*/
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: inherit;
+            left: 0;
+            top: 0;
+            filter: blur(5px);
+            z-index: 2;
+        }
+ 
+        .input { /*登录条框布局*/
+            margin-top: 160px;
+            margin-left: 250px;
+            margin-right: 250px;
+        }
+ 
+        .input-group { /*调节账号和密码框图层*/
+            position: relative;
+            z-index: 3;
+        }
+ 
+        .input-group { /*调节两个输入框的之间距离*/
+            padding: 15px;
+        }
+ 
+        button { /*设置登录按钮的图层分布和位置*/
+            position: relative;
+            z-index: 3;
+            margin-top: 15px;
+            margin-left: 120px;
+        }
+ 
+        .submit-default { /*设置登录按钮边界弧度*/
+            border-radius: 5px;
+        }
+ 
+        .bz { /*火焰图标*/
+            position: absolute;
+            z-index: 3;
+            font-size: 40px;
+            margin-left: 405px;
+            margin-top: 89px;
+        }
+ 
+        #注册 { /*注册超链接的设置*/
+            position: absolute;
+            z-index: 3;
+            color: #222222;
+            margin-top: 15px;
+            margin-left: 725px;
+        }
+ 
+    </style>
+ 
+</head>
+ 
+<body>
+ 
+<div class="layout">
+    <div id="注册">
+        <span>暂无账号？</span><a href="实验1.html">立即注册</a>
+    </div>
+ 
+    <div class="bz"><font color="#22ffb9">&nbsp;</font>
+        <span class="glyphicon glyphicon-fire" aria-hidden="true"
+              style="size: 50px"></span></div>
+ 
+    <div class="input">
+        <form href="#">
+ 
+            <div class="input-group">
+                <span class="input-group-addon" id="basic-addon1"><label for="text1"><span
+                        class="glyphicon glyphicon-user" aria-hidden="true"></span>账号</label></span>
+                <input type="text" class="form-control" id="text1" placeholder="Username"
+                       aria-describedby="basic-addon1">
+            </div>
+ 
+            <div class="input-group">
+                <span class="input-group-addon" id="basic-addon2"> <label for="test2"><span
+                        class="glyphicon glyphicon-leaf" aria-hidden="true"></span>密码</label></span>
+                <input type="text" class="form-control" id="test2" placeholder="Usercipher"
+                       aria-describedby="basic-addon1">
+            </div>
+ 
+            <div>
+                <button type="submit" class="submit-default" style="width: 140px;height: 45px">
+                    <font size=5px" style="align-content: center">登录</font><a href="‪C:\xampp\nginx\html\永远的607\永远的607.html" ></a>
+					<p></p>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,38 @@
+@charset "utf-8";
+/* CSS Document */
+* {
+	margin: 0px;
+	padding: 0px;
+}
+body {
+	font-family: 微软雅黑;
+	font-size: 14px;
+	color: #FFF;
+	line-height: 30px;
+	background-image: url(../images/loginbg.jpg);
+	background-repeat: no-repeat;
+	background-position: center top;
+}
+#login {
+	width: 335px;
+	height: auto;
+	overflow: hidden;
+	margin: 0px auto;
+	padding-top: 253px;
+	padding-bottom: 100px;
+}
+.input01 {
+	width: 313px;
+	height: 37px;
+	border: 0px;
+	background: none;
+	padding: 0px 10px;
+	font-size: 14px;
+	line-height: 37px;
+	color: #FF7417;
+	margin-bottom: 35px;
+}
+#btn {
+	display: inline;
+	float: right;
+}

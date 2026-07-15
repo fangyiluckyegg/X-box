@@ -16,10 +16,22 @@
 #
 # 使用：
 #   cp .env.prod .env.prod.local  # 填入真实强随机密钥后（不要提交 .env.prod 到 Git）
-#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
 # 说明：本文件为自包含生产栈（含 nginx/mysql/redis/llama/backend/frontend），
 #       不依赖 docker-compose.base.yml，避免 dev- 前缀基础设施混入生产。
+#
+# ⚠️ 拓扑变更（2026-07-14）：原独立 prj-mysql 已废弃删除，生产全栈统一复用
+#    docker-compose.base.yml 的 dev-mysql（容器名 dev-mysql，网络 dev-network）。
+#    - 故本生产栈必须与 base.yml 一并启动（dev-mysql 为常驻依赖）：
+#        docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#    - 单跑本文件会因 dev-mysql 不存在而解析/连接失败。
+#    - prj-backend / prj-php 已加入 dev-network 以便跨网互访；dev-mysql 无 healthcheck，
+#      depends_on 一律用 condition: service_started。
+#    - 建库（prj_prod/msg/work）、class_user 账号与授权、密码对齐等操作见
+#      docs/X-box-db-merge-runbook-2026-07-14.md，由运维在 dev-mysql 运行时执行。
+#    - 本次合并同时移除 prod 自带的 `prj-llama`，统一复用 base 的 `dev-prj-llama`（AI 推理），
+#      故 prod.yml 内仅以 `dev-prj-llama`（容器名）互访、以服务名 `dev-prj-llama` 作 depends_on。
 # ============================================================
 services:
   prj-nginx:
@@ -39,40 +51,6 @@ services:
     ports:
       - "127.0.0.1:80:80"
       - "127.0.0.1:443:443"
-    networks:
-      - prj-network
-
-  prj-mysql:
-    env_file: .env.prod
-    image: mysql:8.0
-    platform: linux/arm64
-    container_name: prj-mysql
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 200
-    mem_limit: 1g
-    cpus: 1.0
-    volumes:
-      - ./db/mysql_data:/var/lib/mysql
-      - ./db/mysql_init:/docker-entrypoint-initdb.d:ro
-      - ./logs/mysql:/var/log/mysql
-    environment:
-      TZ: Asia/Shanghai
-      MYSQL_DATABASE: ${MYSQL_DATABASE:prj_prod}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-    command:
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --innodb-buffer-pool-size=512M
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
-    ports:
-      - "127.0.0.1:33060:3306"
     networks:
       - prj-network
 
@@ -102,49 +80,6 @@ services:
     networks:
       - prj-network
 
-  # [C14] AI 服务名全局统一为 dev-prj-llama
-  # ⚠️ 容器内 Ollama 无法使用 Mac 的 GPU（Metal），仅 CPU 推理，速度慢。
-  #    推荐改为 Mac 原生运行 Ollama（见部署指南第 6 节），本服务可注释移除。
-  prj-llama:
-    build:
-      context: ./
-      dockerfile: ./ai_llama/Dockerfile.llama
-    image: prj-llama:prod
-    platform: linux/arm64
-    container_name: dev-prj-llama
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 100
-    mem_limit: 6g
-    cpus: 2.0
-    # [C16] 不再 bind 挂载 ./ai_llama:/root/.ollama —— 该挂载会在运行时整层覆盖
-    # 容器内 /root/.ollama，遮蔽镜像构建期已烘焙的 bge-m3:latest（方案A：镜像自包含）。
-    # 模型完全由镜像提供，启动即用、离线可复现。
-    volumes:
-      - ./logs/llama:/app/logs/llama
-    environment:
-      MODEL_ROOT_PATH: /model
-      TZ: Asia/Shanghai
-      OLLAMA_HOST: 0.0.0.0:11434
-      # [C15] 与后端 CompareController 写死的模型名保持一致（单一来源）
-      OLLAMA_MODEL: bge-m3:latest
-    ports:
-      - "127.0.0.1:11434:11434"
-    # [C15] 改用包装脚本替换裸 ollama serve：运行时幂等检查业务模型（镜像已含则跳过 pull，
-    # 命中即秒级就绪；未烘焙/切换 OLLAMA_MODEL 时自动拉取，避免 /api/embeddings 404）。
-    entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
-    # [C15] 健康检查：确认 bge-m3:latest 已就绪（或已标记降级）方视为 healthy，
-    # 放行依赖它的后端启动，实现 up 完即可对比。
-    healthcheck:
-      test: ["CMD-SHELL", "if [ -f /tmp/ollama-model-unavailable ]; then exit 0; fi; OLLAMA_HOST=127.0.0.1:11434 ollama list 2>/dev/null | grep -q 'bge-m3:latest'"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 180s
-    networks:
-      - prj-network
-
   prj-backend-c:
     env_file: .env.prod
     build:
@@ -162,21 +97,22 @@ services:
       TZ: Asia/Shanghai
       # [C2] 生产启用 prod profile，触发严格密钥校验（弱/缺失即启动失败）
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://prj-mysql:3306/${MYSQL_DATABASE:prj_prod}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://dev-mysql:3306/${MYSQL_DATABASE:-prj_prod}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATA_REDIS_HOST: prj-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 9
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       AI_SERVICE_URL: http://dev-prj-llama:11434
     depends_on:
-      prj-mysql:
-        condition: service_healthy
+      mysql:
+        condition: service_started
       prj-redis:
         condition: service_healthy
-      prj-llama:
+      dev-prj-llama:
         condition: service_started
     networks:
       - prj-network
+      - dev-network
 
   prj-frontend:
     build:
@@ -196,6 +132,42 @@ services:
       - prj-nginx
     networks:
       - prj-network
+
+  # ===== 新增：班级网站 Niu_Txl（607/902）运行环境 =====
+  # Apache + PHP 7.4 + mysqli + gd，bind mount ./Niu_Txl 为 docroot（/var/www/html），
+  # 607/902 直接以 /607、/902 子路径对外；复用 dev-mysql 新建 msg/work 库与 class_user 账号。
+  # 仅新增本服务，未改动其它任何服务。详见《X-box-Niu_Txl整合设计.md》。
+  prj-php:
+    build:
+      context: ./Niu_Txl
+      dockerfile: Dockerfile.classphp
+    image: prj-php:prod
+    platform: linux/arm64
+    container_name: prj-php
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 512m
+    cpus: 1.0
+    volumes:
+      - ./Niu_Txl:/var/www/html          # docroot = Niu_Txl，607/902 直接可用
+      - ./logs/prj-php:/var/log/apache2
+    environment:
+      CLASS_DB_HOST: ${CLASS_DB_HOST:-dev-mysql}
+      CLASS_DB_USER: ${CLASS_DB_USER:-class_user}
+      CLASS_DB_PWD: ${CLASS_DB_PWD}
+      # ⚠️ 不传 CLASS_DB_NAME：902/message 回退 'msg'，902/work 回退 'work'
+      # 若全局传此变量会导致一个站点连错库（见偏差 J）
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:1181:80"            # loopback，仅供 frpc 指向（TLS 在 VPS frps 终止）
+    depends_on:
+      mysql:
+        condition: service_started
+    networks:
+      - prj-network
+      - dev-network
 
 networks:
   prj-network:
