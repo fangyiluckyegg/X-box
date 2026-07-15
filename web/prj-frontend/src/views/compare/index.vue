@@ -110,7 +110,7 @@
 
 <script>
 import { Message } from 'element-ui'
-import { compareExcelApi, downloadCompareResultApi, getExcelCompareProgressApi } from '@/api/compare'
+import { compareExcelApi, downloadCompareResultApi, getExcelCompareProgressApi, fetchCompareResultApi } from '@/api/compare'
 
 export default {
   name: 'EmployeeCompare',
@@ -176,36 +176,53 @@ export default {
       }
       this.progressDialogVisible = true
       this.loading = true
+      this.compareResult = []
+      this.hasCompareResult = false
       this.startPollProgress()
       const formData = new FormData()
       formData.append('originExcel', this.originFile)
       formData.append('newExcel', this.newFile)
-      try {
-        const res = await compareExcelApi(formData)
-        this.compareResult = res.data.list
-        this.hasCompareResult = true
-      } catch (err) {
-        Message.error('比对失败：' + (err.msg || '服务异常'))
-        this.hasCompareResult = false
-      } finally {
-        this.loading = false
-      }
+      // 触发后端比对（fire-and-forget，不 await 结果；结果通过轮询 done → fetchResult 获取）
+      compareExcelApi(formData).then(res => {
+        if (res.data && res.data.list && res.data.list.length) {
+          this.compareResult = res.data.list
+          this.hasCompareResult = true
+        }
+      }).catch(err => {
+        console.warn('[compare] 触发请求完成（可能超时），结果以轮询为准:', err.msg || err.message)
+      })
     },
     startPollProgress() {
       if (this.progressTimer) clearInterval(this.progressTimer)
       this.progressTimer = setInterval(async () => {
-        const res = await getExcelCompareProgressApi()
-        if (!res.data) {
-          clearInterval(this.progressTimer)
-          this.progressTimer = null
-          this.progressDialogVisible = false
-          return
-        }
-        Object.assign(this.progressInfo, res.data)
-        if (res.data.stage === 'done') {
-          clearInterval(this.progressTimer)
-          this.progressTimer = null
-          Message.success('全部比对完成，下方可查看表格或下载结果')
+        try {
+          const res = await getExcelCompareProgressApi()
+          if (!res.data) {
+            clearInterval(this.progressTimer)
+            this.progressTimer = null
+            this.progressDialogVisible = false
+            return
+          }
+          Object.assign(this.progressInfo, res.data)
+          if (res.data.stage === 'done') {
+            clearInterval(this.progressTimer)
+            this.progressTimer = null
+            this.loading = false
+            // 轮询到完成 → 立即取结果
+            try {
+              const resultRes = await fetchCompareResultApi()
+              if (resultRes.data && resultRes.data.list) {
+                this.compareResult = resultRes.data.list
+                this.hasCompareResult = this.compareResult.length > 0
+              }
+            } catch (e) {
+              console.error('[compare] fetchResult failed:', e)
+            }
+            Message.success('全部比对完成，下方可查看表格或下载结果')
+          }
+        } catch (e) {
+          // 轮询单次失败不中断，继续下一次
+          console.warn('[compare] progress poll error:', e)
         }
       }, 1500)
     },

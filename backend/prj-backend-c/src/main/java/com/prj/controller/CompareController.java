@@ -1,6 +1,7 @@
 package com.prj.controller;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.utils.SecurityUtils;
@@ -15,6 +16,7 @@ import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,7 +54,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>架构说明：比对结果缓存（RESULT_CACHE）与进度缓存（PROGRESS_CACHE）均以"登录用户名"为 key，
  * 存放在静态 ConcurrentHashMap 中，5 分钟后由后台线程回收（修复了原实现仅回收进度、导致结果 Map 内存泄漏的问题）。
- * Ollama 服务地址硬编码为 http://dev-prj-llama:11434（容器编排内网服务名）。
+ * 向量服务地址与模型名已实现配置化（[TASK-⑥]）：通过 {@code @Value} 读取环境变量
+ * AI_SERVICE_URL（基础地址，缺省 http://dev-prj-llama:11434）/ AI_EMBED_MODEL（模型名，缺省 bge-m3:latest），
+ * 不再硬编码，由容器编排或 .env 注入。批量嵌入端点改为 Ollama 的 /api/embed（[TASK-⑤]），
+ * 以 input 数组一次请求获取多条向量，替代原先逐条调用 /api/embeddings 的串行方式，显著提升向量化速度。
  */
 /**
  * Excel双文件比对控制器
@@ -141,21 +146,60 @@ public class CompareController {
         return AjaxResult.success(progress.toJson());
     }
 
-    // ===================== Ollama 常量 =====================
-    /** Ollama embeddings 接口地址（容器编排内网服务名 dev-prj-llama）。 */
-    private static final String OLLAMA_EMBED_URL = "http://dev-prj-llama:11434/api/embeddings";
-    /** 向量化模型名称。 */
-    private static final String EMBED_MODEL = "bge-m3:latest";
+    // ===================== 获取已完成比对结果 =====================
+    /**
+     * 获取当前用户最近一次已完成的比对结果（progress stage=done 后调用）。
+     * 用于前端纯轮询架构：/compare 触发后不等待，轮询到 done 时调此接口取结果。
+     *
+     * @return 比对结果列表；无结果时返回空列表
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/fetchResult")
+    public AjaxResult fetchResult() {
+        String username = SecurityUtils.getUsername();
+        List<Map<String, Object>> result = RESULT_CACHE.get(username);
+        if (result == null || result.isEmpty()) {
+            return AjaxResult.success("无比对结果", new ArrayList<>());
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("list", result);
+        return AjaxResult.success("获取成功", data);
+    }
+
+    // ===================== 向量服务配置（[TASK-⑥] 配置化，消除硬编码） =====================
+    /**
+     * Ollama 向量服务基础地址（容器编排内网服务名 dev-prj-llama）。
+     * [TASK-⑥] 外部化配置：读取环境变量/配置项 AI_SERVICE_URL，缺省沿用原内网服务名。
+     * 批量嵌入端点在此基础上拼接 /api/embed（见 {@link #getEmbedUrl()}）。
+     */
+    @Value("${AI_SERVICE_URL:http://dev-prj-llama:11434}")
+    private String aiServiceBaseUrl;
+
+    /**
+     * 向量化模型名称。
+     * [TASK-⑥] 外部化配置：读取环境变量/配置项 AI_EMBED_MODEL，缺省为 bge-m3:latest。
+     */
+    @Value("${AI_EMBED_MODEL:bge-m3:latest}")
+    private String embedModel;
+
+    /**
+     * [TASK-⑤] 单次批量嵌入请求携带的文本条数上限（分块大小）。
+     * 用 /api/embed 的 input 数组一次请求处理多条文本；超过该值则自动分块，
+     * 兼顾单次请求体体积与读取超时，避免超大文件单请求过长导致超时。
+     */
+    private static final int EMBED_BATCH_SIZE = 100;
+
     /** 判定为"语义模糊匹配"的相似度阈值（>= 0.85）。 */
     private static final double SIMILARITY_THRESHOLD = 0.85;
     /** [FIX-③] 新数据向量化覆盖率下限（成功条数/总条数），低于此值视为向量化失败、不再静默产出退化结果。 */
     private static final double NEW_COVERAGE_THRESHOLD = 0.5;
     /** HTTP 请求体的 JSON 媒体类型。 */
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
-    /** 复用的 OkHttp 客户端（连接超时 30s / 读取超时 60s / 连接池 20 连接）。 */
+    /** 复用的 OkHttp 客户端（连接超时 30s / 读取超时 120s / 连接池 20 连接）。 */
     private static final OkHttpClient HTTP_CLIENT = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
+            // [TASK-⑤] 批量嵌入单请求可能处理 EMBED_BATCH_SIZE 条文本，放宽读取超时到 120s 避免大批量超时
+            .readTimeout(120, TimeUnit.SECONDS)
             .connectionPool(new ConnectionPool(20, 30, TimeUnit.SECONDS))
             .build();
 
@@ -180,6 +224,7 @@ public class CompareController {
         }
 
         String username = SecurityUtils.getUsername();
+        System.out.println("[DIAG] compareExcel ENTER, username=" + username);
         CompareProgress progress = new CompareProgress();
         PROGRESS_CACHE.put(username, progress);
 
@@ -396,33 +441,59 @@ public class CompareController {
         }
     }
 
-    // ===================== Ollama向量（更新进度） =====================
+    // ===================== 向量服务（[TASK-⑤] 真批量 /api/embed） =====================
     /**
-     * 对文本列表逐条调用 Ollama 生成向量，并在过程中更新进度文本。
+     * 由基础地址拼接 Ollama 批量嵌入端点 /api/embed。
+     * [TASK-⑤] 端点固定为 /api/embed（批量接口），基础地址来自配置项 AI_SERVICE_URL。
+     *
+     * @return 完整的批量嵌入请求 URL
+     */
+    private String getEmbedUrl() {
+        String base = (aiServiceBaseUrl == null) ? "" : aiServiceBaseUrl.trim();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        return base + "/api/embed";
+    }
+
+    /**
+     * 对文本列表批量生成向量，并在过程中更新进度文本。
+     * [TASK-⑤] 改串行 /api/embeddings 为真批量 /api/embed：将文本按 {@link #EMBED_BATCH_SIZE} 分块，
+     * 每块以 input 数组一次请求获取多条向量，显著降低网络往返次数、提升向量化速度。
      *
      * @param textList 文本列表
      * @param progress 进度对象（用于写入当前处理文本）
-     * @return key=文本、value=向量数组；生成失败的文本被跳过（不放入结果）
+     * @return key=文本、value=向量数组；与入参保持一致的映射关系（重复文本按各自条目映射）
      */
     private Map<String, double[]> batchEmbedding(List<String> textList, CompareProgress progress) {
-        Map<String, double[]> map = new HashMap<>();
-        int failCount = 0;
+        System.out.println("[DIAG] batchEmbedding ENTER, textList.size=" + (textList == null ? "null" : textList.size()));
+        Map<String, double[]> map = new LinkedHashMap<>();
+        if (textList == null || textList.isEmpty()) {
+            return map;
+        }
         int total = textList.size();
-        for (String text : textList) {
-            progress.currentText = text;
+        int failCount = 0;
+        // 分块批量调用 /api/embed，替代逐条 /api/embeddings 串行调用
+        for (int start = 0; start < total; start += EMBED_BATCH_SIZE) {
+            int end = Math.min(total, start + EMBED_BATCH_SIZE);
+            List<String> chunk = new ArrayList<>(textList.subList(start, end));
+            progress.currentText = "批量向量化 " + (start + 1) + "~" + end + " / " + total;
             try {
-                double[] vec = getSingleEmbedding(text);
-                // [FIX-④] 单条失败不再静默跳过：返回空（理论上不会，仅防御）也计入失败数
-                if (vec == null) {
-                    failCount++;
-                    logger.error("文本向量生成失败(返回空向量):{}", text);
-                } else {
-                    map.put(text, vec);
+                List<double[]> vectors = callBatchEmbedApi(chunk);
+                for (int i = 0; i < chunk.size(); i++) {
+                    double[] vec = vectors.get(i);
+                    // [FIX-④] 单条失败不再静默跳过：返回空（理论上不会，仅防御）也计入失败数
+                    if (vec == null || vec.length == 0) {
+                        failCount++;
+                        logger.error("文本向量生成失败(返回空向量):{}", chunk.get(i));
+                    } else {
+                        map.put(chunk.get(i), vec);
+                    }
                 }
             } catch (Exception e) {
-                // [FIX-④] 原实现仅记日志后静默跳过，失败被吞；此处计入失败数，循环结束后统一抛出
-                failCount++;
-                logger.error("文本向量生成失败:{}", text, e);
+                // [FIX-④] 整块失败：该块全部计入失败数，循环结束后统一抛出
+                failCount += chunk.size();
+                logger.error("批量向量生成失败:{}~{}", start + 1, end, e);
             }
         }
         // [FIX-④] 循环结束后：任一单条失败即视为整体向量化失败，向上抛明确异常，
@@ -434,33 +505,57 @@ public class CompareController {
     }
 
     /**
-     * 调用 Ollama embeddings 接口为单条文本生成向量。
+     * 调用 Ollama 批量嵌入接口 /api/embed，一次请求将多条文本转为向量。
+     * [TASK-⑤] 使用 input 数组（而非单条 prompt），响应 embeddings 为与 input 等长的二维数组。
      *
-     * @param text 待向量化文本
-     * @return 向量数组
-     * @throws IOException 网络请求失败或 Ollama 返回非成功状态码时抛出
+     * @param texts 本批次文本列表（非空）
+     * @return 与入参顺序一一对应的向量数组列表
+     * @throws IOException 网络请求失败、Ollama 返回非成功状态码或向量数量不匹配时抛出
      */
-    private double[] getSingleEmbedding(String text) throws IOException {
+    private List<double[]> callBatchEmbedApi(List<String> texts) throws IOException {
+        String embedUrl = getEmbedUrl();
+        System.out.println("[DIAG] callBatchEmbedApi ENTER, texts.size=" + texts.size() + ", url=" + embedUrl + ", model=" + embedModel);
         JSONObject req = new JSONObject();
-        req.put("model", EMBED_MODEL);
-        req.put("prompt", text);
+        req.put("model", embedModel);
+        req.put("input", texts);
         RequestBody body = RequestBody.create(req.toString(), JSON_MEDIA);
         Request request = new Request.Builder()
-                .url(OLLAMA_EMBED_URL)
+                .url(embedUrl)
                 .post(body)
                 .build();
+        System.out.println("[DIAG] callBatchEmbedApi sending HTTP request...");
         try (okhttp3.Response resp = HTTP_CLIENT.newCall(request).execute()) {
-            if (!resp.isSuccessful()) throw new IOException("Ollama 异常，状态码：" + resp.code());
-            JSONObject json = JSON.parseObject(resp.body().string());
-            List<Double> embed = json.getList("embedding", Double.class);
-            // [FIX-④] Ollama 返回无 embedding 字段（如 404/500 错误体）时 getList 返回 null，
-            // 若直接 new double[embed.size()] 会抛 NPE 且被上层静默吞掉；此处显式判空并抛异常，交由 batchEmbedding 计数。
-            if (embed == null || embed.isEmpty()) {
-                throw new IOException("Ollama 未返回向量(embedding 为空)，文本：" + text);
+            int code = resp.code();
+            String rawBody = (resp.body() != null) ? resp.body().string() : "";
+            // 安全截断预览（contentLength 在 chunked 传输时返回 -1）
+            String bodyPreview = (rawBody.length() > 200) ? rawBody.substring(0, 200) + "..." : rawBody;
+            System.out.println("[DIAG] callBatchEmbedApi response code=" + code + ", body_preview=" + bodyPreview);
+            if (!resp.isSuccessful()) throw new IOException("Ollama 异常，状态码：" + code);
+            JSONObject json = JSON.parseObject(rawBody);
+            // /api/embed 的响应字段为 embeddings（二维数组，与 input 顺序一致）
+            JSONArray embeds = json.getJSONArray("embeddings");
+            // [FIX-④] Ollama 返回无 embeddings 字段（如 404/500 错误体）时 getJSONArray 返回 null，显式抛异常
+            if (embeds == null || embeds.isEmpty()) {
+                throw new IOException("Ollama 未返回向量(embeddings 为空)");
             }
-            double[] arr = new double[embed.size()];
-            for (int i = 0; i < arr.length; i++) arr[i] = embed.get(i);
-            return arr;
+            if (embeds.size() != texts.size()) {
+                throw new IOException("Ollama 返回向量数量(" + embeds.size()
+                        + ")与输入数量(" + texts.size() + ")不一致");
+            }
+            System.out.println("[DIAG] callBatchEmbedApi SUCCESS, embeddings count=" + embeds.size() + ", dim=" + (embeds.isEmpty() ? 0 : embeds.getJSONArray(0).size()));
+            List<double[]> result = new ArrayList<>(embeds.size());
+            for (int k = 0; k < embeds.size(); k++) {
+                JSONArray e = embeds.getJSONArray(k);
+                if (e == null || e.isEmpty()) {
+                    throw new IOException("Ollama 返回某条向量为空");
+                }
+                double[] arr = new double[e.size()];
+                for (int i = 0; i < arr.length; i++) {
+                    arr[i] = e.getDoubleValue(i);
+                }
+                result.add(arr);
+            }
+            return result;
         }
     }
 

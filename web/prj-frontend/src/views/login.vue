@@ -1,49 +1,74 @@
 <template>
   <div class="loginStyle">
-    <el-form ref="loginForm" :model="loginForm" :rules="loginRules" class="loginForm">
-      <h2 class="loginTitle">X-box工具箱</h2>
-      <el-form-item prop="username">
-        <el-input
-          v-model="loginForm.username"
-          type="text"
-          auto-complete="off"
-          placeholder="账号"
-        >
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="password">
-        <el-input
-          v-model="loginForm.password"
-          type="password"
-          auto-complete="off"
-          placeholder="密码"
-          @keyup.enter.native="handleLogin"
-        >
-        </el-input>
-      </el-form-item>
-      <el-form-item prop="code">
-        <el-input
-          v-model="loginForm.code"
-          auto-complete="off"
-          placeholder="验证码"
-          style="width: 60%"
-          @keyup.enter.native="handleLogin"
-        >
-         </el-input>
-        <div class="login-code">
-          <img :src="codeUrl" @click="getCode" class="login-code-img"/>
-        </div>
-      </el-form-item>
-      <el-checkbox v-model="loginForm.rememberMe" style="margin:0px 0px 20px 0px;">记住用户名</el-checkbox>
-      <el-form-item style="width:100%;">
-        <el-button
-          :loading="loading" type="primary"
-          style="width:100%;" @click.native.prevent="handleLogin">
-          <span v-if="!loading">登 录</span>
-          <span v-else>登 录 中...</span>
-        </el-button>
-      </el-form-item>
-    </el-form>
+    <!-- 中部居中大标题 -->
+    <h1 class="loginMainTitle">X-box百宝箱</h1>
+
+    <!-- 顶部右侧一行式登录栏 -->
+    <div class="loginBar">
+      <el-form
+        ref="loginForm"
+        :model="loginForm"
+        :rules="loginRules"
+        class="loginFormInline"
+        inline
+      >
+        <el-form-item prop="username" class="loginItem">
+          <el-input
+            v-model="loginForm.username"
+            type="text"
+            auto-complete="off"
+            placeholder="账号"
+          >
+          </el-input>
+        </el-form-item>
+
+        <el-form-item class="loginItem loginRemember">
+          <el-checkbox v-model="loginForm.rememberMe">记住用户名</el-checkbox>
+        </el-form-item>
+
+        <el-form-item prop="password" class="loginItem">
+          <el-input
+            v-model="loginForm.password"
+            type="password"
+            auto-complete="off"
+            placeholder="密码"
+            @keyup.enter.native="handleLogin"
+          >
+          </el-input>
+        </el-form-item>
+
+        <el-form-item prop="code" class="loginItem loginCodeItem">
+          <div class="loginCodeWrap">
+            <el-input
+              v-model="loginForm.code"
+              auto-complete="off"
+              placeholder="验证码"
+              class="loginCodeInput"
+              @keyup.enter.native="handleLogin"
+            >
+            </el-input>
+            <img :src="codeUrl" @click="getCode" class="login-code-img" />
+          </div>
+        </el-form-item>
+
+        <el-form-item class="loginItem">
+          <el-button
+            :loading="loading"
+            type="primary"
+            @click.native.prevent="handleLogin"
+          >
+            <span v-if="!loading">登 录</span>
+            <span v-else>登 录 中...</span>
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
+    <!-- 左下方班级同学录链接（两个上下排列） -->
+    <div class="loginFooterLink">
+      <a href="http://127.0.0.1:1181/607/" target="_blank" class="classmatesBtn">607班级同学录</a>
+      <a href="http://127.0.0.1:1181/902/" target="_blank" class="classmatesBtn">902班级同学录</a>
+    </div>
   </div>
 </template>
 
@@ -124,36 +149,128 @@ export default {
 
 <style>
 .loginStyle {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  position: relative;
   height: 100%;
+  width: 100%;
+  background: #f5f7fa;
+  overflow: hidden;
 }
-.loginTitle {
+
+/* 中部居中大标题 */
+.loginMainTitle {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-size: 52px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  color: #303133;
   text-align: center;
-  color: #818181;
+  user-select: none;
 }
 
-.loginForm {
-  border-radius: 6px;
-  width: 450px;
+/* 顶部右侧登录栏 */
+.loginBar {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  z-index: 2;
+}
 
-  .el-input {
-    height: 40px;
-    input {
-      height: 40px;
-    }
-  }
+.loginFormInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
 }
-.login-code {
-  width: 35%;
-  height: 40px;
-  float: right;
-  img {
-    vertical-align: middle;
-  }
+
+.loginFormInline .loginItem {
+  margin-bottom: 0;
+  margin-right: 14px;
 }
+
+.loginFormInline .loginItem:last-child {
+  margin-right: 0;
+}
+
+.loginFormInline .el-input {
+  width: 130px;
+}
+
+.loginFormInline .loginRemember {
+  margin-right: 8px;
+}
+
+/* 验证码输入框 + 图片并排 */
+.loginCodeWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loginFormInline .loginCodeInput {
+  width: 100px;
+}
+
 .login-code-img {
-  height: 40px;
+  height: 38px;
+  width: 100px;
+  cursor: pointer;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* 左下方班级同学录链接 */
+.loginFooterLink {
+  position: absolute;
+  bottom: 36px;
+  left: 36px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.classmatesBtn {
+  display: inline-block;
+  padding: 10px 18px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  color: #606266;
+  background: #ffffff;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.classmatesBtn:hover {
+  border-color: #409eff;
+  color: #409eff;
+}
+
+/* 响应式：窄屏登录栏折行并保持可读 */
+@media screen and (max-width: 768px) {
+  .loginBar {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+  }
+
+  .loginFormInline {
+    justify-content: flex-start;
+  }
+
+  .loginMainTitle {
+    font-size: 34px;
+    width: 90%;
+  }
+
+  .loginFooterLink {
+    bottom: 20px;
+    left: 20px;
+  }
 }
 </style>
