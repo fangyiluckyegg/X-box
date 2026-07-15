@@ -1,7 +1,7 @@
 <template>
   <div class="loginStyle">
     <!-- 中部居中大标题 -->
-    <h1 class="loginMainTitle">X-box百宝箱</h1>
+    <h1 class="loginMainTitle">易空间&百宝箱</h1>
 
     <!-- 顶部右侧一行式登录栏 -->
     <div class="loginBar">
