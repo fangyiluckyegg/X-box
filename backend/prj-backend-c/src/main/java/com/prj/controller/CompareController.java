@@ -148,6 +148,8 @@ public class CompareController {
     private static final String EMBED_MODEL = "bge-m3:latest";
     /** 判定为"语义模糊匹配"的相似度阈值（>= 0.85）。 */
     private static final double SIMILARITY_THRESHOLD = 0.85;
+    /** [FIX-③] 新数据向量化覆盖率下限（成功条数/总条数），低于此值视为向量化失败、不再静默产出退化结果。 */
+    private static final double NEW_COVERAGE_THRESHOLD = 0.5;
     /** HTTP 请求体的 JSON 媒体类型。 */
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
     /** 复用的 OkHttp 客户端（连接超时 30s / 读取超时 60s / 连接池 20 连接）。 */
@@ -201,9 +203,30 @@ public class CompareController {
                 return AjaxResult.error("全部向量生成失败，请检查Ollama容器");
             }
 
+            // [FIX-③] 阶段1.5：新数据向量计算（与 origin 侧对称，提前到 matchProcess 之前以便校验覆盖率）
+            progress.currentText = "计算新数据向量";
+            Map<String, double[]> newVecMap;
+            try {
+                // [FIX-④] batchEmbedding 在任一单条失败时会抛出明确异常，此处捕获并给出面向用户的清晰报错
+                newVecMap = batchEmbedding(newList, progress);
+            } catch (RuntimeException re) {
+                PROGRESS_CACHE.remove(username);
+                return AjaxResult.error("新数据" + re.getMessage());
+            }
+            // [FIX-③] new 侧覆盖率校验：空或低于阈值则明确报错，避免进入 matchProcess 产出"全未匹配"退化结果
+            if (!newList.isEmpty()) {
+                int covered = newVecMap.size();
+                int total = newList.size();
+                if (newVecMap.isEmpty() || (double) covered / total < NEW_COVERAGE_THRESHOLD) {
+                    PROGRESS_CACHE.remove(username);
+                    return AjaxResult.error(String.format(
+                            "新数据向量化失败：成功 %d/%d 条，未达阈值 %.2f", covered, total, NEW_COVERAGE_THRESHOLD));
+                }
+            }
+
             // 阶段2：相似度匹配
             progress.stage = "match_compare";
-            List<Map<String, Object>> result = matchProcess(validOrigin, newList, originVecMap, progress);
+            List<Map<String, Object>> result = matchProcess(validOrigin, newList, originVecMap, newVecMap, progress);
 
             // 全部完成
             progress.stage = "done";
@@ -383,14 +406,29 @@ public class CompareController {
      */
     private Map<String, double[]> batchEmbedding(List<String> textList, CompareProgress progress) {
         Map<String, double[]> map = new HashMap<>();
+        int failCount = 0;
+        int total = textList.size();
         for (String text : textList) {
             progress.currentText = text;
             try {
                 double[] vec = getSingleEmbedding(text);
-                map.put(text, vec);
+                // [FIX-④] 单条失败不再静默跳过：返回空（理论上不会，仅防御）也计入失败数
+                if (vec == null) {
+                    failCount++;
+                    logger.error("文本向量生成失败(返回空向量):{}", text);
+                } else {
+                    map.put(text, vec);
+                }
             } catch (Exception e) {
+                // [FIX-④] 原实现仅记日志后静默跳过，失败被吞；此处计入失败数，循环结束后统一抛出
+                failCount++;
                 logger.error("文本向量生成失败:{}", text, e);
             }
+        }
+        // [FIX-④] 循环结束后：任一单条失败即视为整体向量化失败，向上抛明确异常，
+        // 由调用方（③ 守卫）给出明确报错，而非继续产出"全未匹配、相似度0"的退化结果。
+        if (failCount > 0) {
+            throw new RuntimeException("向量化失败 " + failCount + "/" + total + " 条");
         }
         return map;
     }
@@ -415,6 +453,11 @@ public class CompareController {
             if (!resp.isSuccessful()) throw new IOException("Ollama 异常，状态码：" + resp.code());
             JSONObject json = JSON.parseObject(resp.body().string());
             List<Double> embed = json.getList("embedding", Double.class);
+            // [FIX-④] Ollama 返回无 embedding 字段（如 404/500 错误体）时 getList 返回 null，
+            // 若直接 new double[embed.size()] 会抛 NPE 且被上层静默吞掉；此处显式判空并抛异常，交由 batchEmbedding 计数。
+            if (embed == null || embed.isEmpty()) {
+                throw new IOException("Ollama 未返回向量(embedding 为空)，文本：" + text);
+            }
             double[] arr = new double[embed.size()];
             for (int i = 0; i < arr.length; i++) arr[i] = embed.get(i);
             return arr;
@@ -454,11 +497,14 @@ public class CompareController {
             List<String> originTexts,
             List<String> newTexts,
             Map<String, double[]> originVecMap,
+            Map<String, double[]> newVecMap,
             CompareProgress progress
     ) {
         List<Map<String, Object>> result = new ArrayList<>();
         boolean[] matchedFlag = new boolean[newTexts.size()];
-        Map<String, double[]> newVecCache = batchEmbedding(newTexts, progress);
+        // [FIX-③] new 侧向量由调用方（compareExcel）预先计算并完成覆盖率校验后传入，
+        // 此处不再内部调用 batchEmbedding，避免 new 侧失败被静默吞掉、产出"全未匹配"退化结果。
+        Map<String, double[]> newVecCache = newVecMap;
 
         for (String originText : originTexts) {
             progress.currentText = originText;
