@@ -153,6 +153,8 @@ Llama AI 推理	    11434	    11434	        后端本地调用向量接口
 禁止容器使用--privileged特权模式；
 容器间通信使用服务名作为域名（mysql、redis、llama），无需 IP 写死。
 
+具体生产环境的配置情况如下：1.硬件：mac mini m2 16+1T；2.系统：macOS Sonoma 14.8.7；3.功能：前后端服务器、数据库服务器、AI基础服务器；4.工具：OrbStack2.1.3（docker容器编排）
+
 # 二、家庭服务器配置
 # 1.硬件：mac mini m2 16+1T
 # 2.系统：macOS Sonoma 14.8.7

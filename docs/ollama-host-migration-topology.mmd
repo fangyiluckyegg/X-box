@@ -1,0 +1,23 @@
+classDiagram
+    class HostMachine {
+        +OLLAMA_HOST: 0.0.0.0:11434
+        +OLLAMA_MODEL: bge-m3:latest
+        +serve() 启动 ollama serve
+        +pullModel() ollama pull bge-m3
+    }
+    class BackendContainer {
+        +AI_SERVICE_URL: http://host.docker.internal:11434
+        +AI_EMBED_MODEL: bge-m3:latest
+        +AI_API_TOKEN: (预留,未消费)
+        +callEmbed(texts) POST /api/embed
+    }
+    class OllamaProcess {
+        +endpoint /api/embed
+        +model bge-m3:latest
+        +auth none(默认)
+    }
+    HostMachine "1" *-- "1" OllamaProcess : 原生运行
+    BackendContainer ..> HostMachine : host.docker.internal:11434
+    BackendContainer ..> OllamaProcess : /api/embed(model,input)
+    note for BackendContainer "compareExcel→batchEmbedding→callBatchEmbedApi"
+    note for OllamaProcess "无鉴权; 暴露 0.0.0.0 需防火墙"

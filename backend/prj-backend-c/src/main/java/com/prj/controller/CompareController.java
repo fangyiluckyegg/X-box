@@ -168,9 +168,13 @@ public class CompareController {
 
     // ===================== 向量服务配置（[TASK-⑥] 配置化，消除硬编码） =====================
     /**
-     * Ollama 向量服务基础地址（容器编排内网服务名 dev-prj-llama）。
-     * [TASK-⑥] 外部化配置：读取环境变量/配置项 AI_SERVICE_URL，缺省沿用原内网服务名。
+     * Ollama 向量服务基础地址（外部化配置项 AI_SERVICE_URL）。
+     * [TASK-⑥] 外部化配置：读取环境变量/配置项 AI_SERVICE_URL；
+     * 缺省值 http://dev-prj-llama:11434 仅为"容器 Ollama"历史兜底，
+     * 自 2026-07-16 起开发/生产均经【宿主原生 Ollama】，由编排文件注入
+     * AI_SERVICE_URL=http://host.docker.internal:11434 覆盖此默认值。
      * 批量嵌入端点在此基础上拼接 /api/embed（见 {@link #getEmbedUrl()}）。
+     * 约定：代码严禁硬编码地址；值统一来自 AI_SERVICE_URL，模型名来自 AI_EMBED_MODEL。
      */
     @Value("${AI_SERVICE_URL:http://dev-prj-llama:11434}")
     private String aiServiceBaseUrl;

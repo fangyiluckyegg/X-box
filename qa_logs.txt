@@ -1,0 +1,4 @@
+=== FILTERED (tail 50) ===
+=== FULL UnknownHost (all time, last 20) ===
+=== FULL Started Application (last 5) ===
+=== RECENT tail 15 for context ===

@@ -55,41 +55,21 @@ services:
       # [P0-FIX] Redis认证密码，与Redis容器requirepass保持一致
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_default_pass_change_me}
       # AI向量服务地址【给Java用的】
-      # [C14] AI 服务名全局统一为 dev-prj-llama（消除 llama / dev-prj-llama 漂移）
-      AI_SERVICE_URL: http://dev-prj-llama:11434
+      # [Ollama 宿主原生迁移 2026-07-16] 后端经宿主原生 Ollama 访问
+      # （显式 extra_hosts 兜底，避免部分 Docker 环境不注入该 DNS）
+      AI_SERVICE_URL: http://host.docker.internal:11434
+    # [FIX] 显式 extra_hosts 兜底，避免部分 Docker 环境不注入 host.docker.internal 的 DNS 解析
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - mysql
       - redis
-      - dev-prj-llama
     networks:
       - dev-network
 
-  # [C14] AI 服务名全局统一为 dev-prj-llama（消除 llama / dev-prj-llama 漂移）
-  dev-prj-llama:
-    build:
-      context: ./
-      dockerfile: ./ai_llama/Dockerfile.llama
-    container_name: dev-prj-llama
-    mem_limit: 6g
-    cpus: 2
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 100
-    volumes:
-      #- ./ai_llama:/model
-      - ./logs/llama:/app/logs
-    environment:
-      MODEL_ROOT_PATH: /model
-      TZ: Asia/Shanghai
-      OLLAMA_HOST: 0.0.0.0:11434  # 允许外部容器访问（ollama 0.1.17 使用 host:port 格式）
-    ports:
-      - "127.0.0.1:11434:11434" # 暴露ollama标准端口【给Python用的，仅绑定回环地址防未授权访问】
-    # [C15] 改用包装脚本替换裸 ollama serve：运行时幂等检查业务模型（镜像已含则跳过 pull，
-    # 命中即秒级就绪；未烘焙/切换 OLLAMA_MODEL 时自动拉取，避免 /api/embeddings 404）。
-    entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
-
-    networks:
-      - dev-network
+  # [Ollama 宿主原生迁移 2026-07-16] 删除原重复的 dev-prj-llama 服务块（R-05 遗留）。
+  # 后端改用宿主原生 Ollama：AI_SERVICE_URL=http://host.docker.internal:11434。
+  # 如需回退到容器 Ollama，见 docker-compose.base.yml 末尾注释块。
 
 # 统一容器内网网络
 networks:

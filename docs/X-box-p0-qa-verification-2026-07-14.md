@@ -143,7 +143,7 @@ grep -nE 'PASSWORD|SECRET|TOKEN' .env.prod.bak
 | 检查 | 命令与输出 | 结果 |
 |---|---|---|
 | 无占位/模板文本 | `grep -nE 'openssl|rand\.\.\.|TODO|PLACEHOLDER' .env.prod` → **无匹配（rc=1）** | PASS |
-| 4 字段为真实随机串（JWT≥43、其余≥20 字符） | `REDIS_PASSWORD=<REDACTED-live-prod>`（32 位）、`JWT_SECRET=<REDACTED-live-prod>OsAok7Omo0+kYvcXo95yf6F15erMz9BW3zyBpLJ6/09kH+uEEau9jQy`（62 位 ≥43）、`DRUID_PASSWORD=<REDACTED-live-prod>LewrYzch7Ur8QVJP1NUB4pYD`（32 位）、`AI_API_TOKEN=<REDACTED-live-prod>07355a908969ea47a8b2659a0b273e371c6ee76dc2ad1f44228819b8`（64 hex 位） | PASS |
+| 4 字段为真实随机串（JWT≥43、其余≥20 字符） | `REDIS_PASSWORD=<REDACTED-live-prod>`（32 位）、`JWT_SECRET=<REDACTED-live-prod>`（62 位 ≥43）、`DRUID_PASSWORD=<REDACTED-live-prod>`（32 位）、`AI_API_TOKEN=<REDACTED-live-prod>`（64 hex 位） | PASS |
 | `.env.prod.bak` 未被改动（保留原弱值，供回溯） | 仍含 `QaTest@2026`、`Prj@Dev789` 及 openssl 占位引用（与第 1 轮一致） | PASS |
 | `.env.prod` 仍被忽略、未泄漏 git | `git check-ignore .env.prod` → 返回该路径（rc=0）；`git status` 无 `.env.prod`/`.pem`；`git ls-files` 无敏感文件（NONE_TRACKED） | PASS |
 

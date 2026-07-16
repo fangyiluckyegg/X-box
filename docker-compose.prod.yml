@@ -5,7 +5,7 @@
 #   - 后端使用 prod profile（SPRING_PROFILES_ACTIVE=prod），启用严格密钥校验
 #   - 所有敏感凭证经 env_file (.env.prod) 外部化，禁止明文进仓库
 #   - 容器名去除 dev- 前缀；restart: unless-stopped；无 TTY / 不挂载源码
-#   - AI 服务名全局统一为 dev-prj-llama
+#   - AI 推理改由宿主原生 Ollama 提供（host.docker.internal:11434，base 已移除容器 llama）
 #
 # 本次 Apple Silicon 适配改动（相对原 prod）：
 #   - redis 5.0.14-alpine -> redis:7-alpine（Redis 5 已 EOL，官方 arm64 镜像缺失，Mac 上会拉取失败）
@@ -18,8 +18,17 @@
 #   cp .env.prod .env.prod.local  # 填入真实强随机密钥后（不要提交 .env.prod 到 Git）
 #   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
-# 说明：本文件为自包含生产栈（含 nginx/mysql/redis/llama/backend/frontend），
-#       不依赖 docker-compose.base.yml，避免 dev- 前缀基础设施混入生产。
+# 说明：本生产栈【并非】自包含独立栈——它必须与 docker-compose.base.yml 一同启动，
+#       共享 base.yml 的 dev-mysql（数据库）；AI 推理（Ollama + bge-m3）自 2026-07-16 起
+#       改为【宿主原生部署】，后端经 host.docker.internal:11434 访问（base 已移除容器 llama）。
+#       为避免 dev- 前缀基础设施被重复创建，请勿单独运行本文件。
+#
+# ⚠️【凭证契约 · 必须一致】共享 dev-mysql 中 prj_user 的口令由 MySQL 容器 env
+#   （base.yml 的 .env.dev）的 SPRING_DATASOURCE_PASSWORD 在运行时注入
+#   （见 db/mysql_scripts/docker-entrypoint-wrapper.sh 的 ensure_app_user()）。
+#   故：Mac 部署 prod 时，本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD
+#   必须与下方本文件引用的 .env.prod 的 SPRING_DATASOURCE_PASSWORD 完全相同，
+#   否则 prod 后端连不上 dev-mysql。
 #
 # ⚠️ 拓扑变更（2026-07-14）：原独立 prj-mysql 已废弃删除，生产全栈统一复用
 #    docker-compose.base.yml 的 dev-mysql（容器名 dev-mysql，网络 dev-network）。
@@ -30,8 +39,8 @@
 #      depends_on 一律用 condition: service_started。
 #    - 建库（prj_prod/msg/work）、class_user 账号与授权、密码对齐等操作见
 #      docs/X-box-db-merge-runbook-2026-07-14.md，由运维在 dev-mysql 运行时执行。
-#    - 本次合并同时移除 prod 自带的 `prj-llama`，统一复用 base 的 `dev-prj-llama`（AI 推理），
-#      故 prod.yml 内仅以 `dev-prj-llama`（容器名）互访、以服务名 `dev-prj-llama` 作 depends_on。
+#    - 本次合并同时移除 prod 自带的 `prj-llama`，并自 2026-07-16 起将 AI 推理迁至宿主原生 Ollama
+#      （host.docker.internal:11434），base 的容器 `dev-prj-llama` 也已移除，prod.yml 不再 depends_on Ollama。
 # ============================================================
 services:
   prj-nginx:
@@ -80,6 +89,9 @@ services:
     networks:
       - prj-network
 
+  # 凭证契约见文件头【凭证契约】段：后端用 .env.prod 的 SPRING_DATASOURCE_PASSWORD
+  # 连 dev-mysql 的 prj_user；该口令由 .env.dev 的 SPRING_DATASOURCE_PASSWORD 注入，
+  # 两者必须一致（Mac 部署 prod 时务必对齐）。
   prj-backend-c:
     env_file: .env.prod
     build:
@@ -102,14 +114,15 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 9
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      AI_SERVICE_URL: http://dev-prj-llama:11434
+      AI_SERVICE_URL: http://host.docker.internal:11434
+    # [FIX] 显式 extra_hosts 兜底，避免部分 Docker 环境不注入 host.docker.internal 的 DNS 解析
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
         condition: service_started
       prj-redis:
         condition: service_healthy
-      dev-prj-llama:
-        condition: service_started
     networks:
       - prj-network
       - dev-network

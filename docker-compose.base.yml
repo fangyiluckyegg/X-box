@@ -76,44 +76,47 @@ services:
     networks:
       - dev-network
 
-  # [C14] AI 服务名全局统一为 dev-prj-llama（消除 llama / dev-prj-llama 漂移）
-  dev-prj-llama:
-    build:
-      context: ./
-      dockerfile: ./ai_llama/Dockerfile.llama
-    container_name: dev-prj-llama
-    mem_limit: 4g
-    cpus: 2
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 100
-    # Ollama TUI工具需要终端设备，修复 /dev/tty 报错
-    stdin_open: true
-    tty: true
-    volumes:
-      - ./logs/llama:/app/logs/llama
-    environment:
-      MODEL_ROOT_PATH: /model
-      TZ: Asia/Shanghai
-      OLLAMA_HOST: 0.0.0.0:11434
-      # [C15] 与后端 CompareController 写死的模型名保持一致；
-      # 单一来源，日后改模型名只改此处即可（包装脚本会读取 OLLAMA_MODEL 作为 MODEL_NAME 兜底）。
-      OLLAMA_MODEL: bge-m3:latest
-    ports:
-      - "127.0.0.1:11434:11434"
-    # [C15] 用包装脚本替换裸 `ollama serve`：启动时幂等拉取业务模型，
-    # 消除"容器在跑但模型未拉取导致 /api/embeddings 404"的运行时故障。
-    entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
-    # [C15] 健康检查：模型已拉取（或已标记不可用降级）即视为 healthy，
-    # 放行依赖它的后端启动，实现 up 完即可对比，无需手动 pull。
-    healthcheck:
-      test: ["CMD-SHELL", "if [ -f /tmp/ollama-model-unavailable ]; then exit 0; fi; OLLAMA_HOST=127.0.0.1:11434 ollama list 2>/dev/null | grep -q 'bge-m3:latest'"]
-      interval: 10s
-      timeout: 10s
-      retries: 30
-      start_period: 180s
-    networks:
-      - dev-network
+  # ============================================================
+  # [Ollama 宿主原生迁移 2026-07-16] 容器版 dev-prj-llama 已彻底移除。
+  # 后端（prj-backend-c）改用宿主原生 Ollama：
+  #   AI_SERVICE_URL=http://host.docker.internal:11434
+  # 宿主侧需先启动 Ollama 并 ollama pull bge-m3（见 scripts/setup-host-ollama.*）。
+  # host.docker.internal 在多数 Docker 环境内置解析，但部分环境（如某些 Windows Docker 版本）不会注入，故在 prj-backend-c 显式用 extra_hosts 兜底。
+  # ------------------------------------------------------------
+  # 如需临时回退到「容器 Ollama」，取消下方注释块（恢复 dev-prj-llama 服务），
+  # 并将对应 compose / .env 的 AI_SERVICE_URL 改回 http://dev-prj-llama:11434。
+  # （不引入 profile，保持编排简单）
+  # ------------------------------------------------------------
+  # dev-prj-llama:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./ai_llama/Dockerfile.llama
+  #   container_name: dev-prj-llama
+  #   mem_limit: 4g
+  #   cpus: 2
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   pids_limit: 100
+  #   stdin_open: true
+  #   tty: true
+  #   volumes:
+  #     - ./logs/llama:/app/logs/llama
+  #   environment:
+  #     MODEL_ROOT_PATH: /model
+  #     TZ: Asia/Shanghai
+  #     OLLAMA_HOST: 0.0.0.0:11434
+  #     OLLAMA_MODEL: bge-m3:latest
+  #   ports:
+  #     - "127.0.0.1:11434:11434"
+  #   entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "if [ -f /tmp/ollama-model-unavailable ]; then exit 0; fi; OLLAMA_HOST=127.0.0.1:11434 ollama list 2>/dev/null | grep -q 'bge-m3:latest'"]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 30
+  #     start_period: 180s
+  #   networks:
+  #     - dev-network
 
 
 # 统一容器内网网络

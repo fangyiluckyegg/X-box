@@ -1,0 +1,35 @@
+graph TD
+    %% ===== DEV 环境（完全隔离）=====
+    subgraph DEV["DEV 环境（dev-network，独立数据卷）"]
+        GWd["nginx-gateway :80<br/>dev CSP"]
+        MYd["dev-mysql<br/>init.sql 仅建库/表(无密)<br/>账号由 wrapper 从 .env.dev 注入"]
+        RDd["dev-redis(+healthcheck)"]
+        HOSTLLd["宿主原生 Ollama 0.0.0.0:11434<br/>bge-m3 · host.docker.internal"]
+        DFd["prj-frontend(dev) .env.development→网关"]
+        DBd["prj-backend-c(dev) .env.backend"]
+        PHd["dev-prj-php .env.dev(class_user 自动建)"]
+    end
+
+    %% ===== PROD 环境（完全隔离）=====
+    subgraph PROD["PROD 环境（prj-network，独立数据卷）"]
+        PNp["prj-nginx :443(TLS)+HSTS<br/>prod CSP(无 unsafe-eval)"]
+        MYp["prj-mysql(独立容器+卷)<br/>init 由 env 注入 prj_user(强随机)"]
+        PRp["prj-redis:7(强随机口令)"]
+        HOSTLLp["宿主原生 Ollama 0.0.0.0:11434<br/>bge-m3 · host.docker.internal<br/>(容器内 Ollama 已废弃)"]
+        PFp["prj-frontend(prod) .env.production→相对 /api"]
+        PBp["prj-backend-c(prod) .env.prod<br/>连 prj-mysql · depends healthy"]
+        PPp["prj-php .env.prod<br/>class_user 由自动化 runbook 建"]
+    end
+
+    GWd --> DFd
+    GWd --> DBd
+    DBd --> MYd
+    DBd --> RDd
+    DBd --> HOSTLLd
+    PHd --> MYd
+    PNp --> PFp
+    PNp --> PBp
+    PBp --> MYp
+    PBp --> PRp
+    PBp --> HOSTLLp
+    PPp --> MYp

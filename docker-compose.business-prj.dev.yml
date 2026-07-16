@@ -65,8 +65,12 @@ services:
       SPRING_DATA_REDIS_DATABASE: 9
       # [P0-FIX] Redis认证密码，与Redis容器requirepass保持一致（对应 spring.data.redis.password）
       REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_default_pass_change_me}
-      # [C14] AI 服务名全局统一为 dev-prj-llama
-      AI_SERVICE_URL: http://dev-prj-llama:11434
+      # [Ollama 宿主原生迁移 2026-07-16] 后端经宿主原生 Ollama 访问
+      # （显式 extra_hosts 兜底，避免部分 Docker 环境不注入该 DNS）
+      AI_SERVICE_URL: http://host.docker.internal:11434
+    # [FIX] 显式 extra_hosts 兜底，避免部分 Docker 环境不注入 host.docker.internal 的 DNS 解析
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
     depends_on:
@@ -74,8 +78,6 @@ services:
         condition: service_started
       redis:
         condition: service_started
-      dev-prj-llama:
-        condition: service_healthy
     networks:
       - dev-network
 

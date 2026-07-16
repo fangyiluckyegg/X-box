@@ -1,0 +1,47 @@
+graph TD
+    %% ===== 共享基础设施（dev-network，全部栈共用）=====
+    subgraph INFRA["dev-network（所有栈共享）"]
+        GW["nginx-gateway :80/:443<br/>挂载 conf.d/prj.conf(HTTP+宽松CSP)"]
+        MY["dev-mysql :33060<br/>init.sql→prj_user=Pj@Dev789<br/>+wrapper 自愈"]
+        RD["dev-redis :63790<br/>默认口令(无healthcheck)"]
+    end
+
+    %% ===== 宿主原生 Ollama（不在 compose 编排内，经 host.docker.internal 访问）=====
+    HOSTOLL["宿主原生 Ollama 0.0.0.0:11434<br/>bge-m3 · 经 host.docker.internal<br/>(2026-07-16 起容器版移除)"]
+
+    %% ===== 开发/内网栈 =====
+    subgraph DEV["开发栈（base + business-prj.dev）"]
+        DF["prj-frontend(dev)<br/>src mount + node_modules_volume⚠"]
+        DB["prj-backend-c(dev)<br/>.env.backend · 宿主 Ollama"]
+        BF["prj-frontend(biz) :8081"]
+        BB["prj-backend-c(biz)<br/>无DB凭证⚠"]
+    end
+
+    subgraph PHPD["classphp.dev"]
+        PH["dev-prj-php :1181→dev-mysql<br/>class_user 缺失⚠"]
+    end
+
+    %% ===== 生产栈（声称自包含，实际依赖 base）=====
+    subgraph PROD["prod 栈（base + prod.yml）"]
+        PN["prj-nginx :80/:443<br/>同一 prj.conf(HTTP/宽松CSP)⚠"]
+        PR["prj-redis:7(强随机)"]
+        PB["prj-backend-c(prod)<br/>.env.prod · 连 dev-mysql/prj_dev⚠<br/>宿主 Ollama(host.docker.internal)"]
+        PF["prj-frontend(prod)<br/>无 .env.production⚠"]
+        PP["prj-php :1181→dev-mysql⚠"]
+    end
+
+    MY -.共享数据卷/账号.-> PB
+    MY -.共享.-> PH
+    MY -.共享.-> DB
+    HOSTOLL -.宿主原生 Ollama.-> PB
+    HOSTOLL -.宿主原生 Ollama.-> DB
+    GW --> BF
+    GW --> BB
+    PN --> PF
+    PN --> PB
+    BB --> MY
+    DB --> MY
+    PB --> MY
+    PB --> PR
+    PH --> MY
+    PP --> MY

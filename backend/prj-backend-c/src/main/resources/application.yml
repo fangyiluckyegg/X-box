@@ -1,4 +1,15 @@
 # 开发环境配置
+#
+# ============================================================
+# AI 向量服务（Ollama）环境变量契约 —— 仅记录约束，不写死值
+# ------------------------------------------------------------
+# AI_SERVICE_URL : 后端经此调 Ollama /api/embed（基础地址，自动拼接 /api/embed）。
+#                   由 docker-compose 的 environment 注入；开发/生产均为
+#                   http://host.docker.internal:11434（宿主原生 Ollama）。
+#                   缺省值 http://dev-prj-llama:11434（CompareController @Value 兜底，仅历史兼容）。
+# AI_EMBED_MODEL : 向量化模型名，缺省 bge-m3:latest（须与宿主 ollama pull 的模型一致）。
+# AI_API_TOKEN   : 预留纵深防御占位，当前后端 Java 代码不消费（Ollama 默认无鉴权）。
+# ============================================================
 server:
   # 服务器的HTTP端口，默认为8080
   port: 8080

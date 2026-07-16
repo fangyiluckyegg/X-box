@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    participant U as 用户/前端
+    participant B as 后端容器(prj-backend-c)
+    participant GW as host.docker.internal(宿主网关)
+    participant O as 宿主 Ollama(0.0.0.0:11434)
+
+    Note over O: 启动顺序① 宿主 Ollama 必先就绪<br/>(ollama serve + bge-m3 已拉取)
+    Note over B: 启动顺序② 后端容器启动<br/>(不再 depends_on llama)
+    U->>B: POST /api/excel/compare (两份 Excel)
+    B->>B: 读取首列文本, 按 EMBED_BATCH_SIZE 分批
+    loop 每批(<=100条)
+        B->>GW: POST http://host.docker.internal:11434/api/embed
+        GW->>O: 转发 {model:"bge-m3:latest", input:[...]}
+        O-->>GW: 200 {embeddings:[[...],...]}
+        GW-->>B: 向量数组
+    end
+    B->>B: 余弦相似度匹配(完全/模糊/未匹配/新增)
+    B-->>U: 结果缓存 + 进度轮询(/progress,/fetchResult)
