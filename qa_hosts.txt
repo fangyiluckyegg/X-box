@@ -1,7 +1,0 @@
-=== /etc/hosts grep host.docker.internal ===
-192.168.65.254	host.docker.internal
-fdc4:f303:9324::254	host.docker.internal
-EXIT_HOSTS=0
-=== getent hosts host.docker.internal ===
-fdc4:f303:9324::254  host.docker.internal  host.docker.internal
-EXIT_GETENT=0
