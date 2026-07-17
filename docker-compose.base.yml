@@ -43,6 +43,10 @@ services:
     environment:
       TZ: Asia/Shanghai
       MYSQL_DATABASE: prj_dev
+      # [T10-class] 透传班级网站账号口令给 wrapper（ensure_class_user 使用），
+      # 与 prj-php 服务一致从 .env 注入；env_file(.env.dev) 已含 CLASS_DB_PWD，
+      # 此处显式声明确保该变量到达 mysql 容器，使 ALTER class_user 生效。
+      CLASS_DB_PWD: ${CLASS_DB_PWD}
     ports:
       - "127.0.0.1:33060:3306"
     networks:

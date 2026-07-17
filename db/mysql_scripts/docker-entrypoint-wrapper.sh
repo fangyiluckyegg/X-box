@@ -183,6 +183,7 @@ ALTER USER '${app_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${app_pwd
 # 既存 native 账号经 ALTER 自动升级为 caching_sha2，新建账号亦直接落 caching_sha2，杜绝反复告警。
 # 口令同步语义保留：CREATE USER 对既存用户不更新口令，故下方 ALTER 仍负责把 .env 新口令同步到库，
 # 解决共享 dev-mysql 的 prod/后端口令漂移。用户已由上两行保证存在，ALTER 永不报"用户不存在"。
+# 现已覆盖 class_user（见 ensure_class_user，与 prj_user 一并规避 MY-013360 弃用告警）。
 ALTER USER '${app_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${app_pwd}';
 GRANT ALL PRIVILEGES ON ${app_db}.* TO '${app_user}'@'%';
 FLUSH PRIVILEGES;
@@ -273,6 +274,9 @@ main() {
 
     # 2.5) 自愈应用账号 host 授权（幂等，解决 Host not allowed）
     ensure_app_user || true
+
+    # 2.6) 自愈班级网站账号 class_user 授权（幂等，解决 MY-013360 native 告警）
+    ensure_class_user || true
 
     # 3) 执行幂等迁移（失败不阻断主进程，但记录告警，便于人工排查）
     if ! run_migration; then
