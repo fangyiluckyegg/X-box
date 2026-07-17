@@ -206,6 +206,8 @@ SQL
 ensure_class_user() {
     local cnf
     local class_user='class_user'
+    # [T2] 醒目日志：确认 wrapper 已落地修复（class_user 认证插件迁移），便于用户 restart mysql 后核对。
+    log "开始修复班级账号 ${class_user}@'%' 认证插件..."
     local class_pwd="${CLASS_DB_PWD:-}"
     local class_db_msg='msg'
     local class_db_work='work'
@@ -216,6 +218,7 @@ ensure_class_user() {
     # 口令缺失则跳过（绝不把口令置空，避免清空既有账号口令致 PHP 登录失败）。
     if [ -z "$class_pwd" ]; then
         log "WARN: CLASS_DB_PWD 未设置，跳过 class_user 口令同步（不影响 MySQL 运行）。"
+        log "请检查 .env.dev 是否包含 CLASS_DB_PWD"
         return 1
     fi
     cnf="$(write_my_cnf)"
@@ -240,6 +243,42 @@ SQL
     rm -f "$cnf"
     log "WARN: 班级账号授权失败，请人工排查（不影响 MySQL 运行）。"
     return 1
+}
+
+# 自愈：将 root@localhost 的认证插件幂等迁移为 caching_sha2_password，
+# 消除 root 账号残留 mysql_native_password 触发的 MY-013360 弃用告警。
+# 仅在当前插件确为 mysql_native_password 时执行 ALTER（避免每次启动无谓改口令）；
+# 口令沿用 MYSQL_ROOT_PASSWORD（已由 .env.dev 注入），经 socket 连接 root@localhost。
+# root 默认走 socket 连接，但部分工具可能用 TCP 连 root，迁移到 sha2 可彻底消除告警。
+ensure_root_sha2() {
+    local cnf
+    local root_pwd="${MYSQL_ROOT_PASSWORD:-}"; root_pwd="${root_pwd//$'\r'/}"
+    if [ -z "$root_pwd" ]; then
+        log "WARN: MYSQL_ROOT_PASSWORD 未设置，跳过 root@localhost 认证插件迁移（不影响 MySQL 运行）。"
+        return 1
+    fi
+    cnf="$(write_my_cnf)"
+    log "开始迁移 root@localhost 认证插件为 caching_sha2_password ..."
+    # 仅当当前插件确为 mysql_native_password 时才 ALTER，避免重复改口令。
+    local current=""
+    current="$(mysql --defaults-extra-file="$cnf" -N -e "SELECT plugin FROM mysql.user WHERE user='root' AND host='localhost';" 2>/dev/null || true)"
+    if [ "$current" = "mysql_native_password" ]; then
+        if mysql --defaults-extra-file="$cnf" <<SQL
+ALTER USER 'root'@'localhost' IDENTIFIED WITH caching_sha2_password BY '${root_pwd}';
+FLUSH PRIVILEGES;
+SQL
+        then
+            rm -f "$cnf"
+            log "root@localhost 认证插件已迁移为 caching_sha2_password。"
+            return 0
+        fi
+        rm -f "$cnf"
+        log "WARN: root@localhost 认证插件迁移失败，请人工排查（不影响 MySQL 运行）。"
+        return 1
+    fi
+    rm -f "$cnf"
+    log "root@localhost 当前插件为 ${current:-unknown}，无需迁移。"
+    return 0
 }
 
 # 信号转发：把容器收到的终止信号转交给 mysqld，保证优雅关闭。
@@ -277,6 +316,9 @@ main() {
 
     # 2.6) 自愈班级网站账号 class_user 授权（幂等，解决 MY-013360 native 告警）
     ensure_class_user || true
+
+    # 2.7) 自愈 root@localhost 认证插件迁移为 caching_sha2（幂等，消除 MY-013360 告警）
+    ensure_root_sha2 || true
 
     # 3) 执行幂等迁移（失败不阻断主进程，但记录告警，便于人工排查）
     if ! run_migration; then

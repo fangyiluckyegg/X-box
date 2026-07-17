@@ -41,6 +41,18 @@ import org.springframework.web.filter.CorsFilter;
 @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
 public class SecurityConfig
 {
+    /**
+     * SPA 安全内容安全策略（CSP）。
+     * 与 nginx-gateway 保持一致的策略字符串，作为后端 API 响应的防御纵深。
+     * 设计依据：Vue 2.6 生产构建为 runtime-only（vue.config.js 未启用 runtimeCompiler），
+     * 运行期无 eval/new Function，故 script-src 仅需 'self'；element-ui 运行期动态注入
+     * &lt;style&gt;，故 style-src 需 'unsafe-inline'。
+     */
+    private static final String CSP_POLICY = "default-src 'self'; object-src 'none'; base-uri 'self'; "
+            + "form-action 'self'; frame-src 'self'; script-src 'self'; "
+            + "style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; "
+            + "font-src 'self' data:; connect-src 'self' http: https:";
+
     //定义用户认证方法
     @Autowired
     private UserDetailsService userDetailsService;
@@ -103,6 +115,7 @@ public class SecurityConfig
                 .frameOptions(frame -> frame.sameOrigin())
                 .addHeaderWriter(new XContentTypeOptionsHeaderWriter())
                 .addHeaderWriter(new ReferrerPolicyHeaderWriter(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(CSP_POLICY))
             );
 
         httpSecurity.logout(logout -> logout.logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler));

@@ -25,6 +25,8 @@ services:
       - .env.dev
     image: mysql:8.0
     container_name: dev-mysql
+    # [T5] CA 自签证书告警（MY-010068）：dev 环境使用 MySQL 自动生成的自签 ca.pem，
+    # 属预期行为，无需修复；如需生产级 TLS 应挂载自定义证书并配置 ssl-* 变量。
     mem_limit: 1g
     cpus: 1
     restart: always
@@ -58,8 +60,14 @@ services:
       - /bin/bash
       - /mysql_scripts/docker-entrypoint-wrapper.sh
     command:
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      # [T3] 尝试抑制 --skip-host-cache 弃用告警（MY-011068）：官方 entrypoint 仍会硬编码追加
+      # --skip-host-cache，故该 warning 大概率仍出现，属官方镜像已知无害行为，建议忽略，
+      # 不必为消除它改动 wrapper 调用官方 entrypoint 的核心逻辑。
+      - --host-cache-size=0
+      # [T4] 将 pid 文件落到数据目录（mysql 用户可写），消除 --pid-file 不安全路径告警（MY-011810）。
+      - --pid-file=/var/lib/mysql/mysql.pid
 
   redis:
     image: redis:5.0.14-alpine
@@ -70,6 +78,13 @@ services:
     security_opt:
       - no-new-privileges:true
     pids_limit: 100
+    # [T6] 原通过 sysctls 关闭 THP（透明大页）以消除 Redis THP 警告的方案已移除：
+    # Docker Desktop on Windows（WSL2 后端）不支持 kernel.mm.transparent_hugepage.enabled（不在独立 kernel namespace），
+    # 曾导致容器创建失败（OCI runtime create failed: sysctl ... is not in a separate kernel namespace）。
+    # 若想消除该无害的 THP 警告，请在宿主机（WSL2 终端，以 root）执行：
+    #   echo never > /sys/kernel/mm/transparent_hugepage/enabled
+    # 并写入 /etc/rc.local（或等价开机脚本）持久化，然后 docker compose restart redis。
+    # 切勿为消除此无害警告而改用 privileged: true（会削弱容器隔离）。
     volumes:
       - ./db/redis_data:/data
       - ./logs/redis:/var/log/redis

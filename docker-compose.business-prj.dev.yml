@@ -23,6 +23,11 @@ services:
       - ./logs/prj-frontend:/app/logs/prj-frontend
     networks:
       - dev-network
+    # [T1] 等后端真正就绪（healthcheck 通过）再启动，而非仅容器 started，
+    # 消除 frontend 先于 backend ready 启动导致的代理 ECONNREFUSED 瞬时报错。
+    depends_on:
+      prj-backend-c:
+        condition: service_healthy
 
   prj-backend-c:
     # [C4] 后端仅从 .env.backend 读取所需变量（不含任何 ROOT 口令），不再共享含根口令的 .env.dev
@@ -51,6 +56,9 @@ services:
       # Maven缓存卷，避免重复下载依赖
       - maven-cache:/root/.m2
       - ./logs/prj-backend-c:/app/logs/prj-backend-c
+    # [T7] 弱凭证告警说明（Spring Boot StartupSecurityValidator）：
+    # 下方 REDIS_PASSWORD（及 DRUID_PASSWORD 等）为 dev 环境默认弱口令，仅在 [dev] 环境允许，属预期行为。
+    # 生产环境请务必通过环境变量覆盖 REDIS_PASSWORD / DRUID_PASSWORD 为强口令（如经 .env.backend 注入），切勿沿用默认值。
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
@@ -73,6 +81,15 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "8080:8080"
+    # [T1] 健康检查：验证 Spring Boot 已就绪（/captchaImage 端点，与 Dockerfile.dev 一致），
+    # 供下方 prj-frontend 的 depends_on: service_healthy 等待，消除启动期代理 ECONNREFUSED。
+    # 参数对齐 Dockerfile.dev：interval=30s timeout=5s start-period=120s retries=3。
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/captchaImage"]
+      interval: 30s
+      timeout: 5s
+      start_period: 120s
+      retries: 3
     depends_on:
       mysql:
         condition: service_started

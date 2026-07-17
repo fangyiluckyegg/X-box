@@ -272,6 +272,19 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
+            <!-- [P1-HARDEN] OWASP 依赖漏洞扫描插件：仅手动触发，不绑定生命周期，不阻断构建 -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>10.0.4</version>
+                <configuration>
+                    <!-- 阈值设为 11（> CVSS 上限 10），即使手动扫描也不会使构建失败 -->
+                    <failBuildOnCVSS>11</failBuildOnCVSS>
+                </configuration>
+                <!-- 未声明 <executions>，不会绑定到 verify 等阶段，正常 mvn 构建不受影响。
+                     手动扫描：mvn org.owasp:dependency-check-maven:check -->
+            </plugin>
         </plugins>
     </build>
 </project>
