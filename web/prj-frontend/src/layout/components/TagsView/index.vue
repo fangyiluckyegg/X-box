@@ -6,17 +6,22 @@
         v-for="tag in visitedViews"
         ref="tag"
         :key="tag.path"
-        :class="isActive(tag)?'active':''"
         :to="{ path: tag.path, query: tag.query }"
-        tag="span"
-        class="tagsMenu"
-        :style="activeStyle(tag)"
-        @click.middle.native="!isFixed(tag)?closeSelected(tag):''"
-        @contextmenu.prevent.native="openMenu(tag,$event)"
+        custom
+        v-slot="{ navigate }"
       >
-        {{ tag.title }}
+        <span
+          :class="isActive(tag)?'active':''"
+          class="tagsMenu"
+          :style="activeStyle(tag)"
+          @click="navigate"
+          @click.middle="!isFixed(tag)?closeSelected(tag):''"
+          @contextmenu.prevent="openMenu(tag,$event)"
+        >
+          {{ tag.title }}
 
-        <span v-if="!isFixed(tag)" class="el-icon-close" @click.prevent.stop="closeSelected(tag)" />
+          <span v-if="!isFixed(tag)" class="el-icon-close" @click.prevent.stop="closeSelected(tag)" />
+        </span>
       </router-link>
     </scroll-pane>
     <ul v-show="visible" :style="{left:leftVal+'px',top:topVal+'px'}" class="contextmenu">

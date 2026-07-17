@@ -1,6 +1,6 @@
 # Niu_Txl/Dockerfile.classphp  (QA TEMP COPY — 仅修复 --with-png 非法选项，用于验证集成)
 # 607/902 班级网站运行环境：Apache + PHP 7.4 + mysqli + gd
-FROM php:7.4-apache
+FROM php:8.2-apache
 
 USER root
 

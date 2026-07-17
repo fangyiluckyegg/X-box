@@ -50,7 +50,7 @@ import java.util.Map;
 @RequestMapping("/api/excel")
 public class CompareController
 {
-    /** 类级日志对象（已去除原 [DIAG] System.out 调试日志）。 */
+    /** 类级日志对象。 */
     private static final Logger logger = LoggerFactory.getLogger(CompareController.class);
 
     /** 单文件大小上限（20MB），与前端 checkFile 对齐。 */

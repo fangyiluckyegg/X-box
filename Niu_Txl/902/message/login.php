@@ -47,22 +47,25 @@ if (isset($_POST['username'])) {
   $MM_redirectLoginSuccess = "index.php";
   $MM_redirectLoginFailed = "login.php";
 
-  $LoginRS__query=sprintf("SELECT username, password FROM admin_user WHERE username=%s AND password=%s",
-    GetSQLValueString($loginUsername, "text"), GetSQLValueString($password, "text")); 
+  $LoginRS__query=sprintf("SELECT username, password FROM admin_user WHERE username=%s",
+    GetSQLValueString($loginUsername, "text"));
 
   $LoginRS = mysql_query($LoginRS__query, $conn) or die(mysql_error());
   $loginFoundUser = mysql_num_rows($LoginRS);
   
   if ($loginFoundUser) {
-    $_SESSION['MM_Username'] = $loginUsername;
-    header("Location: " . $MM_redirectLoginSuccess);
-    ob_end_flush();
-    exit;
-  } else {
-    header("Location: ". $MM_redirectLoginFailed);
-    ob_end_flush();
-    exit;
+    $row = mysql_fetch_array($LoginRS);
+    if (password_verify($password, $row['password'])) {
+      $_SESSION['MM_Username'] = $loginUsername;
+      header("Location: " . $MM_redirectLoginSuccess);
+      ob_end_flush();
+      exit;
+    }
   }
+  // 用户名不存在或口令错误：统一跳回登录失败页
+  header("Location: " . $MM_redirectLoginFailed);
+  ob_end_flush();
+  exit;
 }
 ?>
 <!doctype html>

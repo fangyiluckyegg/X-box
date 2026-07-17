@@ -28,5 +28,7 @@ if (!function_exists('mysql_query')) {
     function mysql_fetch_array($res) { return mysqli_fetch_array($res); }
     function mysql_num_rows($res) { return mysqli_num_rows($res); }
     function mysql_error() { global $conn; return mysqli_error($conn); }
+    function mysql_real_escape_string($str) { global $conn; return mysqli_real_escape_string($conn, $str); }
+    function mysql_escape_string($str)       { global $conn; return mysqli_real_escape_string($conn, $str); }
 }
 ?>

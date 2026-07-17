@@ -2,7 +2,7 @@
 # 607/902 班级网站运行环境：Apache + PHP 7.4 + mysqli + gd
 # 构建上下文为 ./Niu_Txl；运行时通过 bind mount 把 ./Niu_Txl 挂为 docroot（/var/www/html），
 # 因此 607/902 直接以 /607、/902 子路径对外提供服务，无需子路径重写。
-FROM php:7.4-apache
+FROM php:8.2-apache
 
 USER root
 
@@ -19,6 +19,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 
 # 启用 mod_rewrite（902 当前均为显式 .php，无强制依赖，启用备用）
 RUN a2enmod rewrite
+
+# 全局 ServerName：消除 AH00558 启动告警（Apache 无法可靠解析 FQDN 时回退容器 IP）
+RUN echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf \
+    && a2enconf servername
 
 # 上传照片：调大文件 / 请求上限（607 uploadHandler.php 处理班级照片上传）
 RUN { \

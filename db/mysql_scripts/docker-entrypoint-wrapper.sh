@@ -175,12 +175,15 @@ ensure_app_user() {
     cnf="$(write_my_cnf)"
     log "确保应用账号 ${app_user}@'%' 存在并授权 ${app_db}.* ..."
     if mysql --defaults-extra-file="$cnf" <<SQL
-CREATE USER IF NOT EXISTS '${app_user}'@'%' IDENTIFIED BY '${app_pwd}';
-ALTER USER '${app_user}'@'%' IDENTIFIED BY '${app_pwd}';
-# [T9] 幂等同步口令：CREATE USER 对既存用户不会更新口令（仅首次创建生效），
-# 追加 ALTER USER 使 prj_user 的口令随 .env 新值自动更新，解决共享 dev-mysql 口令不一致
-# （prod 后端连不上库）。用户已由上一行保证存在，故 ALTER USER 永不报“用户不存在”。
-ALTER USER '${app_user}'@'%' IDENTIFIED BY '${app_pwd}';
+CREATE USER IF NOT EXISTS '${app_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${app_pwd}';
+ALTER USER '${app_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${app_pwd}';
+# [T10] 显式指定 caching_sha2_password 认证插件，规避已废弃的 mysql_native_password
+# （MySQL 8.0 启动/连接时会报 MY-013360 弃用告警）。后端 JDBC 走 useSSL=true（TLS），
+# caching_sha2_password 在 TLS 下无需服务端公钥即可完成握手，安全且兼容；
+# 既存 native 账号经 ALTER 自动升级为 caching_sha2，新建账号亦直接落 caching_sha2，杜绝反复告警。
+# 口令同步语义保留：CREATE USER 对既存用户不更新口令，故下方 ALTER 仍负责把 .env 新口令同步到库，
+# 解决共享 dev-mysql 的 prod/后端口令漂移。用户已由上两行保证存在，ALTER 永不报"用户不存在"。
+ALTER USER '${app_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${app_pwd}';
 GRANT ALL PRIVILEGES ON ${app_db}.* TO '${app_user}'@'%';
 FLUSH PRIVILEGES;
 SQL

@@ -30,19 +30,30 @@ module.exports = {
     watchOptions: {
       poll: 1000
     },
-    proxy: {
-      [process.env.VUE_APP_BASE_API]: {
-        // Docker Compose多容器互通，使用后端服务名backend，不能localhost
-        target: `http://prj-backend-c:8080`,
-        //target: `http://backend:8080`,
-        //http://prj-backend-c:8080
-        //http://bibutong-backend:8080
-        changeOrigin: true,
-        pathRewrite: {
-          ['^' + process.env.VUE_APP_BASE_API]: ''
+    // 后端路由前缀代理：与网关 prj.conf 的 allowlist 对齐（/api/、登录/验证码、业务根路径等）。
+    // 前端 VUE_APP_BASE_API 已改为同源相对路径('/')，开发态浏览器请求会先落到本 dev server，
+    // 再由下方代理转发到后端容器(prj-backend-c:8080)；生产 / 经网关访问则由网关统一转发，不走此代理。
+    // 注意：切勿把代理 key 设为 VUE_APP_BASE_API（现为 '/'），否则会匹配全部请求导致 HMR/静态资源被误代理。
+    proxy: (() => {
+      const backendTarget = process.env.VUE_APP_PROXY_TARGET || 'http://prj-backend-c:8080'
+      const contexts = [
+        '/api',
+        '/login', '/logout', '/captchaImage',
+        '/employee_kpi', '/compare', '/positionLearning', '/druid',
+        '/v3', '/swagger-ui', '/doc.html', '/webjars', '/profile'
+      ]
+      return contexts.reduce((acc, ctx) => {
+        acc[ctx] = {
+          target: backendTarget,
+          changeOrigin: true,
+          // 关闭 WebSocket 代理：本项目不使用 ws（前端 HMR 走 sockjs，不经 proxy ws 通道），
+          // 避免每个代理在 dev server 的 HTTP Server 上挂一个 upgrade 监听器，
+          // 13 个代理累计超过 Node EventEmitter 默认 10 个监听器上限而刷 MaxListenersExceededWarning。
+          ws: false
         }
-      }
-    },
+        return acc
+      }, {})
+    })(),
     disableHostCheck: true,
     allowedHosts: ['all']
   },

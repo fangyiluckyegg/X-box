@@ -51,13 +51,15 @@ if (isset($_POST['username'])) {
   $MM_redirecttoReferrer = false;
   mysql_select_db($database_conn, $conn);
   
-  $LoginRS__query=sprintf("SELECT username, password FROM admin_user WHERE username=%s AND password=%s",
-    GetSQLValueString($loginUsername, "text"), GetSQLValueString($password, "text")); 
+  $LoginRS__query=sprintf("SELECT username, password FROM admin_user WHERE username=%s",
+    GetSQLValueString($loginUsername, "text"));
    
   $LoginRS = mysql_query($LoginRS__query, $conn) or die(mysql_error());
   $loginFoundUser = mysql_num_rows($LoginRS);
   if ($loginFoundUser) {
      $loginStrGroup = "";
+     $row = mysql_fetch_array($LoginRS);
+     if (password_verify($password, $row['password'])) {
     
 	if (PHP_VERSION >= 5.1) {session_regenerate_id(true);} else {session_regenerate_id();}
     //declare two session variables and assign them
@@ -67,7 +69,10 @@ if (isset($_POST['username'])) {
     if (isset($_SESSION['PrevUrl']) && false) {
       $MM_redirectLoginSuccess = $_SESSION['PrevUrl'];	
     }
-    header("Location: " . $MM_redirectLoginSuccess );
+      header("Location: " . $MM_redirectLoginSuccess );
+    } else {
+      header("Location: " . $MM_redirectLoginFailed );
+    }
   }
   else {
     header("Location: ". $MM_redirectLoginFailed );

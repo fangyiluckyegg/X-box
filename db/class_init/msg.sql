@@ -30,7 +30,7 @@ USE `msg`;
 
 CREATE TABLE `admin_user` (
   `username` varchar(20) NOT NULL,
-  `password` varchar(20) NOT NULL
+  `password` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
@@ -38,7 +38,7 @@ CREATE TABLE `admin_user` (
 --
 
 INSERT INTO `admin_user` (`username`, `password`) VALUES
-('admin', '20091010xuyi');
+('admin', '');
 
 -- --------------------------------------------------------
 
