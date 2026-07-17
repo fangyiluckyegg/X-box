@@ -176,6 +176,11 @@ ensure_app_user() {
     log "确保应用账号 ${app_user}@'%' 存在并授权 ${app_db}.* ..."
     if mysql --defaults-extra-file="$cnf" <<SQL
 CREATE USER IF NOT EXISTS '${app_user}'@'%' IDENTIFIED BY '${app_pwd}';
+ALTER USER '${app_user}'@'%' IDENTIFIED BY '${app_pwd}';
+# [T9] 幂等同步口令：CREATE USER 对既存用户不会更新口令（仅首次创建生效），
+# 追加 ALTER USER 使 prj_user 的口令随 .env 新值自动更新，解决共享 dev-mysql 口令不一致
+# （prod 后端连不上库）。用户已由上一行保证存在，故 ALTER USER 永不报“用户不存在”。
+ALTER USER '${app_user}'@'%' IDENTIFIED BY '${app_pwd}';
 GRANT ALL PRIVILEGES ON ${app_db}.* TO '${app_user}'@'%';
 FLUSH PRIVILEGES;
 SQL

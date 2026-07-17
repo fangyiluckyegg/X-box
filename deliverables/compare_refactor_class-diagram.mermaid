@@ -1,0 +1,115 @@
+classDiagram
+    class CompareController {
+        +compareExcel(MultipartFile, MultipartFile) ResponseEntity
+        +getProgress() AjaxResult
+        +fetchResult() AjaxResult
+        +downloadResult(HttpServletResponse) void
+    }
+    class ICompareService {
+        <<interface>>
+        +performCompare(String, MultipartFile, MultipartFile) void
+    }
+    class CompareServiceImpl {
+        -IEmbeddingService embeddingService
+        -ISimilarityService similarityService
+        -IProgressStore progressStore
+        -ExcelReader excelReader
+        +performCompare(String, MultipartFile, MultipartFile) void @Async
+    }
+    class IEmbeddingService {
+        <<interface>>
+        +embed(List~String~) Map~String,double[]~
+    }
+    class OllamaEmbeddingServiceImpl {
+        -IOllamaEmbedClient client
+        -int EMBED_BATCH_SIZE = 100
+        +embed(List~String~) Map~String,double[]~
+    }
+    class IOllamaEmbedClient {
+        <<interface>>
+        +embedBatch(List~String~) List~double[]~
+    }
+    class OkHttpOllamaEmbedClient {
+        -OkHttpClient httpClient
+        -String embedUrl
+        -String model
+        +embedBatch(List~String~) List~double[]~
+    }
+    class ISimilarityService {
+        <<interface>>
+        +compare(List~String~, List~String~, Map, Map) List~CompareResultRow~
+    }
+    class SimilarityServiceImpl {
+        -double SIMILARITY_THRESHOLD = 0.85
+        -double NEW_COVERAGE_THRESHOLD = 0.5
+        +cosine(double[], double[]) double
+        +compare(...) List~CompareResultRow~
+    }
+    class IProgressStore {
+        <<interface>>
+        +saveProgress(String, ProgressVo) void
+        +saveResult(String, List~CompareResultRow~) void
+        +getProgress(String) ProgressVo
+        +getResult(String) List~CompareResultRow~
+        +markFailed(String, String) void
+        +cancel(String) void
+    }
+    class InMemoryProgressStore {
+        -Map~String,ProgressVo~ progressMap
+        -Map~String,List~CompareResultRow~~ resultMap
+        -Map~String,Long~ expireAt
+        +saveProgress(...) void
+        +saveResult(...) void
+        +getProgress(...) ProgressVo
+        +getResult(...) List~CompareResultRow~
+        +markFailed(...) void
+        +cancel(...) void
+    }
+    class ExcelReader {
+        -int MAX_EXCEL_ROWS = 50000
+        +readFirstColumnNames(MultipartFile) List~String~
+    }
+    class EmbeddingException {
+        <<enum>> Category { TIMEOUT, CONNECTION, EMPTY, PARTIAL }
+        +Category category
+        +EmbeddingException(Category, String, Throwable)
+        +getCategory() Category
+    }
+    class ProgressVo {
+        +String stage
+        +int percent
+        +int current
+        +int total
+        +String currentText
+        +String message
+    }
+    class CompareResultRow {
+        +String name
+        +String originVal
+        +String matchedName
+        +String newVal
+        +double similarity
+        +String diffType
+    }
+    class AsyncConfig {
+        +compareTaskExecutor() ThreadPoolTaskExecutor
+    }
+
+    CompareController --> ICompareService : 编排
+    CompareController --> IProgressStore : 读进度/结果
+    CompareServiceImpl ..|> ICompareService
+    CompareServiceImpl --> IEmbeddingService
+    CompareServiceImpl --> ISimilarityService
+    CompareServiceImpl --> IProgressStore
+    CompareServiceImpl --> ExcelReader : 读Excel
+    CompareServiceImpl ..> ProgressVo : 写
+    CompareServiceImpl ..> CompareResultRow : 写
+    OllamaEmbeddingServiceImpl ..|> IEmbeddingService
+    OllamaEmbeddingServiceImpl --> IOllamaEmbedClient : 调底层缝
+    OkHttpOllamaEmbedClient ..|> IOllamaEmbedClient
+    OllamaEmbeddingServiceImpl ..> EmbeddingException : throws
+    SimilarityServiceImpl ..|> ISimilarityService
+    InMemoryProgressStore ..|> IProgressStore
+    InMemoryProgressStore ..> ProgressVo
+    InMemoryProgressStore ..> CompareResultRow
+    AsyncConfig ..> CompareServiceImpl : @Async("compareTaskExecutor")
