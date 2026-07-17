@@ -197,6 +197,50 @@ SQL
     return 1
 }
 
+# 自愈：确保班级网站账号 class_user@'%' 存在并拥有 msg/work 库授权。
+# 与 ensure_app_user 完全对齐，解决 PHP（Niu_Txl 902）连接账号此前仅由手动
+# runbook 创建、wrapper 未覆盖，导致持久卷内 class_user 仍用已废弃的
+# mysql_native_password、每次 PHP 请求都触发 MY-013360 弃用告警的问题。
+# 每次启动执行，幂等，不依赖 initdb；不修改任何业务数据。
+ensure_class_user() {
+    local cnf
+    local class_user='class_user'
+    local class_pwd="${CLASS_DB_PWD:-}"
+    local class_db_msg='msg'
+    local class_db_work='work'
+    # [FIX] 剥除 Windows CRLF 尾随 \r（同 ensure_app_user 对 prj_user 的处理）；
+    # 否则 .env.dev 若为 CRLF，CLASS_DB_PWD 会带 \r，导致 ALTER 设错口令、
+    # 或 CREATE 出的账号口令与 PHP 不符而连接被拒。
+    class_pwd="${class_pwd//$'\r'/}"
+    # 口令缺失则跳过（绝不把口令置空，避免清空既有账号口令致 PHP 登录失败）。
+    if [ -z "$class_pwd" ]; then
+        log "WARN: CLASS_DB_PWD 未设置，跳过 class_user 口令同步（不影响 MySQL 运行）。"
+        return 1
+    fi
+    cnf="$(write_my_cnf)"
+    log "确保班级账号 ${class_user}@'%' 存在并授权 ${class_db_msg}.* / ${class_db_work}.* ..."
+    if mysql --defaults-extra-file="$cnf" <<SQL
+CREATE USER IF NOT EXISTS '${class_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${class_pwd}';
+ALTER USER '${class_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${class_pwd}';
+# [T10-class] 对齐 prj_user：显式指定 caching_sha2_password，覆盖已存在的 native 账号。
+# PHP 8.2/mysqlnd 支持非 TLS 下 RSA 公钥交换完成 sha2 认证，迁移安全。
+# 既存 native 账号（class_user）经 ALTER 自动升级为 caching_sha2，新建账号亦直接落
+# caching_sha2，与 prj_user 一并杜绝反复告警。MY-013360 现已覆盖 class_user（对齐 prj_user）。
+ALTER USER '${class_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${class_pwd}';
+GRANT ALL PRIVILEGES ON ${class_db_msg}.* TO '${class_user}'@'%';
+GRANT ALL PRIVILEGES ON ${class_db_work}.* TO '${class_user}'@'%';
+FLUSH PRIVILEGES;
+SQL
+    then
+        rm -f "$cnf"
+        log "班级账号授权完成（${class_user}@'%' -> ${class_db_msg}.* / ${class_db_work}.*）。"
+        return 0
+    fi
+    rm -f "$cnf"
+    log "WARN: 班级账号授权失败，请人工排查（不影响 MySQL 运行）。"
+    return 1
+}
+
 # 信号转发：把容器收到的终止信号转交给 mysqld，保证优雅关闭。
 forward_signal() {
     local sig="$1"
