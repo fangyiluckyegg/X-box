@@ -58,9 +58,9 @@ X-box
 │   ├── 607                  # 待核验
 │   └── 902                  # 待核验
 │   ├── .dockerignore        # 保留：Docker build context 专属，不能并入根
-│   ├── .gitignore          # 保留：子目录 Git 忽略，可并入根但保留更清晰
+│   ├── .gitignore           # 保留：子目录 Git 忽略，可并入根但保留更清晰
 │   ├── Dockerfile.classphp  # PHP 8.2（注释已更正）
-│   ├── index.php            # 已安全化：去 phpinfo，重定向至 /902/message/index.php
+│   ├── index.php            # 重定向至 /902/message/index.php
 ├── logs                     # 全容器统一日志挂载目录，容器运行日志【不能上传GIT】
 │   ├── nginx                # 已有，正常
 │   ├── mysql                # 【暂缺】
@@ -89,7 +89,7 @@ X-box
 ├── docker-compose.base.yml  # 基础业务容器编排，常驻公共中间件【开发与生产环境是否可以合并】：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】
 ├── docker-compose.business-prj.yml        # 保留：开发/内网业务编排（dev profile，与 base 共用基础设施）
 ├── docker-compose.business-prj.dev.yml    # 业务容器编排：前端、后端【开发环境版本】【可上传GIT】
-├── docker-compose.classphp.dev.yml        # 保留：dev 环境 PHP 容器编排（被 scripts/prj_restart.bat 引用）【开发环境版本】【可上传GIT】
+├── docker-compose.classphp.dev.yml        # [已合并·已删除] prj-php 已并入 docker-compose.business-prj.dev.yml（2026-07-20），本文件不再存在
 ├── docker-compose.prod.yml  # 保留：生产环境编排（prod profile，外部化密钥）
 ├── VERSION.md               # 用 Markdown 格式清晰记录项目版本、迭代号、构建版本【可上传GIT】
 └── 项目开发说明              # 项目 Readme 文档，记录开发、部署流程，给团队提供使用指引【可上传GIT】

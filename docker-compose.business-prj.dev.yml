@@ -1,3 +1,8 @@
+# 开发环境业务编排（frontend + backend-c + PHP/Niu_Txl）
+# 与 docker-compose.base.yml 共用 dev-mysql / dev-redis / dev-network 等基础设施；
+# 开发阶段无需触碰 prod 文件（docker-compose.prod.yml）。
+# 启动（合并 classphp.dev 后仅 2 文件，对齐 prod 形态）：
+#   docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
 services:
   prj-frontend:
     build:
@@ -94,6 +99,34 @@ services:
       mysql:
         condition: service_started
       redis:
+        condition: service_started
+    networks:
+      - dev-network
+
+  # [PHP/Niu_Txl] 由 docker-compose.classphp.dev.yml 合并而来（2026-07-20）
+  prj-php:
+    build:
+      context: ./Niu_Txl
+      dockerfile: Dockerfile.classphp
+    container_name: dev-prj-php
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 100
+    mem_limit: 512m
+    cpus: 1.0
+    env_file:
+      - .env.dev          # 注入 CLASS_DB_* 到容器，conn.php 经 getenv 读取
+    volumes:
+      - ./Niu_Txl:/var/www/html
+      - ./logs/prj-php:/var/log/apache2
+    environment:
+      CLASS_DB_HOST: dev-mysql     # dev 永远连 base 的 dev-mysql
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:1181:80"       # 与 prod 端口一致，避免改 nginx upstream
+    depends_on:
+      mysql:
         condition: service_started
     networks:
       - dev-network
