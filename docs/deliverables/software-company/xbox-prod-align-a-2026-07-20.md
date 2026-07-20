@@ -104,7 +104,7 @@ docker compose -f docker-compose.base.yml exec mysql \
 ## 8. 意外发现 / 备注（超出方案A范围，未改动）
 
 1. **`init.template.sql` 预存瑕疵（不影响方案A）**：`db/mysql_init/init.template.sql` 含裸 `CREATE TABLE user_info`，而 `init.sql` 已先建同名表。在全新卷上该文件会报 `ERROR 1050 (42S01) Table 'user_info' already exists`。但官方 MySQL 8.0 entrypoint 对 initdb.d 脚本失败仅记录日志、**不中断 `for` 循环**（脚本无 `set -e` 包裹该循环），故其后的 `msg.sql`/`work.sql` 仍会执行，**方案A在全新卷自动建 msg/work 库不受影响**。该重复建表属历史遗留，建议后续将 `init.template.sql` 移出 initdb.d 或加 `IF NOT EXISTS`，但不在本次方案A范围内。
-2. **文档残留引用**：`docs/prod-mac-runbook.md`、`docs/architecture_review.md`、`docs/X-box-optimization-report-2026-07-14.md` 及 `deliverables/` 历史报告仍文字提及 `db/class_init/`。这些为文档/历史交付物，非业务/dev 运行配置，按「仅删孤立 class_init 目录与一行死挂载」的硬性约束**未改动**；建议后续将这些文档的 class_init 说明更新为「已并入 db/mysql_init/ 顶层（方案A）」，避免误导。其中 `prod-mac-runbook.md:62` 原写「msg.sql/work.sql 不在 initdb.d 下，不会自动执行」——方案A后该结论已不成立，建议优先修正该 runbook。
+2. **文档残留引用**：`docs/prod-mac-runbook.md`、`docs/architecture_review.md`、`docs/X-box-optimization-report-2026-07-14.md` 及 `docs/deliverables/` 历史报告仍文字提及 `db/class_init/`。这些为文档/历史交付物，非业务/dev 运行配置，按「仅删孤立 class_init 目录与一行死挂载」的硬性约束**未改动**；建议后续将这些文档的 class_init 说明更新为「已并入 db/mysql_init/ 顶层（方案A）」，避免误导。其中 `prod-mac-runbook.md:62` 原写「msg.sql/work.sql 不在 initdb.d 下，不会自动执行」——方案A后该结论已不成立，建议优先修正该 runbook。
 
 ---
 

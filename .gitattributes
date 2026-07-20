@@ -6,3 +6,6 @@
 # 仅针对会因此崩溃的文件类型（*.sh）；Dockerfile / compose 的 CRLF 由 Docker/YAML
 # 解析器容忍，无需强制。
 *.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.env* text eol=lf

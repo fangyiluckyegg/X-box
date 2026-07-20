@@ -54,7 +54,7 @@
    - `docker-compose.base.yml.aligned.bak-2026-07-20:112`
    - `docker-compose.base.yml.safe.bak-2026-07-20:115`
 2. **保留·合理（历史交付报告，不修改）**：
-   - `deliverables/software-company/xbox-prod-align-2026-07-20.md:56,63` — 历史对齐交付报告中的 Dockerfile 清单条目，属历史记录。
+   - `docs/deliverables/software-company/xbox-prod-align-2026-07-20.md:56,63` — 历史对齐交付报告中的 Dockerfile 清单条目，属历史记录。
 3. **保留·合理（归档后安全文档）**：
    - `docs/security/ssh-key-incident.md:1,9` — 即本次归档文档本身，原样保留原 README-SECURITY.md 中关于 ai_llama 目录的描述。
 4. **文档更新（预期内，非可运行引用）**：

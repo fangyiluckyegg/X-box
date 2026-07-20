@@ -222,6 +222,12 @@ ensure_class_user() {
         return 1
     fi
     cnf="$(write_my_cnf)"
+    # [T11] 幂等自愈：清理历史残留的畸形 host 账号 class_user@'%%'（双百分号）。
+    # 该账号由早期脚本以 printf 拼接 host 时把 % 写成 %% 遗留，使用已废弃的
+    # mysql_native_password，会导致 MySQL 每次启动报 MY-013360 弃用告警。
+    # 真实 PHP 连接匹配的是 class_user@'%'（单 %），此 %% 账号无任何真实连接使用，
+    # 删除安全。仅精确匹配该畸形 host 字面量，不影响 class_user@'%' 等其他账号。
+    mysql --defaults-extra-file="$cnf" -e "DROP USER IF EXISTS 'class_user'@'%%';" 2>/dev/null || true
     log "确保班级账号 ${class_user}@'%' 存在并授权 ${class_db_msg}.* / ${class_db_work}.* ..."
     if mysql --defaults-extra-file="$cnf" <<SQL
 CREATE USER IF NOT EXISTS '${class_user}'@'%' IDENTIFIED WITH caching_sha2_password BY '${class_pwd}';

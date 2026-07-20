@@ -1,3 +1,5 @@
+> 本文档由原 ai_llama/README-SECURITY.md 于 2026-07-20 归档（Ollama 已迁宿主机部署，ai_llama 容器目录废弃移除）。
+
 # SSH 密钥安全说明
 
 ## 当前状态

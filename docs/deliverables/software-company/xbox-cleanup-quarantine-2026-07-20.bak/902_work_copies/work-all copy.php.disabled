@@ -1,0 +1,123 @@
+<?php require_once('Connections/conn.php'); ?>
+<?php
+if (!function_exists("GetSQLValueString")) {
+function GetSQLValueString($theValue, $theType, $theDefinedValue = "", $theNotDefinedValue = "") 
+{
+  if (PHP_VERSION < 6) {
+    $theValue = get_magic_quotes_gpc() ? stripslashes($theValue) : $theValue;
+  }
+
+  $theValue = function_exists("mysql_real_escape_string") ? mysql_real_escape_string($theValue) : mysql_escape_string($theValue);
+
+  switch ($theType) {
+    case "text":
+      $theValue = ($theValue != "") ? "'" . $theValue . "'" : "NULL";
+      break;    
+    case "long":
+    case "int":
+      $theValue = ($theValue != "") ? intval($theValue) : "NULL";
+      break;
+    case "double":
+      $theValue = ($theValue != "") ? doubleval($theValue) : "NULL";
+      break;
+    case "date":
+      $theValue = ($theValue != "") ? "'" . $theValue . "'" : "NULL";
+      break;
+    case "defined":
+      $theValue = ($theValue != "") ? $theDefinedValue : $theNotDefinedValue;
+      break;
+  }
+  return $theValue;
+}
+}
+
+$currentPage = $_SERVER["PHP_SELF"];
+
+mysql_select_db($database_conn, $conn);
+$query_rstype = "SELECT * FROM work_type";
+$rstype = mysql_query($query_rstype, $conn) or die(mysql_error());
+$row_rstype = mysql_fetch_assoc($rstype);
+$totalRows_rstype = mysql_num_rows($rstype);
+
+$maxRows_rspic = 9;
+$pageNum_rspic = 0;
+if (isset($_GET['pageNum_rspic'])) {
+  $pageNum_rspic = $_GET['pageNum_rspic'];
+}
+$startRow_rspic = $pageNum_rspic * $maxRows_rspic;
+
+mysql_select_db($database_conn, $conn);
+$query_rspic = "SELECT * FROM work_pic inner join work_type on work_pic.t_id=work_type.t_id ORDER BY p_id DESC";
+$query_limit_rspic = sprintf("%s LIMIT %d, %d", $query_rspic, $startRow_rspic, $maxRows_rspic);
+$rspic = mysql_query($query_limit_rspic, $conn) or die(mysql_error());
+$row_rspic = mysql_fetch_assoc($rspic);
+
+if (isset($_GET['totalRows_rspic'])) {
+  $totalRows_rspic = $_GET['totalRows_rspic'];
+} else {
+  $all_rspic = mysql_query($query_rspic);
+  $totalRows_rspic = mysql_num_rows($all_rspic);
+}
+$totalPages_rspic = ceil($totalRows_rspic/$maxRows_rspic)-1;
+
+$queryString_rspic = "";
+if (!empty($_SERVER['QUERY_STRING'])) {
+  $params = explode("&", $_SERVER['QUERY_STRING']);
+  $newParams = array();
+  foreach ($params as $param) {
+    if (stristr($param, "pageNum_rspic") == false && 
+        stristr($param, "totalRows_rspic") == false) {
+      array_push($newParams, $param);
+    }
+  }
+  if (count($newParams) != 0) {
+    $queryString_rspic = "&" . htmlentities(implode("&", $newParams));
+  }
+}
+$queryString_rspic = sprintf("&totalRows_rspic=%d%s", $totalRows_rspic, $queryString_rspic);
+?>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>所有作品列表页面</title>
+<link href="style/style.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+<div id="box">
+  <div id="top"><img src="images/top01.jpg" width="880" height="100" alt=""><img src="images/top02.jpg" width="920" height="65" alt=""></div>
+  <div id="pic1">
+    <div id="left">
+      <div id="left-title">作品分类</div>
+      <div id="type-list">
+        <ul>
+          <li><a href="work-all.php">全部作品</a></li>
+          <?php do { ?>
+            <li><a href="work-type.php?t_id=<?php echo $row_rstype['t_id']; ?>"><?php echo $row_rstype['t_name']; ?></a></li>
+            <?php } while ($row_rstype = mysql_fetch_assoc($rstype)); ?>
+        </ul>
+      </div>
+    </div>
+    <div id="right">
+      <div id="title"><span class="font01">共有 <?php echo $totalRows_rspic ?> 个作品，当前显示第 <?php echo ($startRow_rspic + 1) ?> 个至第 <?php echo min($startRow_rspic + $maxRows_rspic, $totalRows_rspic) ?> 个</span>全部设计作品</div>
+      <div id="pic-work">
+        <?php if ($totalRows_rspic > 0) { // Show if recordset not empty ?>
+          <?php do { ?>
+            <div class="work1"><a href="work-show.php?p_id=<?php echo $row_rspic['p_id']; ?>" target="_blank"><img src="admin/upload/<?php echo $row_rspic['p_src']; ?>" alt="" width="195" height="122"></a><br>
+              <span class="font02"><?php echo $row_rspic['p_name']; ?></span><br>
+              [<?php echo $row_rspic['t_name']; ?>]　<?php echo $row_rspic['p_date']; ?></div>
+            <?php } while ($row_rspic = mysql_fetch_assoc($rspic)); ?>
+          <?php } // Show if recordset not empty ?>
+      </div>
+      <div id="bar"><a href="<?php printf("%s?pageNum_rspic=%d%s", $currentPage, 0, $queryString_rspic); ?>">第一页</a>　<a href="<?php printf("%s?pageNum_rspic=%d%s", $currentPage, max(0, $pageNum_rspic - 1), $queryString_rspic); ?>">上一页</a>　<a href="<?php printf("%s?pageNum_rspic=%d%s", $currentPage, min($totalPages_rspic, $pageNum_rspic + 1), $queryString_rspic); ?>">下一页</a>　<a href="<?php printf("%s?pageNum_rspic=%d%s", $currentPage, $totalPages_rspic, $queryString_rspic); ?>">最后一页</a></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+<?php
+mysql_free_result($rstype);
+
+mysql_free_result($rspic);
+?>

@@ -1,6 +1,6 @@
 # X-box 比对模块重构 · 增量架构设计 + 任务分解
 
-> 文档类型：增量架构设计（中文，配合 `deliverables/compare_refactor_incremental_prd.md`）
+> 文档类型：增量架构设计（中文，配合 `docs/deliverables/compare_refactor_incremental_prd.md`）
 > 作者：架构师 高见远（software-architect）
 > 范围：代码质量 P1 / 性能 P1 / 测试 P0 / 配置 D2（外部依赖项暂缓）
 > 技术栈（既有，不替换）：后端 Spring Boot 3.2.12 (Java 17) + MyBatis；前端 Vue 2.6 + element-ui 2.x；OkHttp 调宿主 Ollama bge-m3。

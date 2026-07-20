@@ -1,68 +1,50 @@
 # ============================================================
-# 生产环境编排（C5 / C14）—— Apple Silicon (Mac mini) 适配版
+# 生产环境编排（C5 / C14）—— Apple Silicon (Mac mini M2) 适配版
 #
-# 特点：
+# ⬇⬇⬇ 本次「dev→prod 对齐 + bug 排查 + 整合精简」（2026-07-20）相对上一版的关键修正 ⬇⬇⬇
+#   1. 【端口冲突修复·高】原 prj-nginx 与 base 的 nginx-gateway 同时绑定 127.0.0.1:80/443，
+#      合并运行必冲突（仅一个能起）。现移除 prj-nginx，统一复用 base 的 nginx-gateway
+#      （同一份 gateway/nginx/conf.d/prj.conf，TLS/资源限制完全一致）。
+#   2. 【端口冲突修复·高】原 prj-redis 与 base 的 redis 同时绑定 127.0.0.1:63790，冲突。
+#      现保留 prod 自有 prj-redis（redis:7，arm64 兼容）但【移除其宿主机端口映射】，
+#      仅容器内网可达（后端经服务名 prj-redis 访问），消除冲突与冗余暴露。
+#   3. 【网络对齐·中】原 prod 业务服务挂在 isolated 的 prj-network，而网关在 dev-network，
+#      导致前端仅 prj-network、网关无法代理前端。现全部 prod 业务服务统一挂 dev-network
+#      （与 dev 一致），删除 prj-network。
+#   4. 【前端端口对齐·低】prj-frontend 补回 127.0.0.1:8081:8081（与 dev 对齐，loopback）。
+# ⬆⬆⬆ 以上修正已使 prod 与 dev 在「service 命名 / 网络 / 端口映射逻辑」上对齐 ⬆⬆⬆
+#
+# 其余既有约束保持不变：
 #   - 后端使用 prod profile（SPRING_PROFILES_ACTIVE=prod），启用严格密钥校验
 #   - 所有敏感凭证经 env_file (.env.prod) 外部化，禁止明文进仓库
 #   - 容器名去除 dev- 前缀；restart: unless-stopped；无 TTY / 不挂载源码
-#   - AI 推理改由宿主原生 Ollama 提供（host.docker.internal:11434，base 已移除容器 llama）
-#
-# 本次 Apple Silicon 适配改动（相对原 prod）：
-#   - redis 5.0.14-alpine -> redis:7-alpine（Redis 5 已 EOL，官方 arm64 镜像缺失，Mac 上会拉取失败）
-#   - 所有服务显式 platform: linux/arm64（避免 amd64 模拟退化，保证原生性能）
-#   - 补充 mem_limit / cpus 资源限制（防止 Mac 内存被单容器吃满）
-#   - mysql / redis 增加健康检查；后端 depends_on 等待二者 healthy 再启动
-#   - 网关 X-Forwarded-For 已改为覆盖式（见 gateway/nginx/conf.d/prj.conf），防客户端伪造 IP
+#   - AI 推理经宿主原生 Ollama（host.docker.internal:11434）
 #
 # 使用：
-#   cp .env.prod .env.prod.local  # 填入真实强随机密钥后（不要提交 .env.prod 到 Git）
+#   cp .env.prod .env.prod.local   # 填入真实强随机密钥后（不要提交 .env.prod 到 Git）
 #   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
-# 说明：本生产栈【并非】自包含独立栈——它必须与 docker-compose.base.yml 一同启动，
-#       共享 base.yml 的 dev-mysql（数据库）；AI 推理（Ollama + bge-m3）自 2026-07-16 起
-#       改为【宿主原生部署】，后端经 host.docker.internal:11434 访问（base 已移除容器 llama）。
-#       为避免 dev- 前缀基础设施被重复创建，请勿单独运行本文件。
+# ⚠️ 本生产栈【并非】自包含——必须与 docker-compose.base.yml 一同启动，
+#   共享 base 的 nginx-gateway / dev-mysql / dev-redis（均在 dev-network）。
+#   单跑本文件会因 dev-mysql / nginx-gateway 不存在而解析/连接失败。
 #
-# ⚠️【凭证契约 · 必须一致】共享 dev-mysql 中 prj_user 的口令由 MySQL 容器 env
-#   （base.yml 的 .env.dev）的 SPRING_DATASOURCE_PASSWORD 在运行时注入
-#   （见 db/mysql_scripts/docker-entrypoint-wrapper.sh 的 ensure_app_user()）。
-#   故：Mac 部署 prod 时，本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD
-#   必须与下方本文件引用的 .env.prod 的 SPRING_DATASOURCE_PASSWORD 完全相同，
-#   否则 prod 后端连不上 dev-mysql。
+# ⚠️【凭证契约 · 必须一致】共享 dev-mysql 中 prj_user 的口令由 base 的 .env.dev 的
+#   SPRING_DATASOURCE_PASSWORD 在运行时注入（ensure_app_user()）。故 Mac 部署 prod 时，
+#   本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD 必须与下方 .env.prod 的
+#   SPRING_DATASOURCE_PASSWORD 完全相同，否则 prod 后端连不上 dev-mysql。
+#   （当前两文件该值已一致：<REDACTED-live-prod>）
 #
-# ⚠️ 拓扑变更（2026-07-14）：原独立 prj-mysql 已废弃删除，生产全栈统一复用
-#    docker-compose.base.yml 的 dev-mysql（容器名 dev-mysql，网络 dev-network）。
-#    - 故本生产栈必须与 base.yml 一并启动（dev-mysql 为常驻依赖）：
-#        docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
-#    - 单跑本文件会因 dev-mysql 不存在而解析/连接失败。
-#    - prj-backend / prj-php 已加入 dev-network 以便跨网互访；dev-mysql 无 healthcheck，
-#      depends_on 一律用 condition: service_started。
-#    - 建库（prj_prod/msg/work）、class_user 账号与授权、密码对齐等操作见
-#      docs/X-box-db-merge-runbook-2026-07-14.md，由运维在 dev-mysql 运行时执行。
-#    - 本次合并同时移除 prod 自带的 `prj-llama`，并自 2026-07-16 起将 AI 推理迁至宿主原生 Ollama
-#      （host.docker.internal:11434），base 的容器 `dev-prj-llama` 也已移除，prod.yml 不再 depends_on Ollama。
+# ⚠️ 拓扑：生产全栈复用 base 的 dev-mysql（容器名 dev-mysql，网络 dev-network）。
+#   建库（prj_dev）、class_user 账号与授权、密码对齐见 docs 运行手册，由运维在 dev-mysql 运行时执行。
+#   AI 推理自 2026-07-16 起迁至宿主原生 Ollama（host.docker.internal:11434），prod 不再 depends_on Ollama。
 # ============================================================
 services:
-  prj-nginx:
-    image: nginx:1.25-alpine
-    platform: linux/arm64
-    container_name: prj-nginx
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 50
-    mem_limit: 256m
-    cpus: 0.5
-    volumes:
-      - ./gateway/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./gateway/nginx/ssl:/etc/nginx/ssl:ro
-      - ./logs/nginx:/var/log/nginx
-    ports:
-      - "127.0.0.1:80:80"
-      - "127.0.0.1:443:443"
-    networks:
-      - prj-network
-
+  # ------------------------------------------------------------
+  # prod 自有 Redis（redis:7，arm64 兼容）。保留而非复用 base redis 的原因：
+  # base redis 的 requirepass 取 .env.dev（dev 默认弱口令），而 prod 后端用 .env.prod 的强口令，
+  # 二者口令不同，无法直接复用；为不改动 dev 配置，prod 用独立 prj-redis 并自带强口令。
+  # 【已移除宿主机端口映射】避免与 base redis 的 63790 冲突；仅 dev-network 内可达。
+  # ------------------------------------------------------------
   prj-redis:
     image: redis:7-alpine
     platform: linux/arm64
@@ -84,10 +66,8 @@ services:
       timeout: 3s
       retries: 10
       start_period: 10s
-    ports:
-      - "127.0.0.1:63790:6379"
     networks:
-      - prj-network
+      - dev-network
 
   # 凭证契约见文件头【凭证契约】段：后端用 .env.prod 的 SPRING_DATASOURCE_PASSWORD
   # 连 dev-mysql 的 prj_user；该口令由 .env.dev 的 SPRING_DATASOURCE_PASSWORD 注入，
@@ -109,7 +89,7 @@ services:
       TZ: Asia/Shanghai
       # [C2] 生产启用 prod profile，触发严格密钥校验（弱/缺失即启动失败）
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://dev-mysql:3306/${MYSQL_DATABASE:-prj_prod}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://dev-mysql:3306/${MYSQL_DATABASE:-prj_dev}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATA_REDIS_HOST: prj-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 9
@@ -124,7 +104,6 @@ services:
       prj-redis:
         condition: service_healthy
     networks:
-      - prj-network
       - dev-network
 
   prj-frontend:
@@ -141,15 +120,19 @@ services:
     cpus: 0.5
     volumes:
       - ./logs/prj-frontend:/var/log/nginx
+    # [对齐·2026-07-20] 与 dev 一致，loopback 暴露 8081（同时仍经 nginx-gateway:80 统一入口）
+    ports:
+      - "127.0.0.1:8081:8081"
+    # 复用 base 的 nginx-gateway（已移除重复的 prj-nginx）
     depends_on:
-      - prj-nginx
+      - nginx-gateway
     networks:
-      - prj-network
+      - dev-network
 
-  # ===== 新增：班级网站 Niu_Txl（607/902）运行环境 =====
-  # Apache + PHP 7.4 + mysqli + gd，bind mount ./Niu_Txl 为 docroot（/var/www/html），
+  # ===== 班级网站 Niu_Txl（607/902）运行环境 =====
+  # Apache + PHP 8.2 + mysqli + gd，bind mount ./Niu_Txl 为 docroot（/var/www/html），
   # 607/902 直接以 /607、/902 子路径对外；复用 dev-mysql 新建 msg/work 库与 class_user 账号。
-  # 仅新增本服务，未改动其它任何服务。详见《X-box-Niu_Txl整合设计.md》。
+  # 仅新增本服务，未改动其它任何服务。详见《X-box-Niu_Txl整合设计.md》
   prj-php:
     build:
       context: ./Niu_Txl
@@ -179,9 +162,7 @@ services:
       mysql:
         condition: service_started
     networks:
-      - prj-network
       - dev-network
 
-networks:
-  prj-network:
-    driver: bridge
+# 说明：本文件不再定义 prj-network。prod 业务服务统一挂 base 定义的 dev-network，
+#       与 dev 拓扑一致，且可与 base 的 nginx-gateway / dev-mysql 互通。

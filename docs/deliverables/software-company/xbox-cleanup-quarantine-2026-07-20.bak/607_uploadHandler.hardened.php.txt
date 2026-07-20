@@ -1,0 +1,100 @@
+<?php
+/**
+ * 607_uploadHandler.hardened.php —— 加固参考实现（仅作参考，未启用）
+ * ----------------------------------------------------------------------------
+ * 本文件为 uploadHandler.php 的安全加固示意版本，存放在 _quarantine/ 下且扩展名
+ * 为 .txt，不会被 Web 服务器当作 PHP 执行，也不会被自动加载。
+ *
+ * 关键加固点（对应原漏洞）：
+ *   1. 服务端鉴权占位：require_login() 伪代码，未登录直接 403 拒绝。
+ *   2. 服务端 MIME 校验：使用 finfo 读取真实文件头，而非信任客户端 $_FILES['type']。
+ *   3. 扩展名白名单：仅允许图片扩展名，杜绝 .php 等可执行后缀。
+ *   4. 文件名消毒：basename() 剥离路径，正则清洗，并采用随机文件名防止路径穿越/覆盖。
+ *   5. 固定落盘目录：服务端硬编码上传根目录，不依赖任何客户端输入拼接路径。
+ *   6. 配合该目录下的 .htaccess（php_flag engine off + 拒绝执行 *.php）形成纵深防御。
+ *
+ * 注意：真实上线前仍需补全会话管理、错误处理与日志，并确认该目录已禁 PHP 执行。
+ */
+
+// ---------------------------------------------------------------------------
+// 0. 鉴权占位（伪代码）
+// ---------------------------------------------------------------------------
+// function require_login(): void {
+//     if (empty($_SESSION['user_id'])) {
+//         http_response_code(403);
+//         exit('Forbidden');
+//     }
+// }
+// session_start();
+// require_login();
+
+// ---------------------------------------------------------------------------
+// 1. 配置：固定上传根目录 + 扩展名白名单
+// ---------------------------------------------------------------------------
+const UPLOAD_ROOT   = __DIR__ . '/永远的607/newphoto/';
+const ALLOWED_EXT  = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+const MAX_FILESIZE = 5 * 1024 * 1024; // 5 MB
+
+header('Content-Type: application/json; charset=utf-8');
+
+// ---------------------------------------------------------------------------
+// 2. 基础校验
+// ---------------------------------------------------------------------------
+if (!isset($_FILES['img']) || $_FILES['img']['error'] !== UPLOAD_ERR_OK) {
+    http_response_code(400);
+    exit(json_encode(['ok' => false, 'msg' => '上传失败或文件过大']));
+}
+
+$file = $_FILES['img'];
+
+if ($file['size'] > MAX_FILESIZE) {
+    http_response_code(413);
+    exit(json_encode(['ok' => false, 'msg' => '文件超过大小限制']));
+}
+
+// ---------------------------------------------------------------------------
+// 3. 服务端真实 MIME 校验（finfo，不信任客户端 type）
+// ---------------------------------------------------------------------------
+$finfo    = new finfo(FILEINFO_MIME_TYPE);
+$realMime = $finfo->file($file['tmp_name']);
+$allowedMime = [
+    'image/png'  => 'png',
+    'image/jpeg' => 'jpg',
+    'image/gif'  => 'gif',
+    'image/webp' => 'webp',
+];
+
+if (!array_key_exists($realMime, $allowedMime)) {
+    http_response_code(415);
+    exit(json_encode(['ok' => false, 'msg' => '不支持的文件类型']));
+}
+
+// 以服务端校验出的扩展名为准（忽略客户端提供的扩展名）
+$ext = $allowedMime[$realMime];
+
+// ---------------------------------------------------------------------------
+// 4. 文件名消毒：basename 剥离路径 + 随机名，杜绝路径穿越与覆盖
+// ---------------------------------------------------------------------------
+$originalBase = basename($file['name']);                 // 去掉任何目录成分
+$safeBase     = preg_replace('/[^A-Za-z0-9._-]/', '_', $originalBase); // 仅保留安全字符
+$newName      = bin2hex(random_bytes(16)) . '.' . $ext;  // 服务端随机名
+
+$dest = UPLOAD_ROOT . $newName;
+if (!is_dir(UPLOAD_ROOT) && !mkdir(UPLOAD_ROOT, 0755, true) && !is_dir(UPLOAD_ROOT)) {
+    http_response_code(500);
+    exit(json_encode(['ok' => false, 'msg' => '服务器目录异常']));
+}
+
+// ---------------------------------------------------------------------------
+// 5. 落盘（固定目录 + 随机名）
+// ---------------------------------------------------------------------------
+if (move_uploaded_file($file['tmp_name'], $dest)) {
+    echo json_encode([
+        'ok'   => true,
+        'msg'  => '照片已经上传成功！',
+        'file' => $newName,           // 仅回显服务端生成的随机名，不回显任何客户端输入
+    ]);
+} else {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'msg' => '上传失败！']);
+}

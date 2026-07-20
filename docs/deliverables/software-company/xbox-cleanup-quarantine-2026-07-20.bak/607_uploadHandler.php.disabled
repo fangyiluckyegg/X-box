@@ -1,0 +1,43 @@
+<?php
+    // 接收文件
+    var_dump($_FILES); // 区别于$_POST、$_GET
+    var_dump($_REQUEST); // 区别于$_POST、$_GET    
+    print_r($_FILES);
+    $file = $_FILES["img"];
+    $text = $_REQUEST["text"];
+
+    // 先判断有没有错
+    if ($file["error"] == 0) {   // 成功   
+        $typeArr = explode("/", $file["type"]);  // 获取传输的文件类型
+        if($typeArr[0]== "image"){   // 判断传输的文件是否是图片，类型是否合适；// 如果是图片类型            
+            $imgType = array("png","jpg","jpeg");
+            if(in_array($typeArr[1], $imgType)){ // 图片格式是数组中的一个；如类型检查无误，保存到指定文件夹内   
+            $imgname_new = $text.time().".".$typeArr[1];  // 给图片定一个新名字 (使用时间戳，防止重复)
+            // 容器化：基于脚本所在目录（__DIR__ = /var/www/html/607），配合 bind mount 自适应，
+            // 不再依赖 Windows 硬编码路径 C:/xampp/nginx/html/...
+            $imgname = __DIR__ . '/永远的607/newphoto/' . $imgname_new;
+            $bol = move_uploaded_file($file["tmp_name"], $imgname);                // 将上传的文件写入到文件夹中;参数1: 图片在服务器缓存的地址; 参数2: 图片的目的地址（最终保存的位置）; 最终会有一个布尔返回值
+                if($bol){
+                    echo "照片已经上传成功！";
+                } else {
+                    echo "上传失败！";
+                };
+            };
+            } else {
+                echo "没有图片，再检查一下吧！"; // 不是图片类型
+            };
+        } else {
+        echo $file["error"];         // 失败
+    };
+    //$imgname_print = "location:/607/永远的607/newphoto/".$imgname_new;   
+    //header("$imgname_print");
+    echo "<script language=\"JavaScript\">\r\n";
+    echo " alert(\"照片已经上传成功，感谢您的参与\");\r\n";
+    echo " history.back();\r\n";
+    echo "</script>";
+    //echo "<script language=\"JavaScript\">alert(\"照片已经上传成功，感谢您的参与\");</script>";
+?>
+
+
+
+

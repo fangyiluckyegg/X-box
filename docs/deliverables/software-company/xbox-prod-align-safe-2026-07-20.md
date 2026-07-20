@@ -74,7 +74,7 @@ docker compose -f docker-compose.base.yml exec mysql \
 
 - **结果：已删除。**
 - 原第 2 行 `MYSQL_ROOT_PWD=Root@Dev123456` 已移除；同段注释 `# MySQL root管理员账号`（第 1 行）与真实生效键 `MYSQL_ROOT_PASSWORD=Root@Dev123456`（现第 2 行）均保留。
-- **全局 grep 结论**：`MYSQL_ROOT_PWD` 在整个仓库中**无任何代码消费者**——`db/mysql_scripts/docker-entrypoint-wrapper.sh` 读取的是 `MYSQL_ROOT_PASSWORD`；各 compose（含 `docker-compose.base.yml`）亦只引用 `MYSQL_ROOT_PASSWORD`；仅历史交付报告 `deliverables/software-company/xbox-prod-align-2026-07-20.md` 的文字中提及该冗余键。故删除安全，不影响任何功能。
+- **全局 grep 结论**：`MYSQL_ROOT_PWD` 在整个仓库中**无任何代码消费者**——`db/mysql_scripts/docker-entrypoint-wrapper.sh` 读取的是 `MYSQL_ROOT_PASSWORD`；各 compose（含 `docker-compose.base.yml`）亦只引用 `MYSQL_ROOT_PASSWORD`；仅历史交付报告 `docs/deliverables/software-company/xbox-prod-align-2026-07-20.md` 的文字中提及该冗余键。故删除安全，不影响任何功能。
 - **补充发现（未改动，超出本任务范围）**：`.env.dev.example:13` 同样含冗余键 `MYSQL_ROOT_PWD=ChangeMe_Root`（模板占位值，非真实密钥，且同样本不被任何代码读取）。为保持模板与 `.env.dev` 一致、避免 `cp .env.dev.example .env.dev` 时重新引入冗余键，建议后续一并清理该模板行。本次严格按任务范围仅清理 `.env.dev`，未动 `.env.dev.example`。
 
 ## 5. 已修改文件清单（绝对路径 + 备份路径）

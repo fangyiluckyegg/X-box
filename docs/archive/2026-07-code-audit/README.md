@@ -1,8 +1,9 @@
 # 历史归档：X-box 代码审计与整改方案
 
 > 归档时间：2026-07-12
-> 原路径：`deliverables/software-company/code-audit/`
+> 原路径：`docs/deliverables/software-company/code-audit/`（自 2026-07-20 起 `deliverables/` 整体迁至 `docs/deliverables/`；code-audit 此前已归档于本目录）
 > 归档原因：项目进入微优化阶段，将原代码审计产出从 `deliverables/`（交付物暂存区）迁移至 `docs/archive/`，作为历史上下文长期保留，不再参与日常交付物清单。
+> 二次迁移说明（2026-07-20）：原 `deliverables/` 交付物暂存区整体迁至 `docs/deliverables/`（本次文档目录整理），xbox 系列历史报告现位于 `docs/deliverables/software-company/`。
 
 ## 本目录文件
 

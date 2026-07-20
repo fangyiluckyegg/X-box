@@ -6,7 +6,7 @@ gateway/
 db/
 scripts/
 docs/
-deliverables/
+# deliverables/ 已于 2026-07-20 整体迁移至 docs/deliverables，已由上方 docs/ 规则排除，无需单独排除
 *.md
 .git/
 .gitignore

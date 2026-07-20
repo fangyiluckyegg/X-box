@@ -33,12 +33,21 @@ services:
     security_opt:
       - no-new-privileges:true
     pids_limit: 200
+    # 【方案A·2026-07-20】移除无效的 class_init 子目录挂载（原行：
+    #   - ./db/class_init:/docker-entrypoint-initdb.d/class_init:ro）。
+    # 原因：MySQL 官方 entrypoint 对 /docker-entrypoint-initdb.d/* 仅做【非递归】通配，
+    #       子目录 class_init/ 内的 .sql 会被 "ignoring" 分支跳过，永不自动执行（QA 已确认）。
+    # 真修复：db/class_init/msg.sql、work.sql 已并入 db/mysql_init/ 顶层（见下方挂载），
+    #       全新数据卷首次初始化即自动建 msg/work 库；已存在数据卷(mysql_data)不会重跑，对运行时无影响。
+    # 原 db/class_init/ 目录已删除，避免与 mysql_init 顶层重复造成混淆。
     volumes:
       # [C17] MySQL 数据目录改用命名卷（mysql_data），避免 bind 挂载到 Windows NTFS（大小写不敏感）
       # 导致 MySQL 8.0 全新初始化时 redo 日志创建失败（Cannot create redo log files ... corrupt）。
       # 命名卷位于 Docker Desktop Linux 虚拟机 ext4（大小写敏感），可正常建库；init.sql 仍由 mysql_init 挂载自动执行。
       - mysql_data:/var/lib/mysql
       - ./db/mysql_init:/docker-entrypoint-initdb.d
+      # 【方案A·2026-07-20】已移除 class_init 只读子目录挂载（死挂载，见上方说明）；
+      # msg/work SQL 现已并入 db/mysql_init/ 顶层，全新数据卷首次初始化即自动执行。
       # [C1] 挂载幂等补列包装脚本目录（刻意不进入 initdb.d，避免首次初始化被官方 entrypoint 误执行）
       - ./db/mysql_scripts:/mysql_scripts
       - ./logs/mysql:/var/log/mysql
@@ -70,7 +79,10 @@ services:
       - --pid-file=/var/lib/mysql/mysql.pid
 
   redis:
-    image: redis:5.0.14-alpine
+    # [对齐·2026-07-20] 由 redis:5.0.14-alpine 升级到 redis:7-alpine：
+    # redis 5 官方镜像缺少 linux/arm64 清单，Mac(M2/OrbStack) 拉取会失败；
+    # redis:7-alpine 为多架构镜像（amd64/arm64 均可用），对 dev(Windows/amd64) 向后兼容。
+    image: redis:7-alpine
     container_name: dev-redis
     mem_limit: 512m
     cpus: 0.3
@@ -102,40 +114,8 @@ services:
   # 宿主侧需先启动 Ollama 并 ollama pull bge-m3（见 scripts/setup-host-ollama.*）。
   # host.docker.internal 在多数 Docker 环境内置解析，但部分环境（如某些 Windows Docker 版本）不会注入，故在 prj-backend-c 显式用 extra_hosts 兜底。
   # ------------------------------------------------------------
-  # 如需临时回退到「容器 Ollama」，取消下方注释块（恢复 dev-prj-llama 服务），
-  # 并将对应 compose / .env 的 AI_SERVICE_URL 改回 http://dev-prj-llama:11434。
-  # （不引入 profile，保持编排简单）
-  # ------------------------------------------------------------
-  # dev-prj-llama:
-  #   build:
-  #     context: ./
-  #     dockerfile: ./ai_llama/Dockerfile.llama
-  #   container_name: dev-prj-llama
-  #   mem_limit: 4g
-  #   cpus: 2
-  #   security_opt:
-  #     - no-new-privileges:true
-  #   pids_limit: 100
-  #   stdin_open: true
-  #   tty: true
-  #   volumes:
-  #     - ./logs/llama:/app/logs/llama
-  #   environment:
-  #     MODEL_ROOT_PATH: /model
-  #     TZ: Asia/Shanghai
-  #     OLLAMA_HOST: 0.0.0.0:11434
-  #     OLLAMA_MODEL: bge-m3:latest
-  #   ports:
-  #     - "127.0.0.1:11434:11434"
-  #   entrypoint: ["/bin/sh", "/app/docker-entrypoint-llama.sh"]
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "if [ -f /tmp/ollama-model-unavailable ]; then exit 0; fi; OLLAMA_HOST=127.0.0.1:11434 ollama list 2>/dev/null | grep -q 'bge-m3:latest'"]
-  #     interval: 10s
-  #     timeout: 10s
-  #     retries: 30
-  #     start_period: 180s
-  #   networks:
-  #     - dev-network
+  # 【清理·2026-07-20】移除「容器版 Ollama」注释回退示例：Ollama 已迁宿主机原生部署，
+  # 对应构建文件随目录于本日删除，故不再保留该注释服务块（避免指向已删除的构建上下文）。
 
 
 # 统一容器内网网络

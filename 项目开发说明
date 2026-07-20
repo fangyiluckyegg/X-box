@@ -1,51 +1,39 @@
-我有一个综合型的项目，基本上是基于容器开发，请帮助系统性的排查BUG。具体开发环境如下
-
-一、宿主机硬件与前置环境清单
-1. 家庭台式机开发电脑硬件配置
+我有一个综合型的项目（项目根目录为D:\crh123dexiaohao\X-box\），基本上是基于容器开发，当前根据dev类开发环境文件是可以跑通的，希望能够参考dev类开发环境文件，实现prod类生产环境文件的完全对齐，请帮助进行系统性的bUG排查和代码整合精简优化。具体开发与目标生产环境如下
+一、开发电脑配置与环境清单
 CPU：i7-8700K
 内存：16GB DDR4 3000MHz
 显卡：RTX2070S（AI 推理加速）
 存储：1TB NVMe 系统盘、3T+1T 机械盘
 系统：Windows 11 专业版
-2. 必备软件安装与配置
-Docker Desktop for Windows
-后端启用 WSL2
-WSL 资源限制：内存 8G、CPU 6 核、交换分区 4G
-镜像存储路径指向机械盘，节省 NVMe 空间
-开启文件挂载热重载、启用 BuildKit 构建加速
-开发工具：VS Code（Docker/YAML/Vue/Java 插件）、Git、Windows 终端 / PowerShell
-网络规范：仅本地回环127.0.0.1暴露端口，禁止 0.0.0.0 全网监听，Windows 防火墙拦截外部访问 Docker 端口
-3. 项目统一目录规范（完全对齐生产层级）
+环境：开发工具：VS Code（Docker/YAML/Vue/Java 插件）、Ollama+bge（AI基础，宿主机部署）
+二、生产服务器配置与环境清单
+1.硬件：mac mini m2 16+1T
+2.系统：macOS Sonoma 14.8.7
+3.环境：OrbStack2.1.3（docker容器编排）、Ollama+bge（AI基础，宿主机部署）
+
+二、项目当前情况（要求开发与生产环境完全对齐）
 根目录：D:\crh123dexiaohao\X-box\
-plaintext
 X-box
 ├── gateway/nginx            # Nginx网关配置、路由、SSL证书
 │   ├── conf.d               
 │   │   └── prj.conf         # 业务HTTPS路由配置（移到此处，ssl目录只做挂载）【可上传GIT】
-│   └── ssl                  # 宿主机挂载目录，仓库无证书文件
-│       ├── *.key            # 【暂缺】【不能上传GIT】
-│       ├── *.crt            # 【暂缺】【不能上传GIT】
-│       └── *.pem            # 【暂缺】【不能上传GIT】
+│   └── ssl                  # ssl挂载目录，仓库无证书文件
+│       ├── *.key            # 【不能上传GIT】
+│       ├── *.crt            # 【不能上传GIT】
+│       └── *.pem            # 【不能上传GIT】
 ├── db
 │   ├── mysql_data           # MySQL持久化数据【不能上传GIT】
 │   ├── redis_data           # Redis持久化RDB文件【不能上传GIT】
-│   ├── class_init           # 同学录数据库初始化SQL（建库、账号、权限）
-│   │   ├── msg.sql          # 待核验
-│   │   └── work.sql         # 待核验
-│   ├──mysql_init            # prj数据库初始化SQL（建库、账号、权限）
+│   ├── mysql_init           # prj数据库初始化SQL（建库、账号、权限）
 │   │   ├── init.sql         # 有真实密码【不能上传GIT】【待整合，git删除】
-│   │   └── init.template.sql    # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
-│   ├──mysql_scripts         # 待核验
-│   │   └── docker-entrypoint-wrapper.sh  # 待核验
-├── ai_llama                 # Llama3.2、bge-m3向量模型权重（宿主机挂载，不打包镜像）
-│   ├── models               # 向量模型权重，是Ollama 完整模型二进制存储【不能上传GIT】
-│   ├── cache                # Ollama运行时自动生成的本地缓存文件【不能上传GIT】
-│   ├── Dockerfile.llama     # AI推理服务构建文件（开发生产共用）【可上传GIT】【是不是应该归入常态化容器类更好？是不是因为担心长期占空间意义不大？】
-│   ├── id_ed25519           # 私钥：绝对禁止提交 Git【不能上传GIT】
-│   └── id_ed25519.pub       # 公钥：仅用于服务器授权【不能上传GIT】
+│   │   ├── init.template.sql # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
+│   │   ├── migrate_role.sql # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
+│   │   ├── msg.sql          # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
+│   │   └── work.sql         # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
+│   └── mysql_scripts        # 待核验
+│       └── docker-entrypoint-wrapper.sh  # 待核验
 ├── web/prj-frontend       
-│   ├── log/prj-frontend     # 待核验【不能上传GIT】
-│   ├── node_modules         # 项目依赖包，体积巨大，通过package-lock.json统一安装【不能上传GIT】
+│   ├── node_modules         # 是否可删除？已经换地方了。项目依赖包，体积巨大，通过package-lock.json统一安装【不能上传GIT】
 │   ├── src                  # prj-frontend Vue前端源码（包含Vue组件、路由配置、状态管理等）【可上传GIT】
 │   ├── public               # prj-frontend Vue前端静态资源（如index.html-你的应用的首页和图片等）【可上传GIT】
 │   ├── .env.development     # 前端开发环境变量模板（仅接口域名、通用配置，无密钥则可提交）【可上传GIT】
@@ -60,27 +48,25 @@ X-box
 │   ├── nginx.conf           # 前端生产 Nginx 托管配置，属于部署标准文件，可提交【可上传GIT】
 │   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像【可上传GIT】
 │   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【可上传GIT】【待修改】
-├── backend/prj_backend-c      
+├── backend/prj_backend-c
 │   ├── src                  # Spring Cloud Alibaba后端源码【可上传GIT】
+│   ├── target               # 【不上传GIT】   
 │   ├── pom.xml              # Maven 主依赖配置，锁定所有 Java 三方包版本，强制提交，保证开发 / 生产依赖完全一致【可上传GIT】
 │   ├── Dockerfile.prod      # 生产环境-线上CI流水线专用多阶段构建镜像，仅保留JRE，无编译工具，用于打包纯净生产镜像【可上传GIT】
 │   └── Dockerfile.dev       # 开发环境-单阶段 JDK 镜像，预装 Maven/Python，供 VSCode Dev Containers 挂载源码调试）【待修改】
 ├── Niu_Txl
-│   ├── _quarantine          # 待核验
 │   ├── 607                  # 待核验
 │   └── 902                  # 待核验
-│   ├── .dockerignore        # 待核验
-│   ├── .gitignore           # 待核验
-│   ├── Dockerfile.classphp  # 待核验
-│   ├── frpc.class-http.example.toml   # 待核验
-│   ├── index.php            # 待核验
-│   └── index.phpecho        # 待核验
+│   ├── .dockerignore        # 保留：Docker build context 专属，不能并入根
+│   ├── .gitignore          # 保留：子目录 Git 忽略，可并入根但保留更清晰
+│   ├── Dockerfile.classphp  # PHP 8.2（注释已更正）
+│   ├── index.php            # 已安全化：去 phpinfo，重定向至 /902/message/index.php
 ├── logs                     # 全容器统一日志挂载目录，容器运行日志【不能上传GIT】
-│   ├── nginx
+│   ├── nginx                # 已有，正常
 │   ├── mysql                # 【暂缺】
 │   ├── redis                # 【暂缺】
-│   ├── llama
-│   ├── prj-php
+│   ├── llama                # 是否可删除？
+│   ├── prj-php              # 已有，正常
 │   ├── prj-backend-c
 │   └── prj-frontend
 ├── scripts                  # 运维启停、备份、清理脚本
@@ -91,25 +77,21 @@ X-box
 ├── .devcontainer
 │   ├── devcontainer-lock.json  # VSCode远程容器开发配置，绑定prj项目服务【可上传GIT】
 │   └── devcontainer.json    # VSCode远程容器配置，绑定prj项目服务【可上传GIT】
-├── docker/ollama
-│   └── docker-entrypoint-llama.sh  #待核验
 ├── docs
-│   └── archive              #待核验
-├── .env.backend             # 待核验
+│   └── archive              # 待核验
+├── .env.backend             # 是否可删除？
 ├── .env.dev                 # 本地开发环境变量【不能上传GIT】
-├── .env.dev.example         # 【暂无，待处理】【可上传GIT】
-├── .env.prod                # 待核验【不能上传GIT】
-├── .env.prod.bak            # 待核验【不能上传GIT】
-├── .env.prod.example        # 待核验
+├── .env.dev.example         # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用
+├── .env.prod                # 服务器生产环境变量
+├── .env.prod.example        # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用
 ├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重【可上传GIT】
 ├── .gitattributes           # 待核验
 ├── .dockerignore            # 构建Docker镜像时统一屏蔽日志、模型、环境变量、编译产物，开发/生产Dockerfile共用【可上传GIT】
-├── docker-compose.base.yml  # 常驻公共中间件：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】
-├── docker-compose.business-prj.yml        # prj专属业务容器：前端、后端、AI向量服务【生产环境版本】【可上传GIT】
-├── docker-compose.business-prj.dev.yml    # prj专属业务容器：前端、后端、AI向量服务【开发环境版本】【可上传GIT】
-├── docker-compose.classphp.dev.yml        # 待核验
-├── docker-compose.prod.yml  # 待核验
-├── Dockerfile.classphp.qa   # 待核验
+├── docker-compose.base.yml  # 基础业务容器编排，常驻公共中间件【开发与生产环境是否可以合并】：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】
+├── docker-compose.business-prj.yml        # 保留：开发/内网业务编排（dev profile，与 base 共用基础设施）
+├── docker-compose.business-prj.dev.yml    # 业务容器编排：前端、后端【开发环境版本】【可上传GIT】
+├── docker-compose.classphp.dev.yml        # 保留：dev 环境 PHP 容器编排（被 scripts/prj_restart.bat 引用）【开发环境版本】【可上传GIT】
+├── docker-compose.prod.yml  # 保留：生产环境编排（prod profile，外部化密钥）
 ├── VERSION.md               # 用 Markdown 格式清晰记录项目版本、迭代号、构建版本【可上传GIT】
 └── 项目开发说明              # 项目 Readme 文档，记录开发、部署流程，给团队提供使用指引【可上传GIT】
 
@@ -155,17 +137,16 @@ Llama AI 推理	    11434	    11434	        后端本地调用向量接口
 
 具体生产环境的配置情况如下：1.硬件：mac mini m2 16+1T；2.系统：macOS Sonoma 14.8.7；3.功能：前后端服务器、数据库服务器、AI基础服务器；4.工具：OrbStack2.1.3（docker容器编排）
 
-# 二、家庭服务器配置
-# 1.硬件：mac mini m2 16+1T
-# 2.系统：macOS Sonoma 14.8.7
-# 3.功能：前端服务器、后端服务器、数据库服务器
-# 4.工具：OrbStack2.1.3（docker容器编排）、frp_0.62.1（内网穿透）、SSH/VNC（远程运维）
-# 5.项目：607/902班级网站、湖中国际部学生成长记录（微信小程序/Vue+Spring框架+MySQL）
-# 6.思路：Mac mini M2 + OrbStack + 多项目前后端 + Ollama AI 应用，容器化管理
-# 系统：4GB
-# ├─ 常驻服务 
-# │     ├─ OrbStack（Docker 运行环境，开机自启） 【安装在管理员账号下，开机自启动】
-# │     ├─ frpc（内网穿透，launchd 守护-即系统后台守护，开机自启） 【安装在管理员账号下，开机自启动】
-# │     ├─ SSH / VNC（远程运维，系统防火墙严格放行）【需要再管理员账号下配置】
-# │     └─ 系统防火墙（仅开放必要端口） 【需要再管理员账号下配置】
-# └─ OrbStack Docker 容器集群（全部业务） 
+# 目录清理记录（2026-07-20）
+- `ai_llama/` 目录已废弃移除：Ollama 推理服务自 2026-07-16 起迁至宿主机原生部署（Windows/macOS），不再使用容器构建，`ai_llama/Dockerfile.llama` 已删除。
+- 原 `ai_llama/README-SECURITY.md`（SSH 密钥安全合规说明，记录私钥曾入 git、需轮换、需清理 git 历史等要求）已归档至 `docs/security/ssh-key-incident.md`，内容一字不差保留，未随目录丢弃。
+- `docker-compose.base.yml` 中引用 `ai_llama/Dockerfile.llama` 的「容器版 Ollama」注释回退示例已移除（容器版 dev-prj-llama 服务自 2026-07-16 起已彻底移除）。
+- 凭证（`.env.dev` / `.env.prod`）真实值未变动；dev 业务运行配置不变，仅清理上述注释示例。
+
+# 目录清理记录（2026-07-20 补充）
+- `docker/ollama/docker-entrypoint-llama.sh` 已删除：该脚本为容器化 Ollama 启动包装脚本（后台启动 ollama serve、等待就绪、幂等拉取 bge-m3 模型），因 Ollama 自 2026-07-16 起迁至宿主机原生部署（Windows/macOS），且 `docker-compose.base.yml` 中 `dev-prj-llama` 容器服务已于上一轮清理中移除，故该脚本已无调用方，废弃删除。
+- 删除前 `docker/` 目录仅含 `ollama/` 子目录且其中仅此脚本，删除脚本后 `ollama/` 与 `docker/` 目录均为空，已一并移除（无 Dockerfile、.dockerignore 等其它文件）。
+- 脚本内容已完整备份归档至 `docs/deliverables/software-company/xbox-cleanup-ollama-script-2026-07-20.bak.sh`，便于后续查阅，非直接丢弃。
+- 全仓（主文件）已无可运行引用；仅备份 compose 文件（`docker-compose.base.yml.*.bak-2026-07-20`）、历史报告与本文档清理记录中保留描述性提及，属合理保留。
+- 凭证（`.env.dev` / `.env.prod`）真实值未变动；dev 业务运行配置不变；`docker compose config` 合并不受影响（主 compose 已无 ollama 服务）。
+

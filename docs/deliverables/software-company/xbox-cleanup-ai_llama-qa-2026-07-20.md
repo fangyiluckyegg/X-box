@@ -22,7 +22,7 @@
  D ai_llama/README-SECURITY.md
 # Grep id_ed25519 (全仓) → 仅文档文本命中：
 #   docs/security/ssh-key-incident.md（归档说明）
-#   deliverables/software-company/xbox-cleanup-ai_llama-2026-07-20.md（交付报告）
+#   docs/deliverables/software-company/xbox-cleanup-ai_llama-2026-07-20.md（交付报告）
 #   均非实际私钥文件
 ```
 
@@ -105,8 +105,8 @@ docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file 
 | 文件 | 类别 | 是否保留 |
 |------|------|----------|
 | `docker-compose.base.yml.llama.bak-2026-07-20` 等 `*.bak-*` | 备份文件 | ✅ 保留 |
-| `deliverables/software-company/xbox-cleanup-ai_llama-2026-07-20.md` | 历史交付报告 | ✅ 保留 |
-| `deliverables/software-company/xbox-prod-align-2026-07-20.md` | 历史交付报告 | ✅ 保留 |
+| `docs/deliverables/software-company/xbox-cleanup-ai_llama-2026-07-20.md` | 历史交付报告 | ✅ 保留 |
+| `docs/deliverables/software-company/xbox-prod-align-2026-07-20.md` | 历史交付报告 | ✅ 保留 |
 | `项目开发说明` | 清理记录章提及（合理） | ✅ 保留 |
 | `docs/Mac-mini-deployment-guide.md` | 描述性历史提及 | ✅ 保留 |
 | `docs/code-review-report.md` | 描述性历史提及 | ✅ 保留 |
@@ -166,7 +166,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file 
 
 ## 全仓 ai_llama 残留排查结论
 
-全仓对 `ai_llama` 与 `ai_llama/Dockerfile.llama` 的引用仅存在于：**备份文件（`*.bak-*`）**、**历史交付报告（`deliverables/software-company/*.md`）**、**描述性历史文档**（`docs/Mac-mini-deployment-guide.md`、`docs/code-review-report.md`）、**归档安全文档**（`docs/security/ssh-key-incident.md`）、以及**项目开发说明的清理记录章**。所有活动编排文件（base/prod/business compose）、Dockerfile、运行脚本均不再引用 `ai_llama`。**无遗留可运行引用**。
+全仓对 `ai_llama` 与 `ai_llama/Dockerfile.llama` 的引用仅存在于：**备份文件（`*.bak-*`）**、**历史交付报告（`docs/deliverables/software-company/*.md`）**、**描述性历史文档**（`docs/Mac-mini-deployment-guide.md`、`docs/code-review-report.md`）、**归档安全文档**（`docs/security/ssh-key-incident.md`）、以及**项目开发说明的清理记录章**。所有活动编排文件（base/prod/business compose）、Dockerfile、运行脚本均不再引用 `ai_llama`。**无遗留可运行引用**。
 
 ---
 

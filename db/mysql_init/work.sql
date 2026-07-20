@@ -1,3 +1,18 @@
+-- ============================================================
+-- 【方案A·2026-07-20】原 db/class_init/work.sql 并入 mysql_init 顶层，
+-- 使 MySQL 全新数据卷首次初始化自动建 work 库。
+-- 背景：官方 MySQL 8.0 entrypoint 对 /docker-entrypoint-initdb.d/* 仅做【非递归】通配
+--       （for f in /docker-entrypoint-initdb.d/*），子目录（如原 class_init/）内的 .sql
+--       会被 "ignoring" 分支跳过，不会自动执行；故上移至此（initdb.d 顶层），
+--       全新数据卷首次初始化即自动运行，无需在 MySQL 就绪后手动执行。
+-- 幂等说明：CREATE DATABASE / CREATE TABLE 均带 IF NOT EXISTS，可重复执行无害；
+--       表内数据 INSERT 与 AUTO_INCREMENT 设置保留原 phpMyAdmin dump 语义。
+-- 账号授权：class_user 对 work.* 的授权由 db/mysql_scripts/docker-entrypoint-wrapper.sh
+--       的 ensure_class_user() 在 MySQL 就绪后完成（晚于 initdb.d），本脚本仅建库/建表，
+--       不依赖 class_user 账号，互不冲突。
+-- 执行顺序：在 initdb.d 字母序中位于 init.sql / init.template.sql / migrate_role.sql / msg.sql
+--       之后（文件名 w 开头），但 work 库自包含、无跨脚本依赖，顺序安全。
+-- ============================================================
 -- phpMyAdmin SQL Dump
 -- version 4.5.3.1
 -- http://www.phpmyadmin.net
@@ -28,7 +43,7 @@ USE `work`;
 -- 表的结构 `admin_user`
 --
 
-CREATE TABLE `admin_user` (
+CREATE TABLE IF NOT EXISTS `admin_user` (
   `username` varchar(20) NOT NULL,
   `password` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -46,7 +61,7 @@ INSERT INTO `admin_user` (`username`, `password`) VALUES
 -- 表的结构 `work_pic`
 --
 
-CREATE TABLE `work_pic` (
+CREATE TABLE IF NOT EXISTS `work_pic` (
   `p_id` int(11) NOT NULL,
   `t_id` int(11) NOT NULL,
   `p_src` varchar(50) NOT NULL,
@@ -78,7 +93,7 @@ INSERT INTO `work_pic` (`p_id`, `t_id`, `p_src`, `p_name`, `p_date`) VALUES
 -- 表的结构 `work_type`
 --
 
-CREATE TABLE `work_type` (
+CREATE TABLE IF NOT EXISTS `work_type` (
   `t_id` int(11) NOT NULL,
   `t_name` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

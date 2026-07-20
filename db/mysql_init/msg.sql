@@ -1,3 +1,18 @@
+-- ============================================================
+-- 【方案A·2026-07-20】原 db/class_init/msg.sql 并入 mysql_init 顶层，
+-- 使 MySQL 全新数据卷首次初始化自动建 msg 库。
+-- 背景：官方 MySQL 8.0 entrypoint 对 /docker-entrypoint-initdb.d/* 仅做【非递归】通配
+--       （for f in /docker-entrypoint-initdb.d/*），子目录（如原 class_init/）内的 .sql
+--       会被 "ignoring" 分支跳过，不会自动执行；故上移至此（initdb.d 顶层），
+--       全新数据卷首次初始化即自动运行，无需在 MySQL 就绪后手动执行。
+-- 幂等说明：CREATE DATABASE / CREATE TABLE 均带 IF NOT EXISTS，可重复执行无害；
+--       表内数据 INSERT 与 AUTO_INCREMENT 设置保留原 phpMyAdmin dump 语义。
+-- 账号授权：class_user 对 msg.* 的授权由 db/mysql_scripts/docker-entrypoint-wrapper.sh
+--       的 ensure_class_user() 在 MySQL 就绪后完成（晚于 initdb.d），本脚本仅建库/建表，
+--       不依赖 class_user 账号，互不冲突。
+-- 执行顺序：在 initdb.d 字母序中位于 init.sql / init.template.sql / migrate_role.sql
+--       之后（文件名 m 开头），但 msg 库自包含、无跨脚本依赖，顺序安全。
+-- ============================================================
 -- phpMyAdmin SQL Dump
 -- version 4.5.3.1
 -- http://www.phpmyadmin.net
@@ -28,7 +43,7 @@ USE `msg`;
 -- 表的结构 `admin_user`
 --
 
-CREATE TABLE `admin_user` (
+CREATE TABLE IF NOT EXISTS `admin_user` (
   `username` varchar(20) NOT NULL,
   `password` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -46,7 +61,7 @@ INSERT INTO `admin_user` (`username`, `password`) VALUES
 -- 表的结构 `post`
 --
 
-CREATE TABLE `post` (
+CREATE TABLE IF NOT EXISTS `post` (
   `P_ID` int(11) NOT NULL,
   `P_Name` varchar(30) NOT NULL,
   `P_Pic` varchar(30) NOT NULL,
@@ -65,7 +80,7 @@ INSERT INTO `post` (`P_ID`, `P_Name`, `P_Pic`, `P_Mail`, `P_Date`, `P_Content`, 
 (3, 'Make it good', 'images/photo5.png', '1123@qq.com', '2016-03-03 17:48:51', '<p>大家好，我是<span style="text-decoration: underline;"><em><strong>Make</strong></em></span>，很高兴能够与大家在这里相识，还希望以后大家多多关照！</p>', 0),
 (4, 'HHHHH', 'images/photo2.png', '22334455@163.com', '2016-03-03 17:51:11', '<p>大家好，我是<span style="text-decoration: underline;"><em><strong>HANA</strong></em></span>，很高兴能够与大家在这里相识，还希望以后大家多多关照！</p>', 0),
 (5, '我是老六', 'images/photo3.png', 'ABC@qq.com', '2016-03-03 17:52:44', '<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 大家好，我是<span style="text-decoration: underline;"><em><strong>&ldquo;我是ABC&rdquo;</strong></em></span>，很高兴能够与大家在这里相识，还希望以后大家多多关照！大家好，我是<span style="text-decoration: underline;"><em><strong>&ldquo;我是ABC&rdquo;</strong></em></span>，很高兴能够与大家在这里相识，还希望以后大家多多关照！</p>', 0),
-(6, '天黑了', 'images/photo6.png', 'dayday2018@qq.com', '2016-03-03 17:53:55', '<p>大家好，我是<span style="text-decoration: underline;"><em><strong>&ldquo;我是天亮了&rdquo;</strong></em></span>，很高兴能够与大家在这里相识，还希望以后大家多多关照！这是一条仅管理员可见的留言哦！</p>', 1);
+(6, '天黑了', 'images/photo6.png', 'dayday2018@163.com', '2016-03-03 17:53:55', '<p>大家好，我是<span style="text-decoration: underline;"><em><strong>&ldquo;我是天亮了&rdquo;</strong></em></span>，很高兴能够与大家在这里相识，还希望以后大家多多关照！这是一条仅管理员可见的留言哦！</p>', 1);
 
 -- --------------------------------------------------------
 
@@ -73,7 +88,7 @@ INSERT INTO `post` (`P_ID`, `P_Name`, `P_Pic`, `P_Mail`, `P_Date`, `P_Content`, 
 -- 表的结构 `reply`
 --
 
-CREATE TABLE `reply` (
+CREATE TABLE IF NOT EXISTS `reply` (
   `R_ID` int(11) NOT NULL,
   `R_Post` int(11) NOT NULL,
   `R_Name` varchar(30) NOT NULL,

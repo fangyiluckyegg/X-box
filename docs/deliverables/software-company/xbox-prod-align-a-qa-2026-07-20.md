@@ -133,7 +133,7 @@ NOT EXISTS (removed)
 | `db/mysql_init/msg.sql`、`work.sql`（文件头注释） | 来源说明文字 | 否（注释） |
 | `docker-compose.base.yml`（第 36–42、49 行注释） | 来源/修复说明文字 | 否（注释） |
 | `docker-compose.base.yml.a.bak-2026-07-20`（备份） | 历史备份副本 | 否（备份） |
-| `deliverables/software-company/*.md`（5 份历史交付报告） | 历史报告文字 | 否（按约束排除） |
+| `docs/deliverables/software-company/*.md`（5 份历史交付报告） | 历史报告文字 | 否（按约束排除） |
 | `项目开发说明`、`docs/architecture_review.md`、`docs/X-box-optimization-report-2026-07-14.md`、`docs/prod-mac-runbook.md` | 文档/运行手册文字 | 否（文档文字；`prod-mac-runbook.md` 见观察项 O3） |
 
 → **无任何 compose 文件含 `class_init` 活动 bind 挂载**；有效合并配置中 `class_init` 引用数 = 0。✅
