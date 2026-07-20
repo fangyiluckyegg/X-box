@@ -4,8 +4,8 @@ echo 停止所有其他业务容器
 docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml down
 
 echo 启动全部容器
-docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d
-docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
 
 docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
@@ -38,6 +38,6 @@ docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml up -d --build
 
 echo ==============================
-echo 当前开发项目：Prj（全部容器已经重启）
+echo 当前开发项目：全部容器已经重启
 echo ==============================
 pause
