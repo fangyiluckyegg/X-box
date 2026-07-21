@@ -17,5 +17,6 @@ FROM nginx:1.25-alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 # SPA路由配置
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 8081  # 实际监听端口见 nginx.conf（listen 8081）；与网关 prj.conf 代理目标(prj-frontend:8081)一致
+# 实际监听端口见 nginx.conf（listen 8081）；与网关 prj.conf 代理目标(prj-frontend:8081)一致
+EXPOSE 8081
 CMD ["nginx", "-g", "daemon off;"]
