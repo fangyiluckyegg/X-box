@@ -1,7 +1,8 @@
 @echo off
 cd D:\crh123dexiaohao\X-box
 echo 停止所有其他业务容器
-docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml down
+:: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml down
+:: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod down -v
 
 echo 启动全部容器
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d
