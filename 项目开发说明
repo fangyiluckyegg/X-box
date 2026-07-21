@@ -82,12 +82,12 @@ X-box
 │   └── archive              # 待核验
 ├── .env.dev                 # 本地开发环境变量【不传GIT】
 ├── .env.backend             # 本地开发环境变量（针对后端容器）【不传GIT】
-├── .env.dev.example         # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
-├── .env.backend.example     # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.dev.example         # 保留：被 docs/deployment/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.backend.example     # 保留：被 docs/deployment/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
 ├── .env.prod                # 服务器生产环境变量【不传GIT】
 ├── .env.prod.backend        # 服务器生产环境变量（针对后端容器）【不传GIT】
-├── .env.prod.example        # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
-├── .env.prod.backend.example # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.prod.example        # 保留：被 docs/deployment/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.prod.backend.example # 保留：被 docs/deployment/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
 ├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重【上传GIT】
 ├── .gitattributes           # 待核验
 ├── .dockerignore            # 构建Docker镜像时统一屏蔽日志、模型、环境变量、编译产物，开发/生产Dockerfile共用【可上传GIT】
@@ -153,7 +153,7 @@ Llama AI 推理	    11434	    11434	        后端本地调用向量接口
 # 目录清理记录（2026-07-20 补充）
 - `docker/ollama/docker-entrypoint-llama.sh` 已删除：该脚本为容器化 Ollama 启动包装脚本（后台启动 ollama serve、等待就绪、幂等拉取 bge-m3 模型），因 Ollama 自 2026-07-16 起迁至宿主机原生部署（Windows/macOS），且 `docker-compose.base.yml` 中 `dev-prj-llama` 容器服务已于上一轮清理中移除，故该脚本已无调用方，废弃删除。
 - 删除前 `docker/` 目录仅含 `ollama/` 子目录且其中仅此脚本，删除脚本后 `ollama/` 与 `docker/` 目录均为空，已一并移除（无 Dockerfile、.dockerignore 等其它文件）。
-- 脚本内容已完整备份归档至 `docs/deliverables/software-company/xbox-cleanup-ollama-script-2026-07-20.bak.sh`，便于后续查阅，非直接丢弃。
+- 脚本内容已完整备份归档至 `docs/audit/archive/2026-07-20/xbox-cleanup-ollama-script-2026-07-20.bak.sh`，便于后续查阅，非直接丢弃。
 - 全仓（主文件）已无可运行引用；仅备份 compose 文件（`docker-compose.base.yml.*.bak-2026-07-20`）、历史报告与本文档清理记录中保留描述性提及，属合理保留。
 - 凭证（`.env.dev` / `.env.prod`）真实值未变动；dev 业务运行配置不变；`docker compose config` 合并不受影响（主 compose 已无 ollama 服务）。
 
