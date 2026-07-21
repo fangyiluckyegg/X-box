@@ -72,8 +72,9 @@ X-box
 │   ├── prj_restart.bat      # Windows批处理启停脚本【可上传GIT】
 │   ├── prj_stop.bat         # Windows批处理启停脚本【可上传GIT】
 │   ├── backup_dev.bat       # 定时备份脚本【可上传GIT】
-│   ├── setup-host-ollama.ps1  # Windows设备部署脚本
-│   └── setup-host-ollama.sh # mac设备备部署脚本
+│   ├── deploy.ps1           # Windows统一部署脚本（含内联 Ollama 准备），支持 -Env dev|prod|staging
+│   └── deploy.sh            # mac统一部署脚本（含内联 Ollama 准备），支持 --env dev|prod|staging
+│   （注：原 setup-host-ollama.* 独立脚本已删除，Ollama 准备逻辑已内联进 deploy.*；默认 prod 以保持向后兼容）
 ├── backup                   # 数据库、配置文件备份存档【暂缺】
 ├── .devcontainer
 │   ├── devcontainer-lock.json  # VS远程容器开发配置，绑定prj项目【上传GIT】

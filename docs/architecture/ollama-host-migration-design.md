@@ -71,8 +71,8 @@
 ### 2.1 新增文件
 | 路径 | 作用 |
 |------|------|
-| `scripts/setup-host-ollama.sh` | Mac 宿主初始化：装 Ollama、设 `OLLAMA_HOST=0.0.0.0:11434`、拉 `bge-m3`、健康校验 |
-| `scripts/setup-host-ollama.ps1` | Win/WSL2 宿主初始化（等效 PowerShell 版） |
+| `scripts/deploy.sh`（含内置 Ollama 准备，支持 --env dev|prod|staging） | Mac 部署 + 宿主初始化：装 Ollama、设 `OLLAMA_HOST=0.0.0.0:11434`、拉 `bge-m3`、健康校验 |
+| `scripts/deploy.ps1`（含内置 Ollama 准备，支持 -Env dev|prod|staging） | Win/WSL2 部署 + 宿主初始化（等效 PowerShell 版） |
 | `docs/architecture/host-ollama-setup.md` | 宿主部署运行说明（含启动顺序、排错、防火墙建议） |
 
 ### 2.2 修改文件
@@ -185,15 +185,15 @@ sequenceDiagram
 
 | Task | 名称 | 涉及文件（改动类型） | 依赖 | 优先级 |
 |------|------|----------------------|------|--------|
-| **T01** | 宿主侧 Ollama 初始化（新增脚本+文档） | `scripts/setup-host-ollama.sh`(增)、`scripts/setup-host-ollama.ps1`(增)、`docs/architecture/host-ollama-setup.md`(增) | — | P0 |
+| **T01** | 宿主侧 Ollama 初始化（后于方案 B 内联进 deploy.* 并删除独立脚本） | `scripts/deploy.sh`、`scripts/deploy.ps1`（内置 Ollama 准备，支持 --env/-Env 指定环境）、`docs/architecture/host-ollama-setup.md`(增) | — | P0 |
 | **T02** | Dev 编排与 env 指向宿主 Ollama | `docker-compose.base.yml`(删+注释)、`docker-compose.business-prj.dev.yml`(改)、`.env.backend`(改)、`.env.dev`(注释) | T01 | P0 |
 | **T03** | Prod 耦合修复 + 遗留编排清理 + runbook | `docker-compose.prod.yml`(改)、`docker-compose.business-prj.yml`(改+删)、`docs/deployment/prod-mac-runbook.md`(改) | T01,T02 | P1 |
 | **T04** | 后端最小验证与显式化配置 | `CompareController.java`(注释)、`application.yml`(注释)、`pom.xml`(验证/无改) | T02 | P1 |
 | **T05** | 架构文档与拓扑更新 | `architecture_current_topology.mmd`(改)、`architecture_target_topology.mmd`(改)、`docs/architecture/ollama-host-migration-design.md`(增,本文件) | T02,T03 | P2 |
 
 ### T01 明细（宿主脚本，独立、可并行）
-- `scripts/setup-host-ollama.sh`：检测 OS；装 Ollama（brew/已装跳过）；写 `OLLAMA_HOST=0.0.0.0:11434`（launchd plist / 环境变量）；`ollama pull bge-m3`；起服务；`curl` 健康校验。
-- `scripts/setup-host-ollama.ps1`：等效（winget 安装 / 检测；设环境变量；`ollama pull bge-m3`）。
+- `scripts/deploy.sh`（内置 `setup_ollama()`，支持 `--env` 指定目标环境）：检测 OS；装 Ollama（brew/已装跳过）；写 `OLLAMA_HOST=0.0.0.0:11434`（launchd plist / 环境变量）；`ollama pull bge-m3`；起服务；`curl` 健康校验。
+- `scripts/deploy.ps1`（内置 `Invoke-OllamaSetup`，支持 `-Env` 指定目标环境）：等效（winget 安装 / 检测；设 Machine 环境变量；`ollama pull bge-m3`）。
 - `docs/architecture/host-ollama-setup.md`：运行步骤、启动顺序、防火墙建议、`host.docker.internal` 可达性说明、排错。
 
 ### T02 明细（dev 优先）

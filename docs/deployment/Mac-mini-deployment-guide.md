@@ -73,6 +73,8 @@ MYSQL_ROOT_PASSWORD=$(openssl rand -base64 18 | tr -dc 'A-Za-z0-9' | head -c 24)
 
 ## 4. 构建与启动
 
+> 推荐使用统一部署脚本一条命令完成（含 Ollama 准备与凭证校验）：`bash scripts/deploy.sh --env prod`（等价于下方手动 compose 启动；可加 `--skip-ollama`、`--proxy <url>`）。
+
 ```bash
 cd /path/to/X-box
 

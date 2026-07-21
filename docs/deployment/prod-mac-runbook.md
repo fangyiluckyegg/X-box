@@ -86,7 +86,7 @@ docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file 
 
 ### 为什么 `OLLAMA_HOST=0.0.0.0:11434`
 - 后端容器经宿主**网关 IP**（非 127.0.0.1）访问 `host.docker.internal`，故宿主 Ollama 必须监听 `0.0.0.0`（而非仅 localhost），否则容器侧连接被拒。
-- 一键初始化见 `scripts/setup-host-ollama.sh`（Mac）/ `scripts/setup-host-ollama.ps1`（Win）。
+- 宿主 Ollama 准备已内置于统一部署脚本：Mac 用 `bash scripts/deploy.sh --env prod`（默认准备 Ollama，可加 `--skip-ollama` 跳过），Win 用 `powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod`（可加 `-SkipOllama` 跳过）。支持 `--env dev|staging` 指定其它目标环境。
 
 ### 安全提示
 - 宿主 Ollama `0.0.0.0:11434` 会暴露到宿主机所有网卡（含 LAN），且 Ollama 默认无鉴权。

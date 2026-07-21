@@ -32,16 +32,20 @@
 
 ## 3. 一键初始化脚本
 
+> ⚠️ 自部署精简后，Ollama 准备逻辑**已内联**进各平台部署脚本，不再有独立的 `setup-host-ollama.*` 脚本（方案 B）。
+
 | 平台 | 脚本 | 说明 |
 |------|------|------|
-| macOS | `bash scripts/setup-host-ollama.sh` | Homebrew 安装 + 持久化 `OLLAMA_HOST` + 启动 + 拉模型 + 校验 |
-| Windows | `pwsh scripts/setup-host-ollama.ps1` | winget/choco 安装 + 写用户环境变量 + 启动 + 拉模型 + 校验 |
+| macOS | `bash scripts/deploy.sh --env prod` | 部署同时自动准备宿主 Ollama（Homebrew 安装 + 持久化 `OLLAMA_HOST` + 启动 + 拉模型 + 校验）；`--env` 可切换 dev/staging |
+| Windows | `powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod` | 部署同时自动准备宿主 Ollama（winget/choco 安装 + 写 Machine 环境变量 + 启动 + 拉模型 + 校验）；`-Env` 可切换 dev/staging |
 
-可选参数：
+常用参数（`--skip-ollama` / `-SkipOllama` 跳过 Ollama 准备；`--proxy` / `-Proxy` 透传代理）：
 
 ```bash
-bash scripts/setup-host-ollama.sh --pull-only   # 仅拉取/校验模型（已装好 Ollama 时）
-pwsh scripts/setup-host-ollama.ps1 -PullOnly
+bash scripts/deploy.sh --env prod --skip-ollama            # 跳过 Ollama 准备（已就绪时）
+bash scripts/deploy.sh --env prod --proxy http://127.0.0.1:7890
+powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod -SkipOllama
+powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod -Proxy http://127.0.0.1:7890
 ```
 
 ---

@@ -50,14 +50,15 @@ nginx 路由规则见 `gateway/nginx/conf.d/prj.conf`：`/` → 前端；`/api/`
 
 ## 四、启栈命令
 
-开发：
+开发（推荐用统一脚本）：
 ```
-docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
+bash scripts/deploy.sh --env dev
 ```
-生产：
+生产（推荐用统一脚本）：
 ```
-docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+bash scripts/deploy.sh --env prod
 ```
+> 也可手动 `docker compose ... up -d --build`（见各部署指南）。
 
 ## 五、已知缺口
 
