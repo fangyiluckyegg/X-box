@@ -209,6 +209,32 @@ function Prepare-EnvFiles {
     Log "env 文件准备完成（仅处理环境 $Env 所需文件；占位符已替换；已有真实值已保留）。"
 }
 
+function Ensure-SslCert {
+    $crt = Join-Path $RootDir 'gateway' 'nginx' 'ssl' 'prj.crt'
+    $key = Join-Path $RootDir 'gateway' 'nginx' 'ssl' 'prj.key'
+    if ((Test-Path $crt) -and (Test-Path $key)) {
+        Log "SSL 证书已存在，跳过生成。"
+        return
+    }
+    Log "SSL 证书缺失，尝试自动生成自签证书（prj.crt / prj.key）..." Yellow
+    $sslDir = Split-Path $crt -Parent
+    if (-not (Test-Path $sslDir)) { New-Item -ItemType Directory -Path $sslDir -Force | Out-Null }
+    $openssl = Get-Command openssl -ErrorAction SilentlyContinue
+    if (-not $openssl) {
+        Log "错误：未找到 openssl，无法自动生成证书。请手动生成后重试：" Red
+        Log "  cd gateway/nginx/ssl" Red
+        Log "  openssl req -x509 -newkey rsa:2048 -nodes -keyout prj.key -out prj.crt -days 3650 -subj ""/CN=localhost""" Red
+        exit 1
+    }
+    & openssl req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 3650 -subj "/CN=localhost" 2>&1 | Out-Null
+    if ((Test-Path $crt) -and (Test-Path $key)) {
+        Log "SSL 自签证书已生成：$sslDir"
+    } else {
+        Log "错误：证书生成失败，请按上方命令手动生成。" Red
+        exit 1
+    }
+}
+
 function Test-Contract {
     Log "===== 阶段 2：校验凭证契约（环境：$Env） ====="
     switch ($Env) {
@@ -700,6 +726,7 @@ try {
 
     if (-not $DryRun) { Test-Prereqs }
     Prepare-EnvFiles -Cfg $cfg
+    Ensure-SslCert
     Test-Contract
 
     if ($DryRun) {

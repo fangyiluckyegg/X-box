@@ -223,6 +223,31 @@ prepare_env_files() {
   log "env 文件准备完成（仅处理环境 $ENV 所需文件；占位符已替换；已有真实值已保留）。"
 }
 
+# 阶段 1.5：SSL 证书自检（证书被 gitignore，换机器部署可能缺失；缺失则自动生成自签证书，幂等）
+ensure_ssl_cert() {
+  local crt="gateway/nginx/ssl/prj.crt"
+  local key="gateway/nginx/ssl/prj.key"
+  if [[ -f "$crt" && -f "$key" ]]; then
+    log "SSL 证书已存在，跳过生成。"
+    return 0
+  fi
+  log "SSL 证书缺失，尝试自动生成自签证书（prj.crt / prj.key）..." >&2
+  mkdir -p "$(dirname "$crt")"
+  if ! command -v openssl >/dev/null 2>&1; then
+    log "错误：未找到 openssl，无法自动生成证书。请手动生成后重试：" >&2
+    log "  cd gateway/nginx/ssl" >&2
+    log "  openssl req -x509 -newkey rsa:2048 -nodes -keyout prj.key -out prj.crt -days 3650 -subj \"/CN=localhost\"" >&2
+    exit 1
+  fi
+  openssl req -x509 -newkey rsa:2048 -nodes -keyout "$key" -out "$crt" -days 3650 -subj "/CN=localhost" 2>/dev/null || true
+  if [[ -f "$crt" && -f "$key" ]]; then
+    log "SSL 自签证书已生成：$(dirname "$crt")"
+  else
+    log "错误：证书生成失败，请按上方命令手动生成。" >&2
+    exit 1
+  fi
+}
+
 # 阶段 2：凭证契约校验（不同环境不同规则）
 validate_contract() {
   log "===== 阶段 2：校验凭证契约（环境：$ENV）====="
@@ -512,6 +537,7 @@ main() {
     check_prereqs
   fi
   prepare_env_files
+  ensure_ssl_cert
   validate_contract
   if [[ "$DRY_RUN" -eq 1 ]]; then
     log "Dry run 通过，已准备的 env 文件（环境 $ENV）："
