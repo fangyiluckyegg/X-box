@@ -220,14 +220,30 @@ function Ensure-SslCert {
     Log "SSL 证书缺失，尝试自动生成自签证书（prj.crt / prj.key）..." Yellow
     $sslDir = Split-Path $crt -Parent
     if (-not (Test-Path $sslDir)) { New-Item -ItemType Directory -Path $sslDir -Force | Out-Null }
-    $openssl = Get-Command openssl -ErrorAction SilentlyContinue
-    if (-not $openssl) {
+    # 定位 openssl：优先 PATH，其次常见 Windows 安装位置（Git for Windows 自带）
+    $opensslExe = $null
+    $cmd = Get-Command openssl -ErrorAction SilentlyContinue
+    if ($cmd) { $opensslExe = $cmd.Source }
+    if (-not $opensslExe) {
+        $candidates = @(
+            'C:\Program Files\Git\usr\bin\openssl.exe',
+            'C:\Program Files (x86)\Git\usr\bin\openssl.exe',
+            "$env:LOCALAPPDATA\Programs\Git\usr\bin\openssl.exe",
+            'C:\Program Files\OpenSSL-Win64\bin\openssl.exe',
+            'C:\Program Files\OpenSSL-Win32\bin\openssl.exe'
+        )
+        foreach ($c in $candidates) {
+            if ((Test-Path $c)) { $opensslExe = $c; break }
+        }
+    }
+    if (-not $opensslExe) {
         Log "错误：未找到 openssl，无法自动生成证书。请手动生成后重试：" Red
         Log "  cd gateway/nginx/ssl" Red
         Log "  openssl req -x509 -newkey rsa:2048 -nodes -keyout prj.key -out prj.crt -days 3650 -subj /CN=localhost" Red
+        Log "（Windows 可安装 Git for Windows 后重跑；或用 winget install GnuWin32.OpenSSL）" Yellow
         exit 1
     }
-    & openssl req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 3650 -subj "/CN=localhost" 2>&1 | Out-Null
+    & $opensslExe req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 3650 -subj /CN=localhost 2>&1 | Out-Null
     if ((Test-Path $crt) -and (Test-Path $key)) {
         Log "SSL 自签证书已生成：$sslDir"
     } else {
