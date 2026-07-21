@@ -1,5 +1,5 @@
 # ============================================================
-# 生产环境编排（C5 / C14）—— Apple Silicon (Mac mini M2) 适配版
+# 生产环境编排（C5 / C14）—— 跨平台自适应版（已移除硬编码 platform: linux/arm64，跟随宿主架构自动选 amd64/arm64）
 #
 # ⬇⬇⬇ 本次「dev→prod 对齐 + bug 排查 + 整合精简」（2026-07-20）相对上一版的关键修正 ⬇⬇⬇
 #   1. 【端口冲突修复·高】原 prj-nginx 与 base 的 nginx-gateway 同时绑定 127.0.0.1:80/443，
@@ -47,7 +47,6 @@ services:
   # ------------------------------------------------------------
   prj-redis:
     image: redis:7-alpine
-    platform: linux/arm64
     container_name: prj-redis
     restart: unless-stopped
     security_opt:
@@ -77,7 +76,6 @@ services:
     build:
       context: .
       dockerfile: ./backend/prj-backend-c/Dockerfile.prod
-    platform: linux/arm64
     container_name: prj-backend
     restart: unless-stopped
     security_opt:
@@ -110,7 +108,6 @@ services:
     build:
       context: ./web/prj-frontend
       dockerfile: Dockerfile.prod
-    platform: linux/arm64
     container_name: prj-frontend
     restart: unless-stopped
     security_opt:
@@ -138,7 +135,6 @@ services:
       context: ./Niu_Txl
       dockerfile: Dockerfile.classphp
     image: prj-php:prod
-    platform: linux/arm64
     container_name: prj-php
     restart: unless-stopped
     security_opt:
