@@ -1,3 +1,5 @@
+powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env dev
+
 我有一个综合型的项目（项目根目录为D:\crh123dexiaohao\X-box\），基本上是基于容器开发，当前根据dev类开发环境文件是可以跑通的，希望能够参考dev类开发环境文件，实现prod类生产环境文件的完全对齐，请帮助进行系统性的bUG排查和代码整合精简优化。具体开发与目标生产环境如下
 一、开发电脑配置与环境清单
 CPU：i7-8700K
