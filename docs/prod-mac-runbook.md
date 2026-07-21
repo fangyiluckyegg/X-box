@@ -10,12 +10,11 @@
 
 1. 已安装 **OrbStack 2.1.3**（或兼容的 Docker 运行时），`docker compose` 可用。
 2. 已准备生产环境文件：
-   - `cp .env.prod.example .env.prod`，并填入**强随机值**（切勿提交，` .env*` 已被 `.gitignore` 忽略）。
-     （注：当前仓库未提供 `.env.prod.example`，请直接复制 `.env.prod` 并按需替换强随机值，保持 UTF-8 LF）
-   - 如后续补充 `.env.prod.backend.example` 则执行 `cp .env.prod.backend.example .env.prod.backend`；
-     当前直接复用 `.env.prod.backend`（已随仓库提供）。
-3. 已准备 Mac 本机的 **dev 环境文件**（从 `.env.dev.example` 复制）：
+   - `cp .env.prod.example .env.prod`，并填入**强随机值**（切勿提交，`.env*` 已被 `.gitignore` 忽略）。
+   - `cp .env.prod.backend.example .env.prod.backend`，并填入**强随机值**（切勿提交，`.env*` 已被 `.gitignore` 忽略）。
+3. 已准备 Mac 本机的 **dev 环境文件**（从示例复制）：
    - `cp .env.dev.example .env.dev`
+   - `cp .env.backend.example .env.backend`
    - **关键**：`.env.dev` 中的 `SPRING_DATASOURCE_PASSWORD` 必须与 `.env.prod.backend` 中的
      `SPRING_DATASOURCE_PASSWORD` **完全相同**（详见第 2 节"凭证契约"）。
    - `.env.dev` 必须 **UTF-8（LF）**；避免 CRLF 导致 wrapper 注入 `prj_user\r` 而被拒

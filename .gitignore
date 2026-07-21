@@ -3,10 +3,10 @@
 .env*
 *.env
 # 仅允许无密码模板文件提交仓库
-!.env.dev.template
-!.env.prod.template
 !.env.dev.example
 !.env.prod.example
+!.env.backend.example
+!.env.prod.backend.example
 
 # ====================== 运行日志 ======================
 logs/**

@@ -25,35 +25,35 @@ X-box
 │   ├── mysql_data           # MySQL持久化数据【不能上传GIT】
 │   ├── redis_data           # Redis持久化RDB文件【不能上传GIT】
 │   ├── mysql_init           # prj数据库初始化SQL（建库、账号、权限）
-│   │   ├── init.sql         # 有真实密码【不能上传GIT】【待整合，git删除】
-│   │   ├── init.template.sql # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
-│   │   ├── migrate_role.sql # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
-│   │   ├── msg.sql          # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
-│   │   └── work.sql         # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【可上传GIT】
+│   │   ├── init.sql         # 有真实密码【不能上传GIT】
+│   │   ├── init.template.sql # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【上传GIT】
+│   │   ├── migrate_role.sql # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【上传GIT】
+│   │   ├── msg.sql          # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【上传GIT】
+│   │   └── work.sql         # 无真实密码（把硬编码密码替换为占位符，仅保留建库、授权逻辑，团队统一共用）【上传GIT】
 │   └── mysql_scripts        # 待核验
 │       └── docker-entrypoint-wrapper.sh  # 待核验
 ├── web/prj-frontend       
 │   ├── node_modules         # 是否可删除？已经换地方了。项目依赖包，体积巨大，通过package-lock.json统一安装【不能上传GIT】
-│   ├── src                  # prj-frontend Vue前端源码（包含Vue组件、路由配置、状态管理等）【可上传GIT】
-│   ├── public               # prj-frontend Vue前端静态资源（如index.html-你的应用的首页和图片等）【可上传GIT】
-│   ├── .env.development     # 前端开发环境变量模板（仅接口域名、通用配置，无密钥则可提交）【可上传GIT】
-│   ├── .editorconfig        # 代码格式化、校验规则，团队统一规范【可上传GIT】
-│   ├── .eslintignore        # 代码格式化、校验规则，团队统一规范【可上传GIT】
-│   ├── .eslintrc.js         # 代码格式化、校验规则，团队统一规范【可上传GIT】
-│   ├── babel.config.js      # 代码格式化、校验规则，团队统一规范，（可选）Babel的配置文件，用于编译JavaScript。【可上传GIT】
+│   ├── src                  # Vue前端源码【上传GIT】
+│   ├── public               # Vue前端静态资源（如index.html-你的应用的首页和图片等）【上传GIT】
+│   ├── .env.development     # 前端开发环境变量模板（仅接口域名、通用配置，无密钥则可提交）【上传GIT】
+│   ├── .editorconfig        # 代码格式化、校验规则，团队统一规范【上传GIT】
+│   ├── .eslintignore        # 代码格式化、校验规则，团队统一规范【上传GIT】
+│   ├── .eslintrc.js         # 代码格式化、校验规则，团队统一规范【上传GIT】
+│   ├── babel.config.js      # 代码格式化、校验规则，团队统一规范（可选）Babel的配置文件，用于编译JavaScript。【上传GIT】
 │   ├── vitest.config.js     # 待核验
-│   ├── vue.config.js        # 代码格式化、校验规则，团队统一规范，（可选）Vue CLI项目的配置文件【可上传GIT】
-│   ├── package-lock.json    # 锁定依赖版本，必须提交，保证开发 / 生产安装完全一致依赖【可上传GIT】
-│   ├── package.json         # 项目配置文件，记录项目元数据、依赖、脚本等。锁定依赖版本，保证开发/生产安装完全一致依赖【可上传GIT】
-│   ├── nginx.conf           # 前端生产 Nginx 托管配置，属于部署标准文件，可提交【可上传GIT】
-│   ├── Dockerfile.prod      # 生产环境镜像,线上生产专用，多阶段精简镜像【可上传GIT】
-│   ├── Dockerfile.dev       # 开发环境镜像,本地开发专用，预装 Maven/Node，支持实时调试【可上传GIT】【待修改】
+│   ├── vue.config.js        # 代码格式化、校验规则，团队统一规范（可选）Vue CLI项目的配置文件【上传GIT】
+│   ├── package-lock.json    # 锁定依赖版本，必须提交【上传GIT】
+│   ├── package.json         # 项目配置，记录项目元数据、依赖、脚本等【上传GIT】
+│   ├── nginx.conf           # 前端生产Nginx托管配置【上传GIT】
+│   ├── Dockerfile.prod      # 服务器生产环境镜像【可上传GIT】
+│   ├── Dockerfile.dev       # 本地开发环境镜像【可上传GIT】
 ├── backend/prj_backend-c
-│   ├── src                  # Spring Cloud Alibaba后端源码【可上传GIT】
-│   ├── target               # 【不上传GIT】   
-│   ├── pom.xml              # Maven 主依赖配置，锁定所有 Java 三方包版本，强制提交，保证开发 / 生产依赖完全一致【可上传GIT】
+│   ├── src                  # Spring Cloud Alibaba后端源码【上传GIT】
+│   ├── target               # 【不传GIT】   
+│   ├── pom.xml              # Maven主依赖配置，锁定所有Java三方包版本，强制提交，保证开发/生产依赖完全一致【上传GIT】
 │   ├── Dockerfile.prod      # 生产环境-线上CI流水线专用多阶段构建镜像，仅保留JRE，无编译工具，用于打包纯净生产镜像【可上传GIT】
-│   └── Dockerfile.dev       # 开发环境-单阶段 JDK 镜像，预装 Maven/Python，供 VSCode Dev Containers 挂载源码调试）【待修改】
+│   └── Dockerfile.dev       # 开发环境-单阶段JDK镜像，预装Maven/Python，供 VSCode Dev Containers 挂载源码调试）【待修改】
 ├── Niu_Txl
 │   ├── 607                  # 待核验
 │   └── 902                  # 待核验
@@ -61,7 +61,7 @@ X-box
 │   ├── .gitignore           # 保留：子目录 Git 忽略，可并入根但保留更清晰
 │   ├── Dockerfile.classphp  # PHP 8.2（注释已更正）
 │   ├── index.php            # 重定向至 /902/message/index.php
-├── logs                     # 全容器统一日志挂载目录，容器运行日志【不能上传GIT】
+├── logs                     # 全容器统一日志挂载目录【不传GIT】
 │   ├── nginx                # 已有，正常
 │   ├── mysql                # 【暂缺】
 │   ├── redis                # 【暂缺】
@@ -71,28 +71,36 @@ X-box
 ├── scripts                  # 运维启停、备份、清理脚本
 │   ├── prj_restart.bat      # Windows批处理启停脚本【可上传GIT】
 │   ├── prj_stop.bat         # Windows批处理启停脚本【可上传GIT】
-│   └── backup_dev.bat       # 定时备份脚本【可上传GIT】
+│   ├── backup_dev.bat       # 定时备份脚本【可上传GIT】
+│   ├── setup-host-ollama.ps1  # Windows设备部署脚本
+│   └── setup-host-ollama.sh # mac设备备部署脚本
 ├── backup                   # 数据库、配置文件备份存档【暂缺】
 ├── .devcontainer
-│   ├── devcontainer-lock.json  # VSCode远程容器开发配置，绑定prj项目服务【可上传GIT】
-│   └── devcontainer.json    # VSCode远程容器配置，绑定prj项目服务【可上传GIT】
+│   ├── devcontainer-lock.json  # VS远程容器开发配置，绑定prj项目【上传GIT】
+│   └── devcontainer.json    # VS远程容器配置，绑定prj项目【上传GIT】
 ├── docs
 │   └── archive              # 待核验
-├── .env.backend             # 是否可删除？
-├── .env.dev                 # 本地开发环境变量【不能上传GIT】
-├── .env.dev.example         # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用
-├── .env.prod                # 服务器生产环境变量
-├── .env.prod.example        # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用
-├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重【可上传GIT】
+├── .env.dev                 # 本地开发环境变量【不传GIT】
+├── .env.backend             # 本地开发环境变量（针对后端容器）【不传GIT】
+├── .env.dev.example         # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.backend.example     # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.prod                # 服务器生产环境变量【不传GIT】
+├── .env.prod.backend        # 服务器生产环境变量（针对后端容器）【不传GIT】
+├── .env.prod.example        # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .env.prod.backend.example # 保留：被 docs/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
+├── .gitignore               # 屏蔽密钥、环境变量、日志、模型权重【上传GIT】
 ├── .gitattributes           # 待核验
 ├── .dockerignore            # 构建Docker镜像时统一屏蔽日志、模型、环境变量、编译产物，开发/生产Dockerfile共用【可上传GIT】
-├── docker-compose.base.yml  # 基础业务容器编排，常驻公共中间件【开发与生产环境是否可以合并】：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】
-├── docker-compose.business-prj.yml        # 保留：开发/内网业务编排（dev profile，与 base 共用基础设施）
+├── docker-compose.base.yml  # 基础业务容器编排，常驻公共中间件【开发与生产环境共用】：Nginx、MySQL、Redis,容器基础镜像完全独立，和业务代码无关【可上传GIT】
 ├── docker-compose.business-prj.dev.yml    # 业务容器编排：前端、后端【开发环境版本】【可上传GIT】
-├── docker-compose.classphp.dev.yml        # [已合并·已删除] prj-php 已并入 docker-compose.business-prj.dev.yml（2026-07-20），本文件不再存在
-├── docker-compose.prod.yml  # 保留：生产环境编排（prod profile，外部化密钥）
+├── docker-compose.prod.yml  # 业务容器编排：前端、后端【生产环境版本】【可上传GIT】
 ├── VERSION.md               # 用 Markdown 格式清晰记录项目版本、迭代号、构建版本【可上传GIT】
 └── 项目开发说明              # 项目 Readme 文档，记录开发、部署流程，给团队提供使用指引【可上传GIT】
+
+
+
+
+
 
 # 在git-hub删除制定文件.env.dev
 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env.dev' --prune-empty --tag-name-filter cat -- --all
