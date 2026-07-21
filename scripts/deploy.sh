@@ -376,6 +376,7 @@ prepare_ollama() {
   if [[ -n "$PROXY" ]]; then ollama_args=(--proxy "$PROXY"); fi
   if ! setup_ollama "${ollama_args[@]}"; then
     log "错误：Ollama 准备失败，请查看上方日志。" >&2
+    log "提示：若网络受限，可手动安装 Ollama（brew install ollama 或你本机可用渠道）后加 --skip-ollama 重跑；或用 --proxy <url>；或把 OllamaSetup.exe 放到 scripts/ 旁。" >&2
     exit 1
   fi
   log "宿主 Ollama 准备完成。"

@@ -293,30 +293,35 @@ function Invoke-OllamaSetup {
         # the CDN throttles per connection, so it is worth a one-time install.
         $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
         if ($aria2) { return $aria2.Source }
-        $installed = $false
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             try {
                 Log "aria2c not found; installing via winget (one-time, ~2.5MB) ..."
-                winget install --exact --id aria2.aria2 -e --accept-package-agreements --accept-source-agreements
-                $installed = $true
+                $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','aria2.aria2','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\winget_aria2.out" -RedirectStandardError "$env:TEMP\winget_aria2.err"
+                if ($p.ExitCode -eq 0) {
+                    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
+                    $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
+                    if ($aria2) { return $aria2.Source }
+                } else {
+                    Log "winget install aria2 返回非零退出码 $($p.ExitCode)，将继续尝试其它方式。" -ForegroundColor Yellow
+                }
             } catch {
-                Log "winget install aria2 failed: $_" -ForegroundColor Yellow
-                try { winget install aria2 --accept-package-agreements --accept-source-agreements } catch { }
+                Log "winget install aria2 失败。" -ForegroundColor Yellow
             }
         }
-        if (-not $installed -and (Get-Command choco -ErrorAction SilentlyContinue)) {
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
             try {
                 Log "aria2c not found; installing via choco ..."
-                choco install aria2 -y
-                $installed = $true
+                $p = Start-Process -FilePath 'choco' -ArgumentList @('install','aria2','-y') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\choco_aria2.out" -RedirectStandardError "$env:TEMP\choco_aria2.err"
+                if ($p.ExitCode -eq 0) {
+                    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
+                    $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
+                    if ($aria2) { return $aria2.Source }
+                } else {
+                    Log "choco install aria2 返回非零退出码 $($p.ExitCode)。" -ForegroundColor Yellow
+                }
             } catch {
-                Log "choco install aria2 failed: $_" -ForegroundColor Yellow
+                Log "choco install aria2 失败。" -ForegroundColor Yellow
             }
-        }
-        if ($installed) {
-            $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
-            $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
-            if ($aria2) { return $aria2.Source }
         }
         return $null
     }
@@ -364,14 +369,14 @@ function Invoke-OllamaSetup {
                     Log "aria2c multi-thread download: $url"
                     $ariaArgs = @('-x', '16', '-s', '16', '-k', '1M', '--connect-timeout=20', '-o', (Split-Path $OutFile -Leaf), $url, '--dir', (Split-Path $OutFile -Parent))
                     if ($Proxy) { $ariaArgs += '--all-proxy'; $ariaArgs += $Proxy }
-                    & $aria2 @ariaArgs
-                    if ($LASTEXITCODE -ne 0) { throw "aria2 exit code $LASTEXITCODE" }
+                    $p = Start-Process -FilePath $aria2 -ArgumentList $ariaArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\ollama_dl.out" -RedirectStandardError "$env:TEMP\ollama_dl.err"
+                    if ($p.ExitCode -ne 0) { throw "aria2c exit code $($p.ExitCode)" }
                 } else {
                     Log "Downloading installer via curl: $url"
                     $curlArgs = @('-L', '-f', '-S', '--connect-timeout', '15', '--max-time', '600', '--retry', '2', '--speed-time', '90', '--speed-limit', '100000', '-o', $OutFile, $url)
                     if ($Proxy) { $curlArgs = @('-x', $Proxy) + $curlArgs }
-                    & curl.exe @curlArgs
-                    if ($LASTEXITCODE -ne 0) { throw "curl exited $LASTEXITCODE (low speed or connection reset)" }
+                    $p = Start-Process -FilePath 'curl.exe' -ArgumentList $curlArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\ollama_dl.out" -RedirectStandardError "$env:TEMP\ollama_dl.err"
+                    if ($p.ExitCode -ne 0) { throw "curl exit code $($p.ExitCode)" }
                 }
                 if (Test-Path $OutFile) {
                     $sz = (Get-Item $OutFile).Length
@@ -379,7 +384,7 @@ function Invoke-OllamaSetup {
                     Remove-Item $OutFile -Force -ErrorAction SilentlyContinue
                 }
             } catch {
-                Log "Source failed: $url ($_)" -ForegroundColor Yellow
+                Log "镜像下载失败：$url（网络不可达或被限速，跳过该源）" -ForegroundColor Yellow
                 if (Test-Path $OutFile) { Remove-Item $OutFile -Force -ErrorAction SilentlyContinue }
             }
         }
@@ -393,17 +398,29 @@ function Invoke-OllamaSetup {
         $dest = Install-OllamaFromMirror
         if (-not $dest) {
             if (Get-Command winget -ErrorAction SilentlyContinue) {
-                Log "All mirrors failed; falling back to winget ..." -ForegroundColor Yellow
-                winget install --exact --id Ollama.Ollama -e --accept-package-agreements --accept-source-agreements
-                return
+                Log "所有镜像下载失败；尝试用 winget 安装 Ollama ..." -ForegroundColor Yellow
+                $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','Ollama.Ollama','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\winget_ollama.out" -RedirectStandardError "$env:TEMP\winget_ollama.err"
+                if ($p.ExitCode -eq 0) {
+                    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
+                    return
+                }
+                Log "winget 安装 Ollama 失败（退出码 $($p.ExitCode)），本机网络可能访问不了境外 CDN。" -ForegroundColor Yellow
             } elseif (Get-Command choco -ErrorAction SilentlyContinue) {
-                Log "All mirrors failed; falling back to choco ..." -ForegroundColor Yellow
-                choco install ollama -y
-                return
-            } else {
-                Log "ERROR: all install methods failed. Recommended: download OllamaSetup.exe via a faster channel (phone hotspot / another machine), place it next to this script, and re-run (offline mode). Or run with -Proxy. Or 'winget install aria2' then re-run for multi-thread." -ForegroundColor Red
-                throw "Ollama installation failed (all methods)."
+                Log "所有镜像下载失败；尝试用 choco 安装 Ollama ..." -ForegroundColor Yellow
+                $p = Start-Process -FilePath 'choco' -ArgumentList @('install','ollama','-y') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\choco_ollama.out" -RedirectStandardError "$env:TEMP\choco_ollama.err"
+                if ($p.ExitCode -eq 0) {
+                    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
+                    return
+                }
+                Log "choco 安装 Ollama 失败（退出码 $($p.ExitCode)）。" -ForegroundColor Yellow
             }
+            Log "错误：Ollama 自动安装失败（本机网络无法访问 ollama.com / GitHub 等境外 CDN）。" -ForegroundColor Red
+            Log "请任选其一后重跑本脚本：" -ForegroundColor Red
+            Log "  1) 手动安装 Ollama（winget install Ollama.Ollama 或你本机可用渠道），再用 -SkipOllama 跳过安装：" -ForegroundColor Red
+            Log "       powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env <环境> -SkipOllama" -ForegroundColor Red
+            Log "  2) 用代理重跑：... -Env <环境> -Proxy <http://代理:端口>" -ForegroundColor Red
+            Log "  3) 把 OllamaSetup.exe 放到 scripts/ 目录旁（离线安装模式，脚本会自动识别）" -ForegroundColor Red
+            throw "Ollama 自动安装失败（网络受限），请按上方提示手动处理或用 -SkipOllama / -Proxy。"
         }
         Log "Running silent install (OllamaSetup.exe /S) ..."
         Start-Process -FilePath $dest -ArgumentList '/S' -Wait
@@ -553,6 +570,7 @@ function Start-Ollama {
         Invoke-OllamaSetup -Proxy $Proxy
     } catch {
         Log "错误：Ollama 准备失败，请查看上方日志。" Red
+        Log "提示：若网络受限，可手动安装 Ollama 后加 -SkipOllama 重跑；或用 -Proxy <url>；或把 OllamaSetup.exe 放到 scripts/ 旁。" Yellow
         exit 1
     }
     Log "宿主 Ollama 准备完成。"
