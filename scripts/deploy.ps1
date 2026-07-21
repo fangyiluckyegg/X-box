@@ -367,13 +367,13 @@ function Invoke-OllamaSetup {
             try {
                 if ($aria2) {
                     Log "aria2c multi-thread download: $url"
-                    $ariaArgs = @('-x', '16', '-s', '16', '-k', '1M', '--connect-timeout=20', '-o', (Split-Path $OutFile -Leaf), $url, '--dir', (Split-Path $OutFile -Parent))
+                    $ariaArgs = @('-x', '16', '-s', '16', '-k', '1M', '--connect-timeout=15', '--timeout=30', '--max-tries=1', '-o', (Split-Path $OutFile -Leaf), $url, '--dir', (Split-Path $OutFile -Parent))
                     if ($Proxy) { $ariaArgs += '--all-proxy'; $ariaArgs += $Proxy }
                     $p = Start-Process -FilePath $aria2 -ArgumentList $ariaArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\ollama_dl.out" -RedirectStandardError "$env:TEMP\ollama_dl.err"
                     if ($p.ExitCode -ne 0) { throw "aria2c exit code $($p.ExitCode)" }
                 } else {
                     Log "Downloading installer via curl: $url"
-                    $curlArgs = @('-L', '-f', '-S', '--connect-timeout', '15', '--max-time', '600', '--retry', '2', '--speed-time', '90', '--speed-limit', '100000', '-o', $OutFile, $url)
+                    $curlArgs = @('-L', '-f', '-S', '--connect-timeout', '15', '--max-time', '90', '--retry', '2', '--speed-time', '90', '--speed-limit', '100000', '-o', $OutFile, $url)
                     if ($Proxy) { $curlArgs = @('-x', $Proxy) + $curlArgs }
                     $p = Start-Process -FilePath 'curl.exe' -ArgumentList $curlArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\ollama_dl.out" -RedirectStandardError "$env:TEMP\ollama_dl.err"
                     if ($p.ExitCode -ne 0) { throw "curl exit code $($p.ExitCode)" }
@@ -563,17 +563,22 @@ function Invoke-OllamaSetup {
 function Start-Ollama {
     if ($SkipOllama) {
         Log "===== 阶段 3：跳过 Ollama 准备（-SkipOllama）====="
+        $script:OllamaStatus = 'skipped'
         return
     }
     Log "===== 阶段 3：准备宿主 Ollama ..."
     try {
         Invoke-OllamaSetup -Proxy $Proxy
+        $script:OllamaStatus = 'ok'
     } catch {
-        Log "错误：Ollama 准备失败，请查看上方日志。" Red
-        Log "提示：若网络受限，可手动安装 Ollama 后加 -SkipOllama 重跑；或用 -Proxy <url>；或把 OllamaSetup.exe 放到 scripts/ 旁。" Yellow
-        exit 1
+        # Ollama 仅是「向量化 / 语义检索」类功能的软依赖：后端容器启动时不强依赖它，
+        # embedding 仅在请求时懒调用，缺失时按请求抛 EmbeddingException 优雅降级。
+        # 因此 Ollama 准备失败不应阻断整个部署。
+        Log "警告：Ollama 准备失败，部署将继续；但「向量化 / 语义检索」类功能暂不可用。" Yellow
+        Log "修复：手动安装 Ollama 后执行 'ollama serve --host 0.0.0.0:11434'；或重跑本脚本时加 -SkipOllama 跳过重复下载。" Yellow
+        $script:OllamaStatus = 'failed'
     }
-    Log "宿主 Ollama 准备完成。"
+    Log "宿主 Ollama 准备阶段结束（状态：$($script:OllamaStatus)）。"
 }
 
 function Start-Stack {
@@ -673,6 +678,11 @@ function Print-Summary {
     } else {
         Log "  后端直连：未暴露（prod/staging 不暴露 8080）"
     }
+    if ($script:OllamaStatus -eq 'skipped') {
+        Log "Ollama：已跳过（-SkipOllama），向量化功能不可用。" Yellow
+    } elseif ($script:OllamaStatus -eq 'failed') {
+        Log "Ollama：准备失败，向量化功能不可用；其余服务已正常启动。" Yellow
+    }
 }
 
 # ---------- 主流程 ----------
@@ -701,6 +711,7 @@ try {
         exit 0
     }
 
+    $script:OllamaStatus = 'unknown'
     Start-Ollama
     Start-Stack -Cfg $cfg
     Wait-And-Probe -Cfg $cfg

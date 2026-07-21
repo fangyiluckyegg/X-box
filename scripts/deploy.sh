@@ -39,6 +39,7 @@ ENV="prod"
 SKIP_OLLAMA=0
 DRY_RUN=0
 PROXY=""
+OLLAMA_STATUS="unknown"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env) ENV="${2:-}"; shift ;;
@@ -369,17 +370,22 @@ setup_ollama() {
 prepare_ollama() {
   if [[ "$SKIP_OLLAMA" -eq 1 ]]; then
     log "===== 阶段 3：跳过 Ollama 准备（--skip-ollama）====="
+    OLLAMA_STATUS="skipped"
     return 0
   fi
   log "===== 阶段 3：准备宿主 Ollama ..."
   local ollama_args=()
   if [[ -n "$PROXY" ]]; then ollama_args=(--proxy "$PROXY"); fi
-  if ! setup_ollama "${ollama_args[@]}"; then
-    log "错误：Ollama 准备失败，请查看上方日志。" >&2
-    log "提示：若网络受限，可手动安装 Ollama（brew install ollama 或你本机可用渠道）后加 --skip-ollama 重跑；或用 --proxy <url>；或把 OllamaSetup.exe 放到 scripts/ 旁。" >&2
-    exit 1
+  if setup_ollama "${ollama_args[@]}"; then
+    OLLAMA_STATUS="ok"
+    log "宿主 Ollama 准备完成。"
+  else
+    # Ollama 仅是「向量化 / 语义检索」类功能的软依赖：后端容器启动时不强依赖它，
+    # embedding 仅在请求时懒调用，缺失时按请求抛错优雅降级。故准备失败不阻断部署。
+    OLLAMA_STATUS="failed"
+    log "警告：Ollama 准备失败，部署将继续；但「向量化 / 语义检索」类功能暂不可用。" >&2
+    log "修复：手动安装 Ollama 后 'ollama serve --host 0.0.0.0:11434'；或重跑时加 --skip-ollama 跳过重复安装。" >&2
   fi
-  log "宿主 Ollama 准备完成。"
 }
 
 # 阶段 4：按所选环境启动栈
@@ -482,6 +488,11 @@ print_summary() {
     log "  后端直连：http://localhost:8080/（dev 环境暴露）"
   else
     log "  后端直连：未暴露（prod/staging 不暴露 8080）"
+  fi
+  if [[ "$OLLAMA_STATUS" == "skipped" ]]; then
+    log "Ollama：已跳过（--skip-ollama），向量化功能不可用。" >&2
+  elif [[ "$OLLAMA_STATUS" == "failed" ]]; then
+    log "Ollama：准备失败，向量化功能不可用；其余服务已正常启动。" >&2
   fi
 }
 
