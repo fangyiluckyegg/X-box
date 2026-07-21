@@ -3,6 +3,11 @@ cd D:\crh123dexiaohao\X-box
 echo 停止所有其他业务容器
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml down
 :: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod down -v
+:: 第 1 步：清掉被反复失败部署搞脏的 mysql 卷（重建干净；prod 全新部署无碍）
+:: docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod down -v
+:: 第 2 步：重跑（脚本现已能自动定位 Git 的 openssl 补证书 + 跳过受限 Ollama）
+:: powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod -SkipOllama
+
 
 echo 启动全部容器
 :: docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d

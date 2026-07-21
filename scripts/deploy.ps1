@@ -243,11 +243,33 @@ function Ensure-SslCert {
         Log "（Windows 可安装 Git for Windows 后重跑；或用 winget install GnuWin32.OpenSSL）" Yellow
         exit 1
     }
-    & $opensslExe req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 3650 -subj /CN=localhost 2>&1 | Out-Null
+    # Git 自带 openssl 常因找不到 openssl.cnf 而失败，显式指定其配置（若存在）
+    if (-not $env:OPENSSL_CONF) {
+        $binDir = Split-Path $opensslExe
+        $cnfCandidates = @(
+            (Join-Path $binDir '..\ssl\openssl.cnf'),
+            (Join-Path $binDir '..\etc\ssl\openssl.cnf')
+        )
+        foreach ($cc in $cnfCandidates) {
+            if (Test-Path $cc) { $env:OPENSSL_CONF = (Resolve-Path $cc).Path; break }
+        }
+    }
+    # 生成证书：openssl 进度/警告走 stderr，本地降级 ErrorActionPreference 防止被顶层 catch 当成致命错误
+    $opensslLog = Join-Path $sslDir 'openssl_gen.log'
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $opensslExe req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 3650 -subj /CN=localhost > $opensslLog 2>&1
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
     if ((Test-Path $crt) -and (Test-Path $key)) {
         Log "SSL 自签证书已生成：$sslDir"
+        Remove-Item $opensslLog -ErrorAction SilentlyContinue
     } else {
-        Log "错误：证书生成失败，请按上方命令手动生成。" Red
+        Log "错误：证书生成失败（openssl 退出码 $LASTEXITCODE）。openssl 输出：" Red
+        if (Test-Path $opensslLog) { Get-Content $opensslLog | ForEach-Object { Log "  $_" Red } }
+        Log "提示：若报找不到 openssl.cnf，可手动 `set OPENSSL_CONF=<path>` 后重跑；或直接在 gateway/nginx/ssl 放入 prj.crt/prj.key。" Yellow
         exit 1
     }
 }
