@@ -121,7 +121,7 @@ services:
       - ./Niu_Txl:/var/www/html
       - ./logs/prj-php:/var/log/apache2
     environment:
-      CLASS_DB_HOST: dev-mysql     # dev 永远连 base 的 dev-mysql
+      CLASS_DB_HOST: mysql        # dev 永远连 base 的 mysql 服务
       TZ: Asia/Shanghai
     ports:
       - "127.0.0.1:1181:80"       # 与 prod 端口一致，避免改 nginx upstream

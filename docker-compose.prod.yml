@@ -87,7 +87,7 @@ services:
       TZ: Asia/Shanghai
       # [C2] 生产启用 prod profile，触发严格密钥校验（弱/缺失即启动失败）
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:mysql://dev-mysql:3306/${MYSQL_DATABASE:-prj_dev}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-prj_dev}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
       SPRING_DATA_REDIS_HOST: prj-redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 9
