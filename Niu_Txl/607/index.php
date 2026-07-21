@@ -3,14 +3,14 @@ if(!isset($_SESSION)){
     session_start();
 }
 if (empty($_SESSION["temp"])) { 
-    if (($fp = fopen("counter.txt","r")) == False) {
+    if (($fp = fopen(__DIR__ . '/counter.txt',"r")) == False) {
         echo "打开文件失败";
     } else {
         $counter = fgets ( $fp , 1024 );
         fclose( $fp );
         $counter ++;
         //echo $counter;
-        $fp = fopen ("counter.txt","w");
+        $fp = fopen (__DIR__ . '/counter.txt',"w");
         fputs ($fp, $counter );
         fclose( $fp );
     }

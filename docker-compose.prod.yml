@@ -146,7 +146,7 @@ services:
       - ./Niu_Txl:/var/www/html          # docroot = Niu_Txl，607/902 直接可用
       - ./logs/prj-php:/var/log/apache2
     environment:
-      CLASS_DB_HOST: ${CLASS_DB_HOST:-dev-mysql}
+      CLASS_DB_HOST: ${CLASS_DB_HOST:-mysql}
       CLASS_DB_USER: ${CLASS_DB_USER:-class_user}
       CLASS_DB_PWD: ${CLASS_DB_PWD}
       # ⚠️ 不传 CLASS_DB_NAME：902/message 回退 'msg'，902/work 回退 'work'

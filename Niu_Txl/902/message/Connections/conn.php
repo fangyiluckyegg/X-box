@@ -2,7 +2,7 @@
 // 902/message/Connections/conn.php —— 容器化改造：连接参数读环境变量
 // 新增 prj-php 容器后，MySQL 通过服务名 dev-mysql 互访（见 docker-compose.prod.yml）。
 // 环境变量缺失时回退到容器网络内的默认值，保证本地/CI 也能跑通。
-$hostname_conn = getenv('CLASS_DB_HOST') ?: 'dev-mysql';
+$hostname_conn = getenv('CLASS_DB_HOST') ?: 'mysql';
 $database_conn = getenv('CLASS_DB_NAME') ?: 'msg';   // message 站点 → msg 库
 $username_conn = getenv('CLASS_DB_USER') ?: 'class_user';
 $password_conn = getenv('CLASS_DB_PWD');

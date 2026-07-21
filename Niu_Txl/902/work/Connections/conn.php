@@ -2,7 +2,7 @@
 // 902/work/Connections/conn.php —— 容器化改造：连接参数读环境变量
 // 与 message/conn.php 完全一致，仅数据库名不同（work 站点 → work 库）。
 // 新增 prj-php 容器后，MySQL 通过服务名 dev-mysql 互访（见 docker-compose.prod.yml）。
-$hostname_conn = getenv('CLASS_DB_HOST') ?: 'dev-mysql';
+$hostname_conn = getenv('CLASS_DB_HOST') ?: 'mysql';
 $database_conn = getenv('CLASS_DB_NAME') ?: 'work';   // work 站点 → work 库
 $username_conn = getenv('CLASS_DB_USER') ?: 'class_user';
 $password_conn = getenv('CLASS_DB_PWD');

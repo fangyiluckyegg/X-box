@@ -3,13 +3,13 @@ if(!isset($_SESSION)){
     session_start();
 }
 if (empty($_SESSION["temp"])) { 
-    if (($fp = fopen("counter.txt","r")) == False) {
+    if (($fp = fopen(__DIR__ . '/counter.txt',"r")) == False) {
         echo "打开文件失败";
     } else {
         $counter = fgets ( $fp , 1024 );
         fclose( $fp );
         $counter ++;
-        $fp = fopen ("counter.txt","w");
+        $fp = fopen (__DIR__ . '/counter.txt',"w");
         fputs ($fp, $counter );
         fclose( $fp );
     }
@@ -35,6 +35,6 @@ if (empty($_SESSION["temp"])) {
 	<li><font size="10"><a href="work/index.php">班级风采</a></font></li>
 
 </ul>
-<p align="center">网站访问量：<font color="red" size="4"><b><?php echo file_get_contents("counter.txt"); ?></b></font></p>
+<p align="center">网站访问量：<font color="red" size="4"><b><?php echo file_get_contents(__DIR__ . '/counter.txt'); ?></b></font></p>
 </body>
 </html>
