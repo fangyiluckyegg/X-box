@@ -78,8 +78,7 @@ X-box
 ├── .devcontainer
 │   ├── devcontainer-lock.json  # VS远程容器开发配置，绑定prj项目【上传GIT】
 │   └── devcontainer.json    # VS远程容器配置，绑定prj项目【上传GIT】
-├── docs                     # 相关手册归档总览见 docs/audit/README.md；现行部署手册在 docs/deployment/
-│   └── archive              # 待核验
+├── docs                     # 手册归档 docs/audit/README.md docs/deployment/
 ├── .env.dev                 # 本地开发环境变量【不传GIT】
 ├── .env.backend             # 本地开发环境变量（针对后端容器）【不传GIT】
 ├── .env.dev.example         # 保留：被 docs/deployment/prod-mac-runbook.md 作为 cp 模板引用（已对齐双文件拆分）【上传GIT】
