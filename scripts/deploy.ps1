@@ -210,8 +210,9 @@ function Prepare-EnvFiles {
 }
 
 function Ensure-SslCert {
-    $crt = Join-Path $RootDir 'gateway' 'nginx' 'ssl' 'prj.crt'
-    $key = Join-Path $RootDir 'gateway' 'nginx' 'ssl' 'prj.key'
+    $sslDir = Join-Path $RootDir 'gateway/nginx/ssl'
+    $crt = Join-Path $sslDir 'prj.crt'
+    $key = Join-Path $sslDir 'prj.key'
     if ((Test-Path $crt) -and (Test-Path $key)) {
         Log "SSL 证书已存在，跳过生成。"
         return
@@ -223,7 +224,7 @@ function Ensure-SslCert {
     if (-not $openssl) {
         Log "错误：未找到 openssl，无法自动生成证书。请手动生成后重试：" Red
         Log "  cd gateway/nginx/ssl" Red
-        Log "  openssl req -x509 -newkey rsa:2048 -nodes -keyout prj.key -out prj.crt -days 3650 -subj ""/CN=localhost""" Red
+        Log "  openssl req -x509 -newkey rsa:2048 -nodes -keyout prj.key -out prj.crt -days 3650 -subj /CN=localhost" Red
         exit 1
     }
     & openssl req -x509 -newkey rsa:2048 -nodes -keyout $key -out $crt -days 3650 -subj "/CN=localhost" 2>&1 | Out-Null
