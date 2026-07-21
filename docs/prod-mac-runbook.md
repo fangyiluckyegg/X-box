@@ -11,9 +11,12 @@
 1. 已安装 **OrbStack 2.1.3**（或兼容的 Docker 运行时），`docker compose` 可用。
 2. 已准备生产环境文件：
    - `cp .env.prod.example .env.prod`，并填入**强随机值**（切勿提交，` .env*` 已被 `.gitignore` 忽略）。
+     （注：当前仓库未提供 `.env.prod.example`，请直接复制 `.env.prod` 并按需替换强随机值，保持 UTF-8 LF）
+   - 如后续补充 `.env.prod.backend.example` 则执行 `cp .env.prod.backend.example .env.prod.backend`；
+     当前直接复用 `.env.prod.backend`（已随仓库提供）。
 3. 已准备 Mac 本机的 **dev 环境文件**（从 `.env.dev.example` 复制）：
    - `cp .env.dev.example .env.dev`
-   - **关键**：`.env.dev` 中的 `SPRING_DATASOURCE_PASSWORD` 必须与 `.env.prod` 中的
+   - **关键**：`.env.dev` 中的 `SPRING_DATASOURCE_PASSWORD` 必须与 `.env.prod.backend` 中的
      `SPRING_DATASOURCE_PASSWORD` **完全相同**（详见第 2 节"凭证契约"）。
    - `.env.dev` 必须 **UTF-8（LF）**；避免 CRLF 导致 wrapper 注入 `prj_user\r` 而被拒
      （wrapper 已做 `\r` 剥除兜底，仍建议源文件即干净）。
@@ -27,10 +30,10 @@
   `db/mysql_scripts/docker-entrypoint-wrapper.sh` 的 `ensure_app_user()`
   按 **MySQL 容器 env（base.yml 的 `.env.dev`）** 的 `SPRING_DATASOURCE_PASSWORD` 注入。
 - 因此：
-  - prod 后端用 `.env.prod` 的 `SPRING_DATASOURCE_PASSWORD` 连接 `dev-mysql` 的 `prj_user`；
+  - prod 后端用 `.env.prod.backend` 的 `SPRING_DATASOURCE_PASSWORD` 连接 `dev-mysql` 的 `prj_user`；
   - 该 `prj_user` 的口令 = `.env.dev` 的 `SPRING_DATASOURCE_PASSWORD`；
   - **两者必须相等**，否则 prod 后端连不上库。
-- 同时本 `.env.prod` 内的 `PRJ_DB_PWD` 与 `SPRING_DATASOURCE_PASSWORD` 也使用同一值。
+- 同时 `.env.prod` 内的 `PRJ_DB_PWD` 与 `.env.prod.backend` 的 `SPRING_DATASOURCE_PASSWORD` 也使用同一值。
 
 ---
 
@@ -111,7 +114,7 @@ sed -i '' 's/\r$//' .env.prod
 ## 8. 禁止改动（保持 dev 可用）
 
 - 不要改 `.env.dev`、`.env.backend`、`docker-compose.base.yml`、
-  `docker-compose.business-prj.yml`、`docker-compose.business-prj.dev.yml`、
-  `docker-compose.classphp.dev.yml` 等 dev 文件——dev 已跑通。
+  `docker-compose.business-prj.dev.yml` 等 dev 文件——dev 已跑通。
+- 不要改 `.env.prod.backend`（生产后端专用）。
 - 不要改应用源码、Dockerfile、网关 conf、前端代码。
 - 不要把任何明文口令写入会被 git 跟踪的文件。

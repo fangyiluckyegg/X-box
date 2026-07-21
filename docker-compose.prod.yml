@@ -16,7 +16,7 @@
 #
 # 其余既有约束保持不变：
 #   - 后端使用 prod profile（SPRING_PROFILES_ACTIVE=prod），启用严格密钥校验
-#   - 所有敏感凭证经 env_file (.env.prod) 外部化，禁止明文进仓库
+#   - 后端敏感凭证经 env_file (.env.prod.backend) 外部化；infra 变量经 --env-file .env.prod 插值
 #   - 容器名去除 dev- 前缀；restart: unless-stopped；无 TTY / 不挂载源码
 #   - AI 推理经宿主原生 Ollama（host.docker.internal:11434）
 #
@@ -30,9 +30,9 @@
 #
 # ⚠️【凭证契约 · 必须一致】共享 dev-mysql 中 prj_user 的口令由 base 的 .env.dev 的
 #   SPRING_DATASOURCE_PASSWORD 在运行时注入（ensure_app_user()）。故 Mac 部署 prod 时，
-#   本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD 必须与下方 .env.prod 的
+#   本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD 必须与 .env.prod.backend 的
 #   SPRING_DATASOURCE_PASSWORD 完全相同，否则 prod 后端连不上 dev-mysql。
-#   （当前两文件该值已一致：<REDACTED-live-prod>）
+#   （当前 .env.dev 与 .env.prod.backend 该值已一致：<REDACTED-live-prod>）
 #
 # ⚠️ 拓扑：生产全栈复用 base 的 dev-mysql（容器名 dev-mysql，网络 dev-network）。
 #   建库（prj_dev）、class_user 账号与授权、密码对齐见 docs 运行手册，由运维在 dev-mysql 运行时执行。
@@ -69,11 +69,11 @@ services:
     networks:
       - dev-network
 
-  # 凭证契约见文件头【凭证契约】段：后端用 .env.prod 的 SPRING_DATASOURCE_PASSWORD
+  # 凭证契约见文件头【凭证契约】段：后端用 .env.prod.backend 的 SPRING_DATASOURCE_PASSWORD
   # 连 dev-mysql 的 prj_user；该口令由 .env.dev 的 SPRING_DATASOURCE_PASSWORD 注入，
   # 两者必须一致（Mac 部署 prod 时务必对齐）。
   prj-backend-c:
-    env_file: .env.prod
+    env_file: .env.prod.backend
     build:
       context: .
       dockerfile: ./backend/prj-backend-c/Dockerfile.prod
