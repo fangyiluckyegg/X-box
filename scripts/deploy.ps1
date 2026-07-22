@@ -661,6 +661,33 @@ function Start-Ollama {
     Log "宿主 Ollama 准备阶段结束（状态：$($script:OllamaStatus)）。"
 }
 
+function Ensure-LogPaths {
+    param([hashtable]$Cfg)
+    Log "===== 阶段 3.5：预建单文件 bind mount 日志空文件（环境：$Env）====="
+    # 单文件 bind mount 要求宿主侧对应文件预先存在，否则 Docker 会建成同名目录导致挂载失败。
+    # 这些文件已被 .gitignore 屏蔽（logs/** / *.log），不进 git。
+    $files = @(
+        'logs/mysql/error.log',
+        'logs/redis/redis.log',
+        'logs/nginx/access.log',
+        'logs/nginx/error.log'
+    )
+    switch ($Env) {
+        'dev'     { $files += 'logs/prj-frontend/dev.log' }
+        'prod'    { $files += @('logs/prj-frontend/access.log', 'logs/prj-frontend/error.log') }
+        'staging' { $files += @('logs/prj-frontend/access.log', 'logs/prj-frontend/error.log') }
+    }
+    foreach ($f in $files) {
+        $dir = Split-Path $f -Parent
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        if (-not (Test-Path $f)) {
+            New-Item -ItemType File -Path $f -Force | Out-Null
+            Log "已创建日志空文件：$f"
+        }
+    }
+    Log "日志路径预建完成（dev/prod 对齐：均确保单文件挂载落盘点存在）。"
+}
+
 function Start-Stack {
     param([hashtable]$Cfg)
     Log "===== 阶段 4：启动 $Env 栈 ====="
@@ -794,6 +821,7 @@ try {
 
     $script:OllamaStatus = 'unknown'
     Start-Ollama
+    Ensure-LogPaths -Cfg $cfg
     Start-Stack -Cfg $cfg
     Wait-And-Probe -Cfg $cfg
 }

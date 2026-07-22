@@ -424,6 +424,36 @@ prepare_ollama() {
   fi
 }
 
+# 阶段 3.5：预建单文件 bind mount 日志空文件（dev/prod 对齐）
+# 单文件 bind mount 要求宿主侧对应文件预先存在，否则 Docker 会建成同名目录导致挂载失败。
+# 这些文件已被 .gitignore 屏蔽（logs/** / *.log），不进 git。
+ensure_log_paths() {
+  log "===== 阶段 3.5：预建单文件 bind mount 日志空文件（环境：$ENV）====="
+  local files=(
+    "logs/mysql/error.log"
+    "logs/redis/redis.log"
+    "logs/nginx/access.log"
+    "logs/nginx/error.log"
+  )
+  case "$ENV" in
+    dev)
+      files+=("logs/prj-frontend/dev.log")
+      ;;
+    prod|staging)
+      files+=("logs/prj-frontend/access.log" "logs/prj-frontend/error.log")
+      ;;
+  esac
+  local f
+  for f in "${files[@]}"; do
+    mkdir -p "$(dirname "$f")"
+    if [[ ! -f "$f" ]]; then
+      : > "$f"
+      log "已创建日志空文件：$f"
+    fi
+  done
+  log "日志路径预建完成（dev/prod 对齐：均确保单文件挂载落盘点存在）。"
+}
+
 # 阶段 4：按所选环境启动栈
 start_stack() {
   log "===== 阶段 4：启动 $ENV 栈 ====="
@@ -560,6 +590,7 @@ main() {
     exit 0
   fi
   prepare_ollama
+  ensure_log_paths
   start_stack
   health_and_probe
 }
