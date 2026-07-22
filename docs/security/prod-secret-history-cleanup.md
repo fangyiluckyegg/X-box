@@ -68,3 +68,31 @@ git log -p --all | grep -E '<REDACTED-live-prod>|<REDACTED-live-prod>|<REDACTED-
 - **O1 凭证契约**：上线前确保本机 `.env.dev` 的 `SPRING_DATASOURCE_PASSWORD` 与 `.env.prod` **完全相同**（共享 `dev-mysql` 的 `prj_user` 口令须一致，否则 prod 后端连不上库）。
 - **工作树已脱敏**：remediation ① 已把文档里的当前生产密钥替换为 `<REDACTED-live-prod>`；本手册只负责清历史 commit 版本。
 - **启动顺序**：见 `docs/deployment/prod-mac-runbook.md`。
+
+---
+
+## 执行记录（2026-07-22，win 环境）
+
+> 本手册规划的「历史擦除」已于 2026-07-22 在 **Windows 环境**实际执行并完成（仓库为 private，已授权）。
+
+### 执行结果
+- 工具：`git-filter-repo 2.47.0`（pip 安装到用户 site，bin 加入 PATH）
+- 替换清单：4 个真实生产明文值（MYSQL_ROOT_PASSWORD、PRJ_DB_PWD/SPRING_DATASOURCE_PASSWORD、CLASS_DB_PWD，及 cIgIAC 指纹对应的某生产密钥完整值）+ 6 个指纹串，全部 → `<REDACTED-live-prod>`
+- 历史重写：122 个 commit 全部改写（3 轮迭代补足漏网前缀/后缀）
+- 强制推送：`git push --force --all`（SSH）+ `git push --force --tags`
+- 验证：`git grep` 扫描全部重写后 blob + 远端 `origin/main` 拉取后扫描，**均 CLEAN**（11 个指纹零命中）
+- 附带：`web/prj-frontend/.env.development` 移出跟踪（`.gitignore` 的 `.env*` 本应覆盖，早期全量上传误带）
+
+### 关键修正（相对本手册原规划）
+- 本手册原称「O1 已让仓库工作树零明文」——**实测并未脱敏**（align 文档仍含 MYSQL_ROOT 真实值）。本次 filter-repo 已一并擦除工作树与历史。
+- 教训：替换清单必须写**密钥完整值**，不能只写前缀/指纹。实测有两个密钥仅替换前缀会残留后缀，已通过补 `literal:` 整串规则修复（详见下方 runbook 第 0 条）。
+
+### 生产密钥轮换 runbook（可选，建议密钥曾可能被外部读取后执行）
+> 仅历史擦除已消除 git 暴露；若密钥曾可能被外部读取，按以下步骤轮换。⚠️ 第 3 步 `down -v` 会**清空 prod 数据卷**，仅在可接受数据重置时执行。
+
+0. （血泪教训）替换/轮换任何密钥前，先确认你掌握的是**完整值**，而非前缀或文档里的指纹片段；否则会留下半截密钥。
+1. 生成新强随机口令（自行 `openssl rand -base64 24`，或用对话中提供的新值），写入 `.env.prod` / `.env.prod.backend` / `.env.dev` 的对应键（PRJ_DB_PWD 与 SPRING_DATASOURCE_PASSWORD **必须相同**，因共享 dev-mysql 的 prj_user）
+2. 确认所有 `.env.*` 已 gitignore（不会再次入库）
+3. （仅当需要重置数据时）`docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod down -v`
+4. `powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod` 重建并以新口令初始化
+5. 验证：`docker compose ... logs` 无 `Access denied`；运行 QA 测试套件全绿
