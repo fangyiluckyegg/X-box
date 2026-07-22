@@ -6,6 +6,9 @@ gateway/
 db/
 scripts/
 docs/
+# Niu_Txl/ 含个人照片等大文件，后端多阶段构建上下文为仓库根，会被无谓打进后端构建上下文；
+# 但其内 php 服务 context=./Niu_Txl(docroot) 不在后端构建上下文内，排除不影响 php 构建。
+Niu_Txl/
 # deliverables/ 已于 2026-07-20 整体迁移至 docs/deliverables，已由上方 docs/ 规则排除，无需单独排除
 *.md
 .git/

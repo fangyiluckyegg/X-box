@@ -9,7 +9,12 @@
 # 编译阶段
 FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
-COPY . .
+
+# [CACHE-FIX] 仅拷贝依赖清单(pom.xml)与 Maven 配置(settings.xml)，而非全部源码。
+# pom.xml 不变时，下方 dependency:go-offline 下载依赖层可命中缓存，避免每次 ~300MB 重下。
+COPY backend/prj-backend-c/pom.xml /app/backend/prj-backend-c/pom.xml
+# 使用阿里云 Maven 镜像加速依赖下载（规避中央仓库/Docker Hub 拉取超时）
+COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
 
 # 替换阿里云Alpine软件源
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
@@ -17,8 +22,14 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # 安装Maven并打包项目
 RUN apk update && apk add --no-cache maven wget
 WORKDIR /app/backend/prj-backend-c
-# 使用阿里云 Maven 镜像加速依赖下载（规避中央仓库/Docker Hub 拉取超时）
-COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
+
+# [CACHE-FIX] 先仅解析/下载依赖到镜像层（pom.xml 不变则命中缓存，不触发依赖重下）
+RUN mvn -q dependency:go-offline -Dmaven.test.skip=true
+
+# [CACHE-FIX] 依赖层之后再拷源码；源码频繁变更不再使依赖下载层失效
+COPY backend/prj-backend-c/src /app/backend/prj-backend-c/src
+
+# 依赖已缓存于本地仓库，clean package 复用之完成编译打包
 RUN mvn clean package -Dmaven.test.skip=true
 
 # 运行阶段：轻量 JRE（Spring Boot 3 要求 JDK 17 编译，运行时只需 JRE 17）
@@ -39,7 +50,9 @@ COPY --from=builder /app/backend/prj-backend-c/target/*.jar app.jar
 # 故由下方 docker-entrypoint-backend.sh 在容器启动时以 root 重新 chown 给 appuser 后再降权运行，
 # 确保 logback 能写 /app/logs（否则 Permission denied，dev 因跑 root 无此问题）。
 RUN mkdir -p /app/logs && chown -R appuser:appuser /app
-COPY docker-entrypoint-backend.sh /app/docker-entrypoint-backend.sh
+# [CACHE-FIX] 入口脚本确定位于 backend/prj-backend-c/（git 仅跟踪该路径，仓库根无副本），
+# 显式指定子目录路径，避免依赖"仓库根副本"这一不确定因素导致 COPY 失败。
+COPY backend/prj-backend-c/docker-entrypoint-backend.sh /app/docker-entrypoint-backend.sh
 RUN chmod +x /app/docker-entrypoint-backend.sh
 
 # [P2-FIX] 健康检查：验证Spring Boot服务是否正常响应

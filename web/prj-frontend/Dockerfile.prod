@@ -8,8 +8,14 @@
 # 构建阶段：node打包dist
 FROM node:18-alpine AS builder
 WORKDIR /app
-COPY . .
+
+# [CACHE-FIX] 仅先拷贝依赖清单(package.json/package-lock.json)，
+# package.json 不变时 npm install 层命中缓存，避免每次重下 ~200MB 依赖。
+COPY package*.json ./
 RUN npm install
+# [CACHE-FIX] 依赖安装后再拷全部源码；node_modules 已由上一步生成，
+# 前端 .dockerignore 已排除 node_modules/，故不会被宿主空目录无意义覆盖。
+COPY . .
 RUN npm run build
 
 # 运行阶段：纯nginx托管静态页面
