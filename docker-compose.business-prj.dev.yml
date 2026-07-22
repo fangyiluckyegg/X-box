@@ -4,6 +4,17 @@
 # 启动（合并 classphp.dev 后仅 2 文件，对齐 prod 形态）：
 #   docker compose -f docker-compose.base.yml -f docker-compose.business-prj.dev.yml --env-file .env.dev up -d --build
 services:
+  # [CSP·2026-07-22] dev 端 nginx-gateway 覆盖：单文件挂载 prj.dev.conf（subdir 内）覆盖
+  # base 共享的 prj.conf。dev/prj.conf 仅在 script-src 增 'unsafe-eval'，放行 vue-cli HMR
+  # 的 eval()（chunk-vendors.js:4840 报 EvalError 的根因）。prod 端继续用原 strict CSP。
+  # 完整列基 volumes（不依赖 compose 隐式合并行为），最后一行是 dev 专用覆盖。
+  nginx-gateway:
+    volumes:
+      - ./gateway/nginx/conf.d:/etc/nginx/conf.d
+      - ./gateway/nginx/ssl:/etc/nginx/ssl
+      - ./logs/nginx:/var/log/nginx
+      - ./gateway/nginx/conf.d/dev/prj.conf:/etc/nginx/conf.d/prj.conf:ro
+
   prj-frontend:
     build:
       context: ./web/prj-frontend
@@ -25,7 +36,9 @@ services:
       - ./web/prj-frontend:/app:cached
       # 隔离node_modules，不覆盖本地
       - node_modules_volume:/app/node_modules
-      - ./logs/prj-frontend:/app/logs/prj-frontend
+      # [LOG·2026-07-22] 前端 dev 日志：vue-cli-service serve 的 stdout 经 package.json 的 dev script 用 tee
+      # 写到 /workspace/logs/prj-frontend/dev.log（借整目录 mount 的 /workspace 路径直达宿主机 logs/）。
+      # 旧挂载 ./logs/prj-frontend:/app/logs/prj-frontend 被 /app:cached 整目录 mount 接管，是死挂载，删除。
     networks:
       - dev-network
     # [T1] 等后端真正就绪（healthcheck 通过）再启动，而非仅容器 started，
@@ -60,7 +73,7 @@ services:
       - ./:/workspace:cached
       # Maven缓存卷，避免重复下载依赖
       - maven-cache:/root/.m2
-      - ./logs/prj-backend-c:/app/logs/prj-backend-c
+      - ./logs/prj-backend-c:/app/logs
     # [T7] 弱凭证告警说明（Spring Boot StartupSecurityValidator）：
     # 下方 REDIS_PASSWORD（及 DRUID_PASSWORD 等）为 dev 环境默认弱口令，仅在 [dev] 环境允许，属预期行为。
     # 生产环境请务必通过环境变量覆盖 REDIS_PASSWORD / DRUID_PASSWORD 为强口令（如经 .env.backend 注入），切勿沿用默认值。

@@ -4,7 +4,7 @@
   "description": "X-box 百宝箱前端",
   "author": "spring boot",
   "scripts": {
-    "dev": "vue-cli-service serve",
+    "dev": "vue-cli-service serve 2>&1 | tee /workspace/logs/prj-frontend/dev.log",
     "build": "vue-cli-service build",
     "preview": "node build/index.js --preview",
     "lint": "eslint --ext .js,.vue src"

@@ -1,4 +1,19 @@
-﻿# 运行：powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 [-Env dev|prod|staging] [-SkipOllama] [-DryRun] [-Proxy <url>]
+﻿# 正确且安全的部署机流程
+# 保持 .env.prod 被 gitignore，部署机自己持有真实文件：
+# cd <部署机 X-box 目录>
+# 1) 确保 .env.prod / .env.prod.backend 里是安全密码
+#    —— 直接把开发机那两文件里的明文串拷过来填进去（可抄我们生成的几串），
+#       或者 cp .env.prod.example .env.prod 后手动填。总之：别进 git。
+# 2) 清卷（当前卷里还是旧的坏密码，必须清）
+#docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod down -v
+# 3) 部署
+#powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env prod
+
+
+
+
+
+# 运行：powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 [-Env dev|prod|staging] [-SkipOllama] [-DryRun] [-Proxy <url>]
 # deploy.ps1 — X-box 统一部署脚本（Windows），支持通过 -Env 指定目标环境
 #
 # 阶段 0  解析参数 + 前置检查（Docker 守护进程 / docker compose）

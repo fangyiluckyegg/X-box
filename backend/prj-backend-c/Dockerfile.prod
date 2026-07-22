@@ -35,11 +35,15 @@ RUN chmod -R 755 /app/ai-infer
 # 拷贝jar包
 COPY --from=builder /app/backend/prj-backend-c/target/*.jar app.jar
 
-# [P2-FIX] 设置文件归属权并切换到非特权用户
-RUN chown -R appuser:appuser /app
-USER appuser
+# [P2-FIX] 预创建日志目录（镜像内属主 appuser）；运行时 bind mount 覆盖为宿主目录（root 属主），
+# 故由下方 docker-entrypoint-backend.sh 在容器启动时以 root 重新 chown 给 appuser 后再降权运行，
+# 确保 logback 能写 /app/logs（否则 Permission denied，dev 因跑 root 无此问题）。
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+COPY docker-entrypoint-backend.sh /app/docker-entrypoint-backend.sh
+RUN chmod +x /app/docker-entrypoint-backend.sh
 
 # [P2-FIX] 健康检查：验证Spring Boot服务是否正常响应
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD wget -qO- http://localhost:8080/captchaImage || exit 1
 
-ENTRYPOINT ["java","-Xmx1800M","-jar","/app/app.jar"]
+# [LOG·2026-07-22] 以 root 启动包装脚本（负责 chown 日志目录），脚本内 su 降权到 appuser 跑 Spring Boot
+ENTRYPOINT ["/app/docker-entrypoint-backend.sh"]

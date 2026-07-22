@@ -50,7 +50,7 @@ services:
       # msg/work SQL 现已并入 db/mysql_init/ 顶层，全新数据卷首次初始化即自动执行。
       # [C1] 挂载幂等补列包装脚本目录（刻意不进入 initdb.d，避免首次初始化被官方 entrypoint 误执行）
       - ./db/mysql_scripts:/mysql_scripts
-      - ./logs/mysql:/var/log/mysql
+      - ./logs/mysql/error.log:/var/lib/mysql/error.log
     environment:
       TZ: Asia/Shanghai
       MYSQL_DATABASE: prj_dev
@@ -75,8 +75,14 @@ services:
       # --skip-host-cache，故该 warning 大概率仍出现，属官方镜像已知无害行为，建议忽略，
       # 不必为消除它改动 wrapper 调用官方 entrypoint 的核心逻辑。
       - --host-cache-size=0
-      # [T4] 将 pid 文件落到数据目录（mysql 用户可写），消除 --pid-file 不安全路径告警（MY-011810）。
+      # [T4] pid 文件落到数据目录（mysql 用户可写）。
+      # 注：MY-011810「--pid-file 不安全路径」告警在 Docker 标准部署下【无法消除】——
+      #   告警判定的是 /var/lib/mysql 数据目录本身对所有 OS 用户可访问，与 pid 文件具体位置无关；
+      #   命名卷数据目录权限由官方镜像决定，Windows 宿主也碰不到卷内权限。
+      #   业界共识为无害告警，忽略即可（不应视为安全隐患，切勿为消除它改 privileged/放宽目录权限）。
       - --pid-file=/var/lib/mysql/mysql.pid
+      # [LOG] 错误日志持久化到宿主机 logs/mysql，便于排障（MySQL 默认输出到 stderr）
+      - --log-error=/var/lib/mysql/error.log
 
   redis:
     # [对齐·2026-07-20] 由 redis:5.0.14-alpine 升级到 redis:7-alpine：
@@ -99,9 +105,9 @@ services:
     # 切勿为消除此无害警告而改用 privileged: true（会削弱容器隔离）。
     volumes:
       - ./db/redis_data:/data
-      - ./logs/redis:/var/log/redis
+      - ./logs/redis/redis.log:/data/redis.log
     # [P0-FIX] Redis添加认证密码，防止未授权访问
-    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_default_pass_change_me} --dbfilename dump.rdb --appendonly no
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_default_pass_change_me} --logfile /data/redis.log --dbfilename dump.rdb --appendonly no
     ports:
       - "127.0.0.1:63790:6379"
     networks:

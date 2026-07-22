@@ -304,6 +304,14 @@ main() {
     trap 'forward_signal TERM' TERM
     trap 'forward_signal INT' INT
 
+    # [T-LOG] 预创建 MySQL 错误日志目录（--log-error 依赖此目录存在，否则 mysqld 启动即失败）。
+    # 兼容两种部署形态：
+    #   - compose 将宿主机 ./logs/mysql bind mount 到 /var/log/mysql（Windows Docker Desktop 等）；
+    #   - 或原生 Linux 部署时目录尚未创建。
+    # 以 root 身份创建并归属 mysql 用户，确保 mysqld（mysql 用户）可写。
+    mkdir -p /var/log/mysql 2>/dev/null || true
+    chown mysql:mysql /var/log/mysql 2>/dev/null || true
+
     # 1) 后台启动官方 entrypoint（其最终会 exec mysqld，参数来自 compose 的 command）
     log "启动官方 docker-entrypoint.sh $*"
     "$ENTRYPOINT_OFFICIAL" "$@" &

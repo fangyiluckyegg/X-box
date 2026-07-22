@@ -56,9 +56,9 @@ services:
     cpus: 0.5
     volumes:
       - ./db/redis_data:/data
-      - ./logs/redis:/var/log/redis
+      - ./logs/redis/redis.log:/data/redis.log
     # 注意：${REDIS_PASSWORD} 由 compose 在解析时用 .env.prod 的值替换（单 $ 为 compose 插值）
-    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 384mb --maxmemory-policy allkeys-lru --dbfilename dump.rdb --appendonly no
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 384mb --maxmemory-policy allkeys-lru --logfile /data/redis.log --dbfilename dump.rdb --appendonly no
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
       interval: 10s
@@ -101,6 +101,8 @@ services:
         condition: service_started
       prj-redis:
         condition: service_healthy
+    volumes:
+      - ./logs/prj-backend-c:/app/logs
     networks:
       - dev-network
 
@@ -116,7 +118,12 @@ services:
     mem_limit: 256m
     cpus: 0.5
     volumes:
-      - ./logs/prj-frontend:/var/log/nginx
+      # [LOG·2026-07-22] 单文件 bind mount（与 redis/mysql 同套路）：
+      # nginx worker 是非 root，bind 挂整个 /var/log/nginx 目录会被宿主机 root 属主覆写权限，
+      # 写不进去。改成单文件挂载，nginx 把日志写到 /var/log/nginx/*.log，
+      # 宿主机侧对应文件预先 touch 存在（否则 Docker 会建成同名目录导致挂载失败）。
+      - ./logs/prj-frontend/access.log:/var/log/nginx/access.log
+      - ./logs/prj-frontend/error.log:/var/log/nginx/error.log
     # [对齐·2026-07-20] 与 dev 一致，loopback 暴露 8081（同时仍经 nginx-gateway:80 统一入口）
     ports:
       - "127.0.0.1:8081:8081"

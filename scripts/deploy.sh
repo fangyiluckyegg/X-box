@@ -26,6 +26,17 @@
 #   - env 文件以 UTF-8 无 BOM + LF 写入（awk/printf，不引入 CRLF）
 #   - 不修改 docker-compose.*.yml / 网关配置 / 应用源码
 #
+# 正确且安全的部署机流程（与 deploy.ps1 头部说明保持一致）：
+#   保持 .env.prod 被 gitignore，部署机自己持有真实文件：
+#     cd <部署机 X-box 目录>
+#   1) 确保 .env.prod / .env.prod.backend 里是安全密码
+#      —— 直接把开发机那两文件里的明文串拷过来填进去（可抄我们生成的几串），
+#         或者 cp .env.prod.example .env.prod 后手动填。总之：别进 git。
+#   2) 清卷（当前卷里还是旧的坏密码，必须清）
+#      docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod down -v
+#   3) 部署
+#      bash scripts/deploy.sh --env prod
+#
 set -euo pipefail
 
 # 任何未预期命令失败 → 打印致命错误并中止
