@@ -50,7 +50,7 @@ services:
       # msg/work SQL 现已并入 db/mysql_init/ 顶层，全新数据卷首次初始化即自动执行。
       # [C1] 挂载幂等补列包装脚本目录（刻意不进入 initdb.d，避免首次初始化被官方 entrypoint 误执行）
       - ./db/mysql_scripts:/mysql_scripts
-      - ./logs/mysql/error.log:/var/lib/mysql/error.log
+      - ./logs/mysql/error.log:/var/log/mysql/error.log
     environment:
       TZ: Asia/Shanghai
       MYSQL_DATABASE: prj_dev
@@ -81,8 +81,11 @@ services:
       #   命名卷数据目录权限由官方镜像决定，Windows 宿主也碰不到卷内权限。
       #   业界共识为无害告警，忽略即可（不应视为安全隐患，切勿为消除它改 privileged/放宽目录权限）。
       - --pid-file=/var/lib/mysql/mysql.pid
-      # [LOG] 错误日志持久化到宿主机 logs/mysql，便于排障（MySQL 默认输出到 stderr）
-      - --log-error=/var/lib/mysql/error.log
+      # [LOG] 错误日志持久化到宿主机 logs/mysql，便于排障（MySQL 默认输出到 stderr）。
+      # ⚠️ 必须写到 /var/log/mysql/error.log（而非 /var/lib/mysql/error.log）：错误日志目录由
+      # docker-entrypoint-wrapper.sh 预创建并 chown mysql 用户；若放到【数据目录】，单文件 bind mount
+      # 会让 mysqld --initialize 看到「数据目录已有文件」而 Abort（MY-010457），在全新 down -v 后必现。
+      - --log-error=/var/log/mysql/error.log
 
   redis:
     # [对齐·2026-07-20] 由 redis:5.0.14-alpine 升级到 redis:7-alpine：

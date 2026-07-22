@@ -114,9 +114,15 @@ wait_for_mysql() {
         fi
         cnf="$(write_my_cnf no_db)"
         if mysqladmin --defaults-extra-file="$cnf" ping >/dev/null 2>&1; then
-            rm -f "$cnf"
-            log "MySQL 已就绪。"
-            return 0
+            # [FIX] mysqladmin ping 仅探活、不校验凭据：首次初始化时官方 entrypoint 会先起
+            # 临时服务(temp server，root 用 auth_socket/尚未设口令)，ping 会误报就绪，随后
+            # ensure_* 以口令连 root 会 Access denied。故追加一次真实口令鉴权探针(SELECT 1)，
+            # 仅当 ping + 真实鉴权均通过才视为就绪，从而跨过临时服务窗口、等到最终服务起来。
+            if mysql --defaults-extra-file="$cnf" -N -e "SELECT 1" >/dev/null 2>&1; then
+                rm -f "$cnf"
+                log "MySQL 已就绪。"
+                return 0
+            fi
         fi
         rm -f "$cnf"
         if [ "$waited" -ge "$MAX_WAIT" ]; then
