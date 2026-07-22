@@ -1,0 +1,19 @@
+# ====================== 运行日志（禁止带进构建上下文） ======================
+# [P2-FIX] 防止宿主侧 logs/ 被 COPY . . 固化进镜像层，
+# 否则每次 rebuild 都会在镜像 /app/logs 生成孤儿目录，
+# 随后 bind mount 又把空目录同步回宿主 web/prj-frontend/logs/
+logs/
+*.log
+
+# ====================== 依赖与构建产物 ======================
+# 容器内已通过 `RUN npm install` 在镜像内装好依赖，
+# 宿主 node_modules 由 compose 命名卷挂载覆盖，无需 COPY
+node_modules/
+# 构建产物不应出现在 dev 镜像
+dist/
+
+# ====================== 版本控制 / 编辑器 ======================
+.git/
+.gitignore
+.vscode/
+.idea/

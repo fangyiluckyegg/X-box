@@ -80,6 +80,9 @@ services:
     environment:
       TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: dev
+      # [BUGFIX] dev 端开启 springdoc swagger-ui（application.yml 默认 ${SWAGGER_ENABLED:false}）
+      # prod 端通过 .env.prod.backend 显式 SWAGGER_ENABLED=false 保持关闭（安全）
+      SWAGGER_ENABLED: "true"
       # [FIX] 移除 JAVA_TOOL_OPTIONS JDWP 调试代理 — spring-boot:run 会 fork 第二个 JVM，
       # 两个 JVM 都会拾取 JAVA_TOOL_OPTIONS 并尝试绑定同一 5005 端口，导致 "Address in use" 崩溃。
       # 如需远程调试，请改用 -Dspring-boot.run.jvmArguments 传参（仅作用于 forked JVM）。
