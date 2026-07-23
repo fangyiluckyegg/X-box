@@ -5,9 +5,9 @@
 #   1. 【端口冲突修复·高】原 prj-nginx 与 base 的 nginx-gateway 同时绑定 127.0.0.1:80/443，
 #      合并运行必冲突（仅一个能起）。现移除 prj-nginx，统一复用 base 的 nginx-gateway
 #      （同一份 gateway/nginx/conf.d/prj.conf，TLS/资源限制完全一致）。
-#   2. 【端口冲突修复·高】原 prj-redis 与 base 的 redis 同时绑定 127.0.0.1:63790，冲突。
-#      现保留 prod 自有 prj-redis（redis:7，arm64 兼容）但【移除其宿主机端口映射】，
-#      仅容器内网可达（后端经服务名 prj-redis 访问），消除冲突与冗余暴露。
+#   2. 【端口对齐·高】prod 现直接复用 base 的 redis（容器名 dev-redis），不再保留独立
+#      prj-redis；base redis 的 127.0.0.1:63790:6379 在 prod 仅 loopback 可达，天然无 63790
+#      端口冲突，消除冗余实例与暴露。
 #   3. 【网络对齐·中】原 prod 业务服务挂在 isolated 的 prj-network，而网关在 dev-network，
 #      导致前端仅 prj-network、网关无法代理前端。现全部 prod 业务服务统一挂 dev-network
 #      （与 dev 一致），删除 prj-network。
@@ -40,34 +40,11 @@
 # ============================================================
 services:
   # ------------------------------------------------------------
-  # prod 自有 Redis（redis:7，arm64 兼容）。保留而非复用 base redis 的原因：
-  # base redis 的 requirepass 取 .env.dev（dev 默认弱口令），而 prod 后端用 .env.prod 的强口令，
-  # 二者口令不同，无法直接复用；为不改动 dev 配置，prod 用独立 prj-redis 并自带强口令。
-  # 【已移除宿主机端口映射】避免与 base redis 的 63790 冲突；仅 dev-network 内可达。
+  # prod 复用 base 的 redis（容器名 dev-redis，服务名 redis）。prod 部署以
+  # --env-file .env.prod 启动，使 base redis 的 --requirepass ${REDIS_PASSWORD} 与
+  # prj-backend 的 REDIS_PASSWORD 同源（均取 .env.prod 强口令），故无需独立实例；
+  # 这与 DEV 拓扑（仅 base redis）对齐。prj-backend-c 经服务名 redis 访问。
   # ------------------------------------------------------------
-  prj-redis:
-    image: redis:7-alpine
-    container_name: prj-redis
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    pids_limit: 100
-    mem_limit: 512m
-    cpus: 0.5
-    # [FIX] prj-redis 使用独立数据目录与日志文件，避免与 base dev-redis 共享 ./db/redis_data 导致双实例争用
-    volumes:
-      - ./db/prj_redis_data:/data
-      - ./logs/prj-redis/redis.log:/data/redis.log
-    # 注意：${REDIS_PASSWORD} 由 compose 在解析时用 .env.prod 的值替换（单 $ 为 compose 插值）
-    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 384mb --maxmemory-policy allkeys-lru --logfile /data/redis.log --dbfilename dump.rdb --appendonly no
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG"]
-      interval: 10s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
-    networks:
-      - dev-network
 
   # 凭证契约见文件头【凭证契约】段：后端用 .env.prod.backend 的 SPRING_DATASOURCE_PASSWORD
   # 连 dev-mysql 的 prj_user；该口令由 .env.dev 的 SPRING_DATASOURCE_PASSWORD 注入，
@@ -89,7 +66,7 @@ services:
       # [C2] 生产启用 prod profile，触发严格密钥校验（弱/缺失即启动失败）
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-prj_dev}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-      SPRING_DATA_REDIS_HOST: prj-redis
+      SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_DATABASE: 9
       REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -100,8 +77,8 @@ services:
     depends_on:
       mysql:
         condition: service_started
-      prj-redis:
-        condition: service_healthy
+      redis:
+        condition: service_started
     volumes:
       - ./logs/prj-backend-c:/app/logs
     networks:

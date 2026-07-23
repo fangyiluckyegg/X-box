@@ -136,8 +136,8 @@ resolve_env() {
       ENV_FILE=".env.prod"
       ENV_FILES=(.env.dev .env.prod .env.prod.backend)
       ENV_EXAMPLES=(.env.dev.example .env.prod.example .env.prod.backend.example)
-      WAIT_SERVICES=(mysql redis prj-redis prj-backend-c prj-frontend prj-php)
-      CRITICAL_SERVICES=(mysql redis prj-redis prj-backend-c)
+      WAIT_SERVICES=(mysql redis prj-backend-c prj-frontend prj-php)
+      CRITICAL_SERVICES=(mysql redis prj-backend-c)
       ;;
     staging)
       COMPOSE_FILES=("docker-compose.base.yml" "docker-compose.staging.yml")
@@ -509,7 +509,6 @@ ensure_log_paths() {
   local files=(
     "logs/mysql/error.log"
     "logs/redis/redis.log"
-    "logs/prj-redis/redis.log"
     "logs/nginx/access.log"
     "logs/nginx/error.log"
   )

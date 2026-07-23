@@ -63,8 +63,8 @@ $Configs = @{
         EnvFile          = '.env.prod'
         EnvFiles         = @('.env.dev', '.env.prod', '.env.prod.backend')
         EnvExamples      = @('.env.dev.example', '.env.prod.example', '.env.prod.backend.example')
-        WaitServices     = @('mysql', 'redis', 'prj-redis', 'prj-backend-c', 'prj-frontend', 'prj-php')
-        CriticalServices = @('mysql', 'redis', 'prj-redis', 'prj-backend-c')
+        WaitServices     = @('mysql', 'redis', 'prj-backend-c', 'prj-frontend', 'prj-php')
+        CriticalServices = @('mysql', 'redis', 'prj-backend-c')
     }
     staging = @{
         ComposeFiles     = @('docker-compose.base.yml', 'docker-compose.staging.yml')
@@ -744,7 +744,6 @@ function Ensure-LogPaths {
     $files = @(
         'logs/mysql/error.log',
         'logs/redis/redis.log',
-        'logs/prj-redis/redis.log',
         'logs/nginx/access.log',
         'logs/nginx/error.log'
     )
