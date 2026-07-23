@@ -518,6 +518,12 @@ function Invoke-OllamaSetup {
         Log "SkipInstall set: assuming Ollama already installed, skipping installer."
     }
 
+    # ---------- 1.5 Admin check (Machine-scope OLLAMA_HOST requires Administrator) ----------
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if (-not $isAdmin) {
+        Log "WARNING: not running as Administrator. Machine-scope OLLAMA_HOST cannot be set; relying on any existing Machine value. If Ollama binds 127.0.0.1, re-run this script as Administrator." Yellow
+    }
+
     # ---------- 2. Persist OLLAMA_HOST = 0.0.0.0:11434 ----------
     # IMPORTANT: on Windows Ollama runs as a SERVICE that reads MACHINE-scope env only.
     # A User-scope OLLAMA_HOST is ignored by the service (it keeps binding 127.0.0.1),
@@ -527,6 +533,10 @@ function Invoke-OllamaSetup {
     if ($existing -ne $OLLAMA_HOST_VALUE) {
         Log "Setting system(Machine) env OLLAMA_HOST=$OLLAMA_HOST_VALUE (admin required)"
         [System.Environment]::SetEnvironmentVariable('OLLAMA_HOST', $OLLAMA_HOST_VALUE, $envScope)
+        $verify = [System.Environment]::GetEnvironmentVariable('OLLAMA_HOST', $envScope)
+        if ($verify -ne $OLLAMA_HOST_VALUE) {
+            Log "ERROR: failed to persist Machine OLLAMA_HOST (need Administrator). Ollama may fall back to 127.0.0.1." Red
+        }
         $env:OLLAMA_HOST = $OLLAMA_HOST_VALUE
     } else {
         Log "System env OLLAMA_HOST already $OLLAMA_HOST_VALUE, skip."
@@ -564,20 +574,31 @@ function Invoke-OllamaSetup {
             Log "WARNING: port 11434 still held after 30s. Another Ollama instance keeps restarting it." -ForegroundColor Yellow
             Log "Manual fix: Stop-Service ollama; Get-Process ollama | Stop-Process -Force" -ForegroundColor Yellow
         }
-        # (d) Launch our instance that explicitly binds 0.0.0.0 via --host.
-        Log "Starting Ollama (serve --host $OLLAMA_HOST_VALUE) in background..."
-        Start-Process -FilePath 'ollama' -ArgumentList 'serve', '--host', $OLLAMA_HOST_VALUE -WindowStyle Hidden
+        # (d) Launch our instance. On Windows, Ollama 'serve' honors the OLLAMA_HOST
+        #     env var (Machine scope), NOT the --host CLI flag (unreliable on Windows).
+        #     We rely on the Machine OLLAMA_HOST set above to bind 0.0.0.0:11434.
+        Log "Starting Ollama (serve, binds via OLLAMA_HOST=$OLLAMA_HOST_VALUE) in background..."
+        Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden
         # (e) Poll until WE are listening on 0.0.0.0.
         $bound = $false
+        $stallCount = 0
+        $machineHost = [System.Environment]::GetEnvironmentVariable('OLLAMA_HOST', 'Machine')
         for ($i = 1; $i -le 40; $i++) {
             Start-Sleep -Seconds 1
             $addrs = Get-OllamaListeners
             if ($addrs -contains '0.0.0.0') { $bound = $true; break }
             if ($addrs -contains '127.0.0.1') {
+                $stallCount++
+                if ($stallCount -ge 3 -and $machineHost -eq $OLLAMA_HOST_VALUE) {
+                    # Machine env already targets 0.0.0.0 but Ollama still binds 127.0.0.1:
+                    # restarting the same command won't help. Stop and diagnose.
+                    Log "Ollama keeps binding 127.0.0.1 although Machine OLLAMA_HOST=$machineHost. Stopping retry loop." Yellow
+                    break
+                }
                 Log "Listener on 127.0.0.1 (not 0.0.0.0); evicting and retrying bind..." -ForegroundColor Yellow
                 Stop-AllOllama
                 Start-Sleep -Seconds 2
-                Start-Process -FilePath 'ollama' -ArgumentList 'serve', '--host', $OLLAMA_HOST_VALUE -WindowStyle Hidden
+                Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden
             }
         }
         $finalAddrs = (Get-OllamaListeners) -join ', '
@@ -585,7 +606,8 @@ function Invoke-OllamaSetup {
             Log "Ollama listening on: 0.0.0.0 :11434 (all listeners: $finalAddrs)"
         } else {
             Log "WARNING: could not bind 0.0.0.0:11434; current listener(s): $finalAddrs. Containers may NOT reach Ollama." -ForegroundColor Yellow
-            Log "Manual fix: Stop-Service ollama; Get-Process ollama | Stop-Process -Force; then: ollama serve --host 0.0.0.0:11434" -ForegroundColor Yellow
+            Log "Diagnostics: isAdmin=$isAdmin; Machine OLLAMA_HOST='$machineHost'; expected='$OLLAMA_HOST_VALUE'." Yellow
+            Log "Manual fix: as Administrator run: [System.Environment]::SetEnvironmentVariable('OLLAMA_HOST','$OLLAMA_HOST_VALUE','Machine'); Stop-Service ollama; Get-Process ollama | Stop-Process -Force; Start-Process ollama -ArgumentList 'serve'" Yellow
         }
     }
 
