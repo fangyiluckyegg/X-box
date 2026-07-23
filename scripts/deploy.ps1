@@ -677,7 +677,7 @@ function Start-Ollama {
         # embedding 仅在请求时懒调用，缺失时按请求抛 EmbeddingException 优雅降级。
         # 因此 Ollama 准备失败不应阻断整个部署。
         Log "警告：Ollama 准备失败，部署将继续；但「向量化 / 语义检索」类功能暂不可用。" Yellow
-        Log "修复：手动安装 Ollama 后执行 'ollama serve --host 0.0.0.0:11434'；或重跑本脚本时加 -SkipOllama 跳过重复下载。" Yellow
+        Log "修复：以管理员身份设置 Machine 作用域 OLLAMA_HOST=0.0.0.0:11434，再执行 Stop-Service ollama; Get-Process ollama | Stop-Process -Force; Start-Process ollama -ArgumentList 'serve'；或重跑本脚本时加 -SkipOllama 跳过重复下载。" Yellow
         $script:OllamaStatus = 'failed'
     }
     Log "宿主 Ollama 准备阶段结束（状态：$($script:OllamaStatus)）。"

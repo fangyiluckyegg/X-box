@@ -307,6 +307,8 @@ setup_ollama() {
   local PULL_ONLY=0
   local SKIP_INSTALL=0
   local OLLAMA_PROXY=""
+  local USED_BREW=0
+  local PLIST="$HOME/Library/LaunchAgents/homebrew.mxcl.ollama.plist"
 
   # 解析内联参数（向后兼容 --pull-only；新增 --skip-install / --proxy）
   while [[ $# -gt 0 ]]; do
@@ -340,22 +342,20 @@ setup_ollama() {
     fi
   fi
 
-  # ---------- 2. 持久化 OLLAMA_HOST = 0.0.0.0:11434 ----------
-  persist_ollama_host() {
-    local plist="$HOME/Library/LaunchAgents/homebrew.mxcl.ollama.plist"
-    if [[ -f "$plist" ]]; then
-      if grep -q "OLLAMA_HOST" "$plist"; then
-        log "launchd plist 已含 OLLAMA_HOST，跳过写入。"
-      else
-        log "请在 $plist 的 <dict> 内 <EnvironmentVariables> 增加："
-        log '  <key>OLLAMA_HOST</key><string>0.0.0.0:11434</string>'
-        log "（或手动执行：launchctl setenv OLLAMA_HOST 0.0.0.0:11434 后重启 ollama 服务）"
-      fi
-    else
-      log "未找到 brew ollama 的 launchd plist，将以环境变量方式启动（见第 3 步）。"
-    fi
+  # ---------- 2. 探测 launchd plist 是否已含 OLLAMA_HOST（用于第 6 步自动注入判断）----------
+  # 不在此处写入：若 brew 路径启动且第 6 步校验发现未绑 0.0.0.0，才用 plutil 安全注入。
+  plist_has_host() {
+    [[ -f "$PLIST" ]] && grep -q "OLLAMA_HOST" "$PLIST"
   }
-  persist_ollama_host
+  if [[ -f "$PLIST" ]]; then
+    if plist_has_host; then
+      log "launchd plist 已含 OLLAMA_HOST，将依其生效（不再重复注入）。"
+    else
+      log "launchd plist 未含 OLLAMA_HOST；若第 6 步校验未绑 0.0.0.0，将尝试用 plutil 注入并 restart。"
+    fi
+  else
+    log "未找到 brew ollama 的 launchd plist，将以环境变量方式启动（见第 3 步）。"
+  fi
 
   # ---------- 3. 启动 Ollama ----------
   start_ollama() {
@@ -364,6 +364,7 @@ setup_ollama() {
       return 0
     fi
     if command -v brew >/dev/null 2>&1 && brew services list 2>/dev/null | grep -q "^ollama "; then
+      USED_BREW=1
       log "通过 brew services 启动 ollama ..."
       brew services start ollama || { log "brew services start ollama 失败" >&2; return 1; }
     else
@@ -377,11 +378,16 @@ setup_ollama() {
     start_ollama
   fi
 
-  # ---------- 4. 拉取模型 bge-m3 ----------
-  log "拉取模型 $MODEL_NAME（首次需下载权重，可能较慢）..."
-  if ! ollama pull "$MODEL_NAME"; then
-    log "错误：模型 $MODEL_NAME 拉取失败。" >&2
-    return 1
+  # ---------- 4. 拉取模型 bge-m3（已存在则跳过，对齐 deploy.ps1 L614-629）----------
+  log "检查模型 $MODEL_NAME 是否已在本地 ..."
+  if ollama list 2>/dev/null | grep -q "$MODEL_NAME"; then
+    log "模型 $MODEL_NAME 已在本地，跳过 pull。"
+  else
+    log "拉取模型 $MODEL_NAME（首次需下载权重，可能较慢）..."
+    if ! ollama pull "$MODEL_NAME"; then
+      log "错误：模型 $MODEL_NAME 拉取失败。" >&2
+      return 1
+    fi
   fi
 
   # ---------- 5. 健康检查 ----------
@@ -398,8 +404,59 @@ setup_ollama() {
     return 1
   fi
 
-  log "✅ 宿主 Ollama 就绪：$MODEL_NAME 已加载，监听 $OLLAMA_HOST_VALUE"
-  log "后端可通过 http://host.docker.internal:11434/api/embed 调用。"
+  # ---------- 6. 真实绑定校验（与 deploy.ps1 Get-OllamaListeners / 实际地址报告对齐）----------
+  # 黄色 WARNING 输出，对齐 deploy.ps1 -ForegroundColor Yellow
+  warn() {
+    printf '\033[33m[%s] [deploy] %s\033[0m\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+  }
+  # 探测 11434 真实 TCP 监听地址：Mac 用 lsof，Linux 用 ss；解析出 Local Address 的 host 部分。
+  get_listener_hosts() {
+    if command -v lsof >/dev/null 2>&1; then
+      # 例：ollama ... TCP *:11434 (LISTEN) 或 127.0.0.1:11434 / [::]:11434
+      lsof -nP -iTCP:11434 -sTCP:LISTEN 2>/dev/null | awk 'NR>1 {n=$9; sub(/:[0-9]+$/,"",n); gsub(/[\[\]]/,"",n); print n}'
+    elif command -v ss >/dev/null 2>&1; then
+      # 例：LISTEN 0 4096 0.0.0.0:11434 0.0.0.0:* users:(...)
+      ss -tlnp 2>/dev/null | grep ':11434 ' | awk '{a=$4; sub(/:[0-9]+$/,"",a); gsub(/[\[\]]/,"",a); print a}'
+    fi
+  }
+  # 校验是否真实监听到 0.0.0.0（lsof 的 * 通配等价）；0=成功(打印 OK)，1=失败(打印 WARN)。
+  verify_bind() {
+    local hosts addr_str
+    hosts="$(get_listener_hosts || true)"
+    addr_str="${hosts//$'\n'/, }"
+    addr_str="${addr_str%, }"
+    [[ -z "$addr_str" ]] && addr_str="none"
+    if printf '%s\n' "$hosts" | grep -qxF "0.0.0.0" || printf '%s\n' "$hosts" | grep -qxF "*"; then
+      log "✅ [OK] Host Ollama ready: $MODEL_NAME loaded, listening on 0.0.0.0:11434"
+      log "后端可通过 http://host.docker.internal:11434/api/embed 调用。"
+      return 0
+    fi
+    # 未绑到 0.0.0.0（如 127.0.0.1 / [::] / none）→ 警告 + 诊断（语气对齐 deploy.ps1 L607-610、L652-661）
+    warn "could not bind 0.0.0.0:11434; current listener(s): $addr_str; containers may NOT reach Ollama"
+    warn "手动修复：在 $PLIST 的 <EnvironmentVariables> 增加 <key>OLLAMA_HOST</key><string>0.0.0.0:11434</string>"
+    warn "          或直接：export OLLAMA_HOST=0.0.0.0:11434; ollama serve"
+    return 1
+  }
+
+  # 先跑一次校验
+  local verify_ok=0
+  verify_bind && verify_ok=1
+
+  # 若 brew 路径启动且未绑 0.0.0.0，且 plist 存在、缺 OLLAMA_HOST、plutil 可用：
+  # 用 plutil 注入 EnvironmentVariables 的 OLLAMA_HOST，再 restart 并重跑校验（安全：已含则跳过，不重复注入）。
+  if [[ "$USED_BREW" -eq 1 && "$verify_ok" -ne 1 ]]; then
+    if [[ -f "$PLIST" ]] && ! plist_has_host && command -v plutil >/dev/null 2>&1; then
+      log "尝试用 plutil 向 $PLIST 的 <EnvironmentVariables> 注入 OLLAMA_HOST=0.0.0.0:11434 ..."
+      if plutil -insert ":EnvironmentVariables:OLLAMA_HOST" -string "0.0.0.0:11434" "$PLIST" 2>/dev/null; then
+        log "plist 注入成功，restart brew services ollama ..."
+        brew services restart ollama || warn "brew services restart ollama 失败"
+        sleep 3
+        verify_bind || true
+      else
+        warn "plutil 注入失败（plist 可能无 EnvironmentVariables 节点或格式异常），跳过自动注入。"
+      fi
+    fi
+  fi
 }
 
 # 阶段 3：Ollama 准备（wrapper：处理 --skip-ollama 开关，--proxy 透传给内联函数）
