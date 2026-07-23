@@ -222,6 +222,20 @@ function Prepare-EnvFiles {
         $text = ($out -join "`n") + "`n"
         [System.IO.File]::WriteAllText($f, $text, [System.Text.UTF8Encoding]::new($false))
     }
+
+    # 【2026-07-23 安全/健壮性】确保 ADMIN_INIT_PWD 存在：未设置时 ensure_admin_hash.php 会回退弱默认口令，
+    # 且 compose 会把“变量未设置”警告打到 stderr，在严格错误偏好下被误判为致命错误。此处自动补强随机值。
+    $adminEnv = Join-Path $RootDir '.env.prod'
+    if (Test-Path $adminEnv) {
+        $adminLines = Get-Content -Encoding UTF8 $adminEnv
+        if (-not ($adminLines -match '^ADMIN_INIT_PWD=')) {
+            $adminLines += "ADMIN_INIT_PWD=$(New-RandStr)"
+            $adminText = ($adminLines -join "`n") + "`n"
+            [System.IO.File]::WriteAllText($adminEnv, $adminText, [System.Text.UTF8Encoding]::new($false))
+            Log "已为 .env.prod 自动生成 ADMIN_INIT_PWD（强随机），避免弱默认口令与 compose 变量警告。" Yellow
+        }
+    }
+
     Log "env 文件准备完成（仅处理环境 $Env 所需文件；占位符已替换；已有真实值已保留）。"
 }
 
