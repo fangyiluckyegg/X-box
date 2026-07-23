@@ -509,6 +509,7 @@ ensure_log_paths() {
   local files=(
     "logs/mysql/error.log"
     "logs/redis/redis.log"
+    "logs/prj-redis/redis.log"
     "logs/nginx/access.log"
     "logs/nginx/error.log"
   )
