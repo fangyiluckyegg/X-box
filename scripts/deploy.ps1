@@ -731,7 +731,16 @@ function Start-Stack {
     $argsList = @()
     foreach ($f in $Cfg.ComposeFiles) { $argsList += '-f'; $argsList += $f }
     $argsList += '--env-file'; $argsList += $Cfg.EnvFile
-    & docker compose @argsList up -d --build 2>&1
+    # docker compose 的构建/启动进度与变量警告均走 stderr；在严格错误偏好下 PowerShell 7
+    # 会将其包装为 NativeCommandError 终止异常，误杀已成功的部署。此处临时放宽错误偏好并合并
+    # stderr 到成功流，确保任何原生输出都不会中止部署；仅以 LASTEXITCODE 判定真实失败。
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & docker compose @argsList up -d --build 2>&1
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
     if ($LASTEXITCODE -ne 0) {
         Log "错误：$Env 栈启动失败，请查看上方日志（docker compose logs）。" Red
         exit 1
