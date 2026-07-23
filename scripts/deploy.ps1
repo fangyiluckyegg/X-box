@@ -42,6 +42,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false  # 原生命令(stderr 警告，如 compose 变量未设置)不视为终止错误，避免误杀已成功的部署（PS7.3+ 生效；PS5.1 无害）
 
 # 切换到项目根目录（脚本位于 scripts/）
 $RootDir = Resolve-Path (Join-Path $PSScriptRoot '..')
@@ -716,7 +717,7 @@ function Start-Stack {
     $argsList = @()
     foreach ($f in $Cfg.ComposeFiles) { $argsList += '-f'; $argsList += $f }
     $argsList += '--env-file'; $argsList += $Cfg.EnvFile
-    & docker compose @argsList up -d --build
+    & docker compose @argsList up -d --build 2>&1
     if ($LASTEXITCODE -ne 0) {
         Log "错误：$Env 栈启动失败，请查看上方日志（docker compose logs）。" Red
         exit 1
