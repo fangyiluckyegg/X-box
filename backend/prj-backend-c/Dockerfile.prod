@@ -39,10 +39,6 @@ WORKDIR /app
 # [P2-FIX] 创建非root用户，提升生产环境安全性
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 
-# 复制AI推理脚本
-COPY --from=builder /app/backend/prj-backend-c/src/ai-infer /app/ai-infer
-RUN chmod -R 755 /app/ai-infer
-
 # 拷贝jar包
 COPY --from=builder /app/backend/prj-backend-c/target/*.jar app.jar
 
