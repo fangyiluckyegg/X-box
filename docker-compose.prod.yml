@@ -170,5 +170,13 @@ services:
     networks:
       - dev-network
 
+  # 【prod 端口收敛·2026-07-23】prod 运行时后端经内网 mysql:3306 访问，无需宿主 MySQL 端口；
+  # Windows 上 33060 常被 Hyper-V/WinNAT 保留导致 bind 失败。故 prod 不发布 mysql 宿主端口，
+  # 彻底规避该环境冲突。如需在 prod 宿主用 Navicat 连库，改为设置 base 的 MYSQL_HOST_PORT
+  # （在 .env.prod 或 shell 设空闲端口）并在此块删除 ports: !reset 覆写。
+  # 注：compose 合并对 ports 列表，空值 `ports: []` 不会清掉 base 的端口映射，必须用 `!reset`。
+  mysql:
+    ports: !reset
+
 # 说明：本文件不再定义 prj-network。prod 业务服务统一挂 base 定义的 dev-network，
 #       与 dev 拓扑一致，且可与 base 的 nginx-gateway / dev-mysql 互通。
