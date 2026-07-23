@@ -48,12 +48,7 @@ CREATE TABLE IF NOT EXISTS `admin_user` (
   `password` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
---
--- 转存表中的数据 `admin_user`
---
-
-INSERT INTO `admin_user` (`username`, `password`) VALUES
-('admin', '');
+-- 注：admin_user 种子数据改由容器启动脚本 Niu_Txl/ensure_admin_hash.php 负责建/修（bcrypt 化），此处不再写明文 INSERT。
 
 -- --------------------------------------------------------
 

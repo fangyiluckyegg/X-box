@@ -15,7 +15,7 @@ $totalRows_rsreply = mysqli_num_rows($rsreply);
 <?php if ($totalRows_rsreply > 0) { ?>
 <div id="reply">
 <?php do { ?>
-<div id="reply-text"><strong>管理员回复：</strong><?php echo htmlspecialchars($row_rsreply['R_Content'], ENT_QUOTES, 'UTF-8'); ?></div>
+<div id="reply-text"><strong>管理员回复：</strong><?php $allowedReplyTags = '<p><span><em><strong><b><i><u><br><a><img><ul><ol><li><h1><h2><h3><h4><h5><h6><blockquote><code><pre>'; echo strip_tags($row_rsreply['R_Content'], $allowedReplyTags); ?></div>
 <div id="reply-date"><?php echo htmlspecialchars($row_rsreply['R_Date'], ENT_QUOTES, 'UTF-8'); ?></div>
 <?php } while ($row_rsreply = mysqli_fetch_assoc($rsreply)); ?>
 </div>

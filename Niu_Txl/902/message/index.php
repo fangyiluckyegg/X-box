@@ -96,7 +96,7 @@ $queryString_rsview = sprintf("&totalRows_rsview=%d%s", $totalRows_rsview, $quer
     <?php if ($totalRows_rsview > 0) { ?>
       <?php do { ?>
         <div id="msg">
-          <div id="msg-left"> <img src="<?php echo htmlspecialchars($row_rsview['P_Pic'], ENT_QUOTES, 'UTF-8'); ?>" width="100" height="100" alt="图片无法显示"/><br>
+          <div id="msg-left"> <img src="<?php echo htmlspecialchars($row_rsview['P_Pic'], ENT_QUOTES, 'UTF-8'); ?>" width="100" height="100" alt="图片无法显示" onerror="this.src='images/photo.png'"/><br>
             <?php echo htmlspecialchars($row_rsview['P_Name'], ENT_QUOTES, 'UTF-8'); ?><br>
             <?php echo htmlspecialchars($row_rsview['P_Mail'], ENT_QUOTES, 'UTF-8'); ?></div>
           <div id="msg-right">
@@ -104,14 +104,15 @@ $queryString_rsview = sprintf("&totalRows_rsview=%d%s", $totalRows_rsview, $quer
             <?php echo $row_rsview['P_Date']; ?></div>
             <div id="msg-text">
 			<?php 
-			  // SEC11 修复：用户留言内容渲染时统一 htmlspecialchars 转义，防存储型 XSS（纯文本转义；富文本场景建议后续引入 HTMLPurifier 白名单）
+			  // SEC11 修复：用户留言内容用 strip_tags 白名单过滤后原样渲染，既保留富文本格式，又防 script/style/iframe 等存储型 XSS
+			  $allowedTags = '<p><span><em><strong><b><i><u><br><a><img><ul><ol><li><h1><h2><h3><h4><h5><h6><blockquote><code><pre>';
 			  if($row_rsview['P_Private'] == 1)
 			    if(isset($_SESSION['MM_Username']))
-			      echo htmlspecialchars($row_rsview['P_Content'], ENT_QUOTES, 'UTF-8'); 
+			      echo strip_tags($row_rsview['P_Content'], $allowedTags); 
                 else
 				   echo "<b>该留言内容仅管理员可见...</b>";
 		      else
-			    echo htmlspecialchars($row_rsview['P_Content'], ENT_QUOTES, 'UTF-8');
+			    echo strip_tags($row_rsview['P_Content'], $allowedTags);
             ?>    
             </div>
             <div id="msg2"><?php include("reply.php"); ?></div>

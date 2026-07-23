@@ -156,9 +156,12 @@ services:
       CLASS_DB_HOST: ${CLASS_DB_HOST:-mysql}
       CLASS_DB_USER: ${CLASS_DB_USER:-class_user}
       CLASS_DB_PWD: ${CLASS_DB_PWD}
+      ADMIN_INIT_PWD: ${ADMIN_INIT_PWD}
       # ⚠️ 不传 CLASS_DB_NAME：902/message 回退 'msg'，902/work 回退 'work'
       # 若全局传此变量会导致一个站点连错库（见偏差 J）
       TZ: Asia/Shanghai
+    # Layer 2 永久修复：apache 启动前先确保 admin_user 为 bcrypt hash（详见 Niu_Txl/ensure_admin_hash.php）
+    command: ["sh","-c","php /var/www/html/ensure_admin_hash.php && exec docker-php-entrypoint apache2-foreground"]
     ports:
       - "127.0.0.1:1181:80"            # loopback，仅供 frpc 指向（TLS 在 VPS frps 终止）
     depends_on:

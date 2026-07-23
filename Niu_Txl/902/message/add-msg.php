@@ -110,17 +110,6 @@ function show() {
                 <option value="images/photo7.png">用户头像7</option>
                 <option value="images/photo8.png">用户头像8</option>
                 <option value="images/photo9.png">用户头像9</option>
-				        <option value="images/photo10.png">用户头像10</option>
-				        <option value="images/photo11.png">用户头像11</option>
-				        <option value="images/photo12.png">用户头像12</option>
-				        <option value="images/photo13.png">用户头像13</option>
-				        <option value="images/photo14.png">用户头像14</option>
-				        <option value="images/photo15.png">用户头像15</option>
-                <option value="images/photo16.png">用户头像16</option>
-                <option value="images/photo17.png">用户头像17</option>
-                <option value="images/photo18.png">用户头像18</option>
-                <option value="images/photo19.png">用户头像19</option>
-                <option value="images/photo20.png">用户头像20</option>
               </select>
               <img src="images/photo.png" alt="" width="100" height="100" id="headimg"/></li>
             <li>是否仅管理员可见：

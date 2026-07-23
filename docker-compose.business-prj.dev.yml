@@ -139,6 +139,8 @@ services:
     environment:
       CLASS_DB_HOST: mysql        # dev 永远连 base 的 mysql 服务
       TZ: Asia/Shanghai
+    # Layer 2 永久修复：apache 启动前先确保 admin_user 为 bcrypt hash（详见 Niu_Txl/ensure_admin_hash.php）
+    command: ["sh","-c","php /var/www/html/ensure_admin_hash.php && exec docker-php-entrypoint apache2-foreground"]
     ports:
       - "127.0.0.1:1181:80"       # 与 prod 端口一致，避免改 nginx upstream
     depends_on:
