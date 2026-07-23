@@ -59,7 +59,8 @@ services:
       # 此处显式声明确保该变量到达 mysql 容器，使 ALTER class_user 生效。
       CLASS_DB_PWD: ${CLASS_DB_PWD}
     ports:
-      - "127.0.0.1:33060:3306"
+      # 宿主 MySQL 端口默认 33060；Windows 若此端口被 Hyper-V/WinNAT 系统保留导致 bind 失败，可在 .env.prod/.env.dev 或 shell 设 MYSQL_HOST_PORT 为空闲端口（如 13306）后重部署。
+      - "127.0.0.1:${MYSQL_HOST_PORT:-33060}:3306"
     networks:
       - dev-network
     # [C1] 存量库漏列修复：用包装脚本替换官方 entrypoint，使每次启动（含存量 volume 不清）都幂等补 user_info.role 列。
