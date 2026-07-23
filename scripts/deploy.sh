@@ -451,11 +451,31 @@ setup_ollama() {
         log "plist 注入成功，restart brew services ollama ..."
         brew services restart ollama || warn "brew services restart ollama 失败"
         sleep 3
-        verify_bind || true
+        verify_bind && verify_ok=1 || true
       else
         warn "plutil 注入失败（plist 可能无 EnvironmentVariables 节点或格式异常），跳过自动注入。"
       fi
     fi
+  fi
+
+  # ---------- 6.5 自愈：通用重启兜底（镜像 deploy.ps1 的 admin 重启逻辑）----------
+  # 双脚本铁律：两边都在"糟糕绑定"时自动重启，手动修复 WARNING 作最后兜底。
+  # 若仍未绑定 0.0.0.0（非 brew 路径、或 brew plist 注入未生效），则通用重启一次。
+  if [[ "$verify_ok" -ne 1 ]]; then
+    log "尝试自愈：通用重启 ollama 以重新绑定 OLLAMA_HOST=$OLLAMA_HOST_VALUE ..."
+    pkill -f "ollama serve" 2>/dev/null
+    pkill -f ollama 2>/dev/null
+    sleep 2
+    if command -v brew >/dev/null 2>&1 && brew services list 2>/dev/null | grep -q "^ollama "; then
+      log "通过 brew services restart ollama ..."
+      brew services restart ollama || warn "brew services restart ollama 失败"
+    else
+      log "以前台方式重启 ollama serve（OLLAMA_HOST=$OLLAMA_HOST_VALUE）..."
+      OLLAMA_HOST="0.0.0.0:11434" nohup ollama serve >/tmp/ollama-serve.log 2>&1 &
+      disown || true
+    fi
+    sleep 3
+    verify_bind || true
   fi
 }
 

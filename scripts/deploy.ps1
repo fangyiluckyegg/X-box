@@ -601,7 +601,10 @@ function Invoke-OllamaSetup {
         for ($i = 1; $i -le 40; $i++) {
             Start-Sleep -Seconds 1
             $addrs = Get-OllamaListeners
-            if ($addrs -contains '0.0.0.0') { $bound = $true; break }
+            # On Windows a dual-stack bind to 0.0.0.0:11434 shows as '::' in
+            # Get-NetTCPConnection; treat BOTH '0.0.0.0' and '::' (case-insensitive) as success.
+            $lowerAddrs = $addrs | ForEach-Object { $_.ToLower() }
+            if (($addrs -contains '0.0.0.0') -or ($lowerAddrs -contains '::')) { $bound = $true; break }
             if ($addrs -contains '127.0.0.1') {
                 $stallCount++
                 if ($stallCount -ge 3 -and $machineHost -eq $OLLAMA_HOST_VALUE) {
@@ -616,9 +619,44 @@ function Invoke-OllamaSetup {
                 Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden
             }
         }
-        $finalAddrs = (Get-OllamaListeners) -join ', '
+        $finalArr = @(Get-OllamaListeners)
+        $finalAddrs = $finalArr -join ', '
+        $finalLower = $finalArr | ForEach-Object { $_.ToLower() }
+
+        # ----- Self-heal: if binding is bad AND we are Administrator, restart Ollama once
+        # so it re-reads the Machine-scope OLLAMA_HOST (which targets 0.0.0.0). -----
+        if (-not $bound -and $isAdmin) {
+            Log "Self-heal: Ollama binding is wrong (admin detected). Restarting Ollama once to re-read Machine OLLAMA_HOST=$OLLAMA_HOST_VALUE..." Yellow
+            Stop-AllOllama
+            # Prefer restarting the Windows service (it reads Machine OLLAMA_HOST -> binds 0.0.0.0).
+            # Fall back to a foreground 'ollama serve' (current process env has $env:OLLAMA_HOST set).
+            $healOk = $false
+            try { Start-Service -Name 'ollama' -ErrorAction SilentlyContinue; $healOk = $? } catch { $healOk = $false }
+            if (-not $healOk) {
+                Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden
+            }
+            # Re-poll up to 20s for 0.0.0.0 or :: (dual-stack).
+            for ($h = 1; $h -le 20; $h++) {
+                Start-Sleep -Seconds 1
+                $hAddrs = Get-OllamaListeners
+                $hLower = $hAddrs | ForEach-Object { $_.ToLower() }
+                if (($hAddrs -contains '0.0.0.0') -or ($hLower -contains '::')) {
+                    $bound = $true
+                    break
+                }
+            }
+            $finalArr = @(Get-OllamaListeners)
+            $finalAddrs = $finalArr -join ', '
+            $finalLower = $finalArr | ForEach-Object { $_.ToLower() }
+        }
+
         if ($bound) {
-            Log "Ollama listening on: 0.0.0.0 :11434 (all listeners: $finalAddrs)"
+            if ($finalLower -contains '::' -and ($finalArr -notcontains '0.0.0.0')) {
+                # Windows dual-stack bind: '::' accepts IPv4 too; containers reach it via host.docker.internal.
+                Log "Ollama listening on dual-stack [::]:11434 (Windows dual-stack accepts IPv4; containers reach it via host.docker.internal:11434)." Yellow
+            } else {
+                Log "Ollama listening on: 0.0.0.0 :11434 (all listeners: $finalAddrs)"
+            }
         } else {
             Log "WARNING: could not bind 0.0.0.0:11434; current listener(s): $finalAddrs. Containers may NOT reach Ollama." -ForegroundColor Yellow
             Log "Diagnostics: isAdmin=$isAdmin; Machine OLLAMA_HOST='$machineHost'; expected='$OLLAMA_HOST_VALUE'." Yellow
@@ -669,7 +707,7 @@ function Invoke-OllamaSetup {
     if ($actual -contains '0.0.0.0') {
         Log "[OK] Host Ollama ready: $MODEL_NAME loaded, listening on 0.0.0.0:11434"
     } elseif ($actual -contains '::') {
-        Log "[OK] Host Ollama ready: $MODEL_NAME loaded, but only on IPv6 [::] (Docker containers reach the host via IPv4 host.docker.internal and may NOT reach it)." -ForegroundColor Yellow
+        Log "[OK] Host Ollama ready: $MODEL_NAME loaded, listening on dual-stack [::]:11434 (Windows dual-stack accepts IPv4; containers reach it via host.docker.internal:11434)." -ForegroundColor Yellow
     } else {
         $addrStr = if ($actual) { $actual -join ', ' } else { 'none' }
         Log "[OK] Host Ollama ready: $MODEL_NAME loaded, but listening on $addrStr (containers may NOT reach it)." -ForegroundColor Yellow
