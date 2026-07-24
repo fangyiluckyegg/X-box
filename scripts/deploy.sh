@@ -328,17 +328,48 @@ setup_ollama() {
     log "Proxy enabled: $OLLAMA_PROXY"
   fi
 
-  # ---------- 1. 安装 Ollama（Mac / Homebrew）----------
+  # ---------- 0. 检测已就绪的 Ollama + bge-m3（复用快路径）----------
+  # 已安装 + 服务就绪(:11434 可探测) + bge-m3 模型已存在 → 直接复用，跳过安装与拉取。
+  is_ollama_ready() {
+    command -v ollama >/dev/null 2>&1 || return 1
+    curl -sf "http://localhost:11434/api/tags" >/tmp/ollama_tags.json 2>/dev/null || return 1
+    if grep -q "$MODEL_NAME" /tmp/ollama_tags.json 2>/dev/null; then
+      return 0
+    fi
+    if ollama list 2>/dev/null | grep -q "$MODEL_NAME"; then
+      return 0
+    fi
+    return 1
+  }
+  if [[ "$PULL_ONLY" -eq 0 ]]; then
+    if is_ollama_ready; then
+      log "[成功] Ollama + bge-m3 就绪"
+      log "（已检测就绪，复用，跳过安装与拉取）"
+      log "后端可通过 http://host.docker.internal:11434/api/embed 调用。"
+      return 0
+    fi
+    log "Ollama 未就绪或 bge-m3 缺失，开始自动安装 / 启动 / 拉取流程 ..."
+  fi
+
+  # ---------- 1. 安装 Ollama（Mac / Linux）----------
+  # 优先 brew；无 brew 则用官方 install.sh；安装失败返回 1（由 prepare_ollama 降级，不阻断部署）。
   if [[ "$PULL_ONLY" -eq 0 && "$SKIP_INSTALL" -eq 0 ]]; then
     if command -v ollama >/dev/null 2>&1; then
       log "检测到 ollama 已安装：$(command -v ollama)"
-    else
-      if ! command -v brew >/dev/null 2>&1; then
-        log "未找到 Homebrew，请先安装：https://brew.sh" >&2
+    elif command -v brew >/dev/null 2>&1; then
+      log "通过 brew 安装 ollama ..."
+      if ! brew install ollama; then
+        log "brew install ollama 失败，请检查网络或 Homebrew。" >&2
         return 1
       fi
-      log "通过 brew 安装 ollama ..."
-      if ! brew install ollama; then return 1; fi
+    else
+      log "未找到 Homebrew，尝试用官方脚本安装 Ollama（curl -fsSL https://ollama.com/install.sh | sh）..."
+      if ! curl -fsSL https://ollama.com/install.sh | sh; then
+        log "错误：Ollama 自动安装失败（官方脚本执行失败）。" >&2
+        return 1
+      fi
+      # 官方脚本默认装到 /usr/local/bin 或 ~/.local/bin，刷新 PATH 供后续 ollama 命令使用
+      export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
     fi
   fi
 
@@ -375,17 +406,21 @@ setup_ollama() {
     fi
   }
   if [[ "$PULL_ONLY" -eq 0 ]]; then
-    start_ollama
+    start_ollama || true
   fi
 
-  # ---------- 4. 拉取模型 bge-m3（已存在则跳过，对齐 deploy.ps1 L614-629）----------
+  # ---------- 4. 拉取模型 bge-m3（已存在则跳过；带超时，避免无限挂起）----------
   log "检查模型 $MODEL_NAME 是否已在本地 ..."
   if ollama list 2>/dev/null | grep -q "$MODEL_NAME"; then
     log "模型 $MODEL_NAME 已在本地，跳过 pull。"
   else
     log "拉取模型 $MODEL_NAME（首次需下载权重，可能较慢）..."
-    if ! ollama pull "$MODEL_NAME"; then
-      log "错误：模型 $MODEL_NAME 拉取失败。" >&2
+    local pull_cmd=(ollama pull "$MODEL_NAME")
+    if command -v timeout >/dev/null 2>&1; then
+      pull_cmd=(timeout 900 ollama pull "$MODEL_NAME")
+    fi
+    if ! "${pull_cmd[@]}"; then
+      log "错误：模型 $MODEL_NAME 拉取失败或超时（900s）。" >&2
       return 1
     fi
   fi
@@ -427,8 +462,7 @@ setup_ollama() {
     addr_str="${addr_str%, }"
     [[ -z "$addr_str" ]] && addr_str="none"
     if printf '%s\n' "$hosts" | grep -qxF "0.0.0.0" || printf '%s\n' "$hosts" | grep -qxF "*"; then
-      log "✅ [OK] Host Ollama ready: $MODEL_NAME loaded, listening on 0.0.0.0:11434"
-      log "后端可通过 http://host.docker.internal:11434/api/embed 调用。"
+      log "Host Ollama listening on 0.0.0.0:11434（容器经 host.docker.internal:11434 可达）"
       return 0
     fi
     # 未绑到 0.0.0.0（如 127.0.0.1 / [::] / none）→ 警告 + 诊断（语气对齐 deploy.ps1 L607-610、L652-661）
@@ -477,6 +511,15 @@ setup_ollama() {
     sleep 3
     verify_bind || true
   fi
+
+  # ---------- 7. 统一成功日志（语义检索功能可用）----------
+  # 只要服务就绪且 bge-m3 已加载即视为成功；监听地址非 0.0.0.0 仅作黄色提示，不影响部署继续。
+  if [[ "$verify_ok" -eq 1 ]]; then
+    log "[成功] Ollama + bge-m3 就绪"
+  else
+    log "[成功] Ollama + bge-m3 就绪"
+    warn "模型已加载，但监听地址非 0.0.0.0（containers may NOT reach Ollama via host.docker.internal；建议手动 export OLLAMA_HOST=0.0.0.0:11434 后重启 ollama serve）"
+  fi
 }
 
 # 阶段 3：Ollama 准备（wrapper：处理 --skip-ollama 开关，--proxy 透传给内联函数）
@@ -496,7 +539,7 @@ prepare_ollama() {
     # Ollama 仅是「向量化 / 语义检索」类功能的软依赖：后端容器启动时不强依赖它，
     # embedding 仅在请求时懒调用，缺失时按请求抛错优雅降级。故准备失败不阻断部署。
     OLLAMA_STATUS="failed"
-    log "警告：Ollama 准备失败，部署将继续；但「向量化 / 语义检索」类功能暂不可用。" >&2
+    log "[警告] Ollama 自动安装失败，语义检索功能暂不可用，部署继续" >&2
     log "修复：手动安装 Ollama 后 'ollama serve --host 0.0.0.0:11434'；或重跑时加 --skip-ollama 跳过重复安装。" >&2
   fi
 }

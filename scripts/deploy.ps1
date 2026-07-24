@@ -380,6 +380,35 @@ function Invoke-OllamaSetup {
     # Refresh PATH from system + user so a just-installed ollama is discoverable in this session
     $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
 
+    # ---------- 0. Detect existing ready Ollama + bge-m3 (reuse fast path) ----------
+    # 已安装 + 服务就绪(:11434 可探测) + bge-m3 模型已存在 → 直接复用，跳过安装与拉取。
+    function Test-OllamaHealthy {
+        $installed = [bool](Get-Command ollama -ErrorAction SilentlyContinue)
+        if (-not $installed) { return $false }
+        $r = $null
+        try {
+            $r = Invoke-RestMethod -Uri 'http://localhost:11434/api/tags' -TimeoutSec 5 -ErrorAction SilentlyContinue
+        } catch { $r = $null }
+        if (-not $r -or -not $r.models) { return $false }
+        if ($r.models | Where-Object { $_.name -eq $MODEL_NAME }) { return $true }
+        # fallback: 某些版本 ollama list 输出与 API 字段不一致，再查一次
+        try {
+            $lst = & ollama list 2>$null
+            if ($lst -match [regex]::Escape($MODEL_NAME)) { return $true }
+        } catch { }
+        return $false
+    }
+
+    if (-not $PullOnly) {
+        if (Test-OllamaHealthy) {
+            Log "[成功] Ollama + bge-m3 就绪"
+            Log "（已检测就绪，复用，跳过安装与拉取）"
+            Log "Backend can call http://host.docker.internal:11434/api/embed"
+            return
+        }
+        Log "Ollama 未就绪或 bge-m3 缺失，开始自动安装 / 启动 / 拉取流程 ..."
+    }
+
     # ---------- 1. Install Ollama (download from fast source, silent install) ----------
     function Get-Aria2Exe {
         # Prefer aria2c on PATH. If missing, bootstrap it via winget/choco (NOT a GitHub zip download):
@@ -490,26 +519,32 @@ function Invoke-OllamaSetup {
     }
 
     function Install-Ollama {
-        $dest = Install-OllamaFromMirror
-        if (-not $dest) {
-            if (Get-Command winget -ErrorAction SilentlyContinue) {
-                Log "所有镜像下载失败；尝试用 winget 安装 Ollama ..." -ForegroundColor Yellow
+        # 1) 优先 winget 安装（官方渠道，无需手动下载安装包）
+        if (Get-Command winget -ErrorAction SilentlyContinue) {
+            try {
+                Log "尝试用 winget 安装 Ollama（Ollama.Ollama）..."
                 $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','Ollama.Ollama','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\winget_ollama.out" -RedirectStandardError "$env:TEMP\winget_ollama.err"
                 if ($p.ExitCode -eq 0) {
                     $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
                     return
                 }
-                Log "winget 安装 Ollama 失败（退出码 $($p.ExitCode)），本机网络可能访问不了境外 CDN。" -ForegroundColor Yellow
-            } elseif (Get-Command choco -ErrorAction SilentlyContinue) {
-                Log "所有镜像下载失败；尝试用 choco 安装 Ollama ..." -ForegroundColor Yellow
-                $p = Start-Process -FilePath 'choco' -ArgumentList @('install','ollama','-y') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\choco_ollama.out" -RedirectStandardError "$env:TEMP\choco_ollama.err"
-                if ($p.ExitCode -eq 0) {
-                    $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
-                    return
-                }
-                Log "choco 安装 Ollama 失败（退出码 $($p.ExitCode)）。" -ForegroundColor Yellow
+                Log "winget 安装 Ollama 返回非零退出码 $($p.ExitCode)，回退到下载安装包。" -ForegroundColor Yellow
+            } catch {
+                Log "winget 执行异常（$(($_.Exception.Message -split "`n")[0])），回退到下载安装包。" -ForegroundColor Yellow
             }
-            Log "错误：Ollama 自动安装失败（本机网络无法访问 ollama.com / GitHub 等境外 CDN）。" -ForegroundColor Red
+        } else {
+            Log "winget 不可用，回退到下载 OllamaSetup.exe 静默安装。" -ForegroundColor Yellow
+        }
+
+        # 2) 回退：下载 OllamaSetup.exe 并静默安装（/S）；下载失败必须被 catch。
+        try {
+            $dest = Install-OllamaFromMirror
+        } catch {
+            $dest = $null
+            Log "下载 OllamaSetup.exe 异常：$(($_.Exception.Message -split "`n")[0])" -ForegroundColor Yellow
+        }
+        if (-not $dest) {
+            Log "错误：Ollama 自动安装失败（winget 不可用且本机网络无法下载安装包；境外 CDN 可能被限速/不可达）。" -ForegroundColor Red
             Log "请任选其一后重跑本脚本：" -ForegroundColor Red
             Log "  1) 手动安装 Ollama（winget install Ollama.Ollama 或你本机可用渠道），再用 -SkipOllama 跳过安装：" -ForegroundColor Red
             Log "       powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 -Env <环境> -SkipOllama" -ForegroundColor Red
@@ -704,13 +739,14 @@ function Invoke-OllamaSetup {
 
     # Report the ACTUAL bind address (not a hardcoded claim).
     $actual = @(Get-NetTCPConnection -LocalPort 11434 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalAddress)
+    Log "[成功] Ollama + bge-m3 就绪"
     if ($actual -contains '0.0.0.0') {
-        Log "[OK] Host Ollama ready: $MODEL_NAME loaded, listening on 0.0.0.0:11434"
+        Log "Host Ollama listening on 0.0.0.0:11434 (containers reach via host.docker.internal:11434)."
     } elseif ($actual -contains '::') {
-        Log "[OK] Host Ollama ready: $MODEL_NAME loaded, listening on dual-stack [::]:11434 (Windows dual-stack accepts IPv4; containers reach it via host.docker.internal:11434)." -ForegroundColor Yellow
+        Log "Host Ollama listening on dual-stack [::]:11434 (Windows dual-stack accepts IPv4; containers reach it via host.docker.internal:11434)." -ForegroundColor Yellow
     } else {
         $addrStr = if ($actual) { $actual -join ', ' } else { 'none' }
-        Log "[OK] Host Ollama ready: $MODEL_NAME loaded, but listening on $addrStr (containers may NOT reach it)." -ForegroundColor Yellow
+        Log "Host Ollama ready but listening on $addrStr (containers may NOT reach it; 建议以管理员重设 Machine OLLAMA_HOST=0.0.0.0:11434 后重启)." -ForegroundColor Yellow
     }
     Log "Backend can call http://host.docker.internal:11434/api/embed"
 }
@@ -728,8 +764,8 @@ function Start-Ollama {
     } catch {
         # Ollama 仅是「向量化 / 语义检索」类功能的软依赖：后端容器启动时不强依赖它，
         # embedding 仅在请求时懒调用，缺失时按请求抛 EmbeddingException 优雅降级。
-        # 因此 Ollama 准备失败不应阻断整个部署。
-        Log "警告：Ollama 准备失败，部署将继续；但「向量化 / 语义检索」类功能暂不可用。" Yellow
+        # 因此 Ollama 准备失败不应阻断整个部署（exit code 保持成功）。
+        Log "[警告] Ollama 自动安装失败，语义检索功能暂不可用，部署继续" Yellow
         Log "修复：以管理员身份设置 Machine 作用域 OLLAMA_HOST=0.0.0.0:11434，再执行 Stop-Service ollama; Get-Process ollama | Stop-Process -Force; Start-Process ollama -ArgumentList 'serve'；或重跑本脚本时加 -SkipOllama 跳过重复下载。" Yellow
         $script:OllamaStatus = 'failed'
     }
