@@ -78,57 +78,13 @@ Thumbs.db
 
 # ====================== Niu_Txl 个人照片/视频/归档（禁止入库） ======================
 # [核查] 2026-07-15 扫描：1518 文件 / 1825.93 MB，其中 ~99.9% 为二进制个人数据
+Niu_Txl/_quarantine/
 # 仅排除照片/视频/压缩包/Office/隔离目录；.php/.html/.js/.css/.sql 等文本源码保留可入库
-Niu_Txl/607/*.jpg
-Niu_Txl/607/*.jpeg
-# Niu_Txl/607/*.png
-Niu_Txl/607/*.gif
-Niu_Txl/607/*.bmp
-Niu_Txl/607/*.webp
-Niu_Txl/607/*.heic
-Niu_Txl/607/*.tif
-Niu_Txl/607/*.tiff
-Niu_Txl/607/**/*.svg
-Niu_Txl/607/**/*.mp4
-Niu_Txl/607/**/*.mov
-Niu_Txl/607/**/*.avi
-Niu_Txl/607/**/*.mkv
-Niu_Txl/607/*.webm
-Niu_Txl/607/**/*.zip
-Niu_Txl/607/**/*.rar
-Niu_Txl/607/**/*.7z
-Niu_Txl/607/**/*.tar
-Niu_Txl/607/**/*.gz
-Niu_Txl/607/*.docx
-Niu_Txl/607/**/*.xlsx
-Niu_Txl/607/**/*.pdf
-Niu_Txl/902/work/admin/upload/*.jpg
+Niu_Txl/607/永远的607/
+
 # [2026-07-22 瘦身] 902 子目录递归屏蔽个人二进制(照片/视频/字体/压缩包/Office)，文本源码(.php/.html/.js/.css/.sql)保留
 # 修复点：原先只屏蔽了 607 与 902/work/admin/upload，导致 902/message/images 照片与
 # 902/message/tinymce 的 gif/ttf/woff 等二进制被误入库（占仓库 ~12.5MB）
-Niu_Txl/902/**/*.jpg
-Niu_Txl/902/**/*.jpeg
-Niu_Txl/902/**/*.png
-Niu_Txl/902/**/*.gif
-Niu_Txl/902/**/*.webp
-Niu_Txl/902/**/*.bmp
-Niu_Txl/902/**/*.tif
-Niu_Txl/902/**/*.tiff
-Niu_Txl/902/**/*.heic
-Niu_Txl/902/**/*.ttf
-Niu_Txl/902/**/*.woff
-Niu_Txl/902/**/*.woff2
-Niu_Txl/902/**/*.mp4
-Niu_Txl/902/**/*.mov
-Niu_Txl/902/**/*.avi
-Niu_Txl/902/**/*.mkv
-Niu_Txl/902/**/*.webm
-Niu_Txl/902/**/*.zip
-Niu_Txl/902/**/*.rar
-Niu_Txl/902/**/*.7z
-Niu_Txl/902/**/*.tar
-Niu_Txl/902/**/*.gz
-Niu_Txl/902/**/*.docx
-Niu_Txl/902/**/*.xlsx
-Niu_Txl/902/**/*.pdf
-Niu_Txl/_quarantine/
+Niu_Txl/902/message/images/
+Niu_Txl/902/message/tinymce/
+Niu_Txl/902/work/admin/upload/
