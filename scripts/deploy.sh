@@ -357,17 +357,19 @@ setup_ollama() {
     if command -v ollama >/dev/null 2>&1; then
       log "检测到 ollama 已安装：$(command -v ollama)"
     elif command -v brew >/dev/null 2>&1; then
-      log "通过 brew 安装 ollama ..."
+      log "开始用 brew 安装 ollama（安装进度实时显示，请稍候）..."
       if ! brew install ollama; then
         log "brew install ollama 失败，请检查网络或 Homebrew。" >&2
         return 1
       fi
+      log "brew 安装 Ollama 完成，正在启动服务 ..."
     else
-      log "未找到 Homebrew，尝试用官方脚本安装 Ollama（curl -fsSL https://ollama.com/install.sh | sh）..."
+      log "未找到 Homebrew，开始用官方脚本安装 Ollama（curl -fsSL https://ollama.com/install.sh | sh，进度实时显示）..."
       if ! curl -fsSL https://ollama.com/install.sh | sh; then
         log "错误：Ollama 自动安装失败（官方脚本执行失败）。" >&2
         return 1
       fi
+      log "官方脚本安装 Ollama 完成，正在启动服务 ..."
       # 官方脚本默认装到 /usr/local/bin 或 ~/.local/bin，刷新 PATH 供后续 ollama 命令使用
       export PATH="$HOME/.local/bin:/usr/local/bin:$PATH"
     fi
@@ -412,9 +414,11 @@ setup_ollama() {
   # ---------- 4. 拉取模型 bge-m3（已存在则跳过；带超时，避免无限挂起）----------
   log "检查模型 $MODEL_NAME 是否已在本地 ..."
   if ollama list 2>/dev/null | grep -q "$MODEL_NAME"; then
-    log "模型 $MODEL_NAME 已在本地，跳过 pull。"
+    log "模型 $MODEL_NAME 已在本地，跳过 pull（约 1.2GB 已就绪）。"
   else
-    log "拉取模型 $MODEL_NAME（首次需下载权重，可能较慢）..."
+    # 进度可见性：明确告知用户开始拉取大模型，并提示体积与耗时。
+    log "开始拉取 $MODEL_NAME（约 1.2GB 模型权重，首次下载可能较慢，进度实时显示，请耐心等待）..."
+    # 关键修复：直接执行 ollama pull，让进度条实时输出到终端；不使用 $(...) 捕获或重定向吞掉输出。
     local pull_cmd=(ollama pull "$MODEL_NAME")
     if command -v timeout >/dev/null 2>&1; then
       pull_cmd=(timeout 900 ollama pull "$MODEL_NAME")
@@ -423,6 +427,7 @@ setup_ollama() {
       log "错误：模型 $MODEL_NAME 拉取失败或超时（900s）。" >&2
       return 1
     fi
+    log "拉取完成：$MODEL_NAME 已就绪。"
   fi
 
   # ---------- 5. 健康检查 ----------

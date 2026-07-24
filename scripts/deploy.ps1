@@ -419,8 +419,8 @@ function Invoke-OllamaSetup {
         if ($aria2) { return $aria2.Source }
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             try {
-                Log "aria2c not found; installing via winget (one-time, ~2.5MB) ..."
-                $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','aria2.aria2','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\winget_aria2.out" -RedirectStandardError "$env:TEMP\winget_aria2.err"
+                Log "aria2c not found; installing via winget (one-time, ~2.5MB)，进度实时显示 ..."
+                $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','aria2.aria2','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru
                 if ($p.ExitCode -eq 0) {
                     $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
                     $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
@@ -434,8 +434,8 @@ function Invoke-OllamaSetup {
         }
         if (Get-Command choco -ErrorAction SilentlyContinue) {
             try {
-                Log "aria2c not found; installing via choco ..."
-                $p = Start-Process -FilePath 'choco' -ArgumentList @('install','aria2','-y') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\choco_aria2.out" -RedirectStandardError "$env:TEMP\choco_aria2.err"
+                Log "aria2c not found; installing via choco，进度实时显示 ..."
+                $p = Start-Process -FilePath 'choco' -ArgumentList @('install','aria2','-y') -Wait -NoNewWindow -PassThru
                 if ($p.ExitCode -eq 0) {
                     $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
                     $aria2 = Get-Command aria2c -ErrorAction SilentlyContinue
@@ -477,6 +477,8 @@ function Invoke-OllamaSetup {
             Copy-Item -Path $local -Destination $OutFile -Force
             return $OutFile
         }
+        # 进度可见性：明确告知用户开始下载安装包，并提示可能较慢。
+        Log "开始下载 OllamaSetup.exe 安装包（将依次尝试多个镜像源，下载进度实时显示，请耐心等待；境外 CDN 可能较慢，可用 -Proxy <url> 加速）..."
         $candidates = @(
             'https://ollama.com/download/OllamaSetup.exe',
             $InstallerUrl,
@@ -493,13 +495,15 @@ function Invoke-OllamaSetup {
                     Log "aria2c multi-thread download: $url"
                     $ariaArgs = @('-x', '16', '-s', '16', '-k', '1M', '--connect-timeout=15', '--timeout=30', '--max-tries=1', '-o', (Split-Path $OutFile -Leaf), $url, '--dir', (Split-Path $OutFile -Parent))
                     if ($Proxy) { $ariaArgs += '--all-proxy'; $ariaArgs += $Proxy }
-                    $p = Start-Process -FilePath $aria2 -ArgumentList $ariaArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\ollama_dl.out" -RedirectStandardError "$env:TEMP\ollama_dl.err"
+                    # 关键修复：移除 -RedirectStandard*，让 aria2 多线程下载进度条实时显示到终端，避免「长时间无输出」误以为卡死。
+                    $p = Start-Process -FilePath $aria2 -ArgumentList $ariaArgs -Wait -NoNewWindow -PassThru
                     if ($p.ExitCode -ne 0) { throw "aria2c exit code $($p.ExitCode)" }
                 } else {
                     Log "Downloading installer via curl: $url"
-                    $curlArgs = @('-L', '-f', '-S', '--connect-timeout', '15', '--max-time', '90', '--retry', '2', '--speed-time', '90', '--speed-limit', '100000', '-o', $OutFile, $url)
+                    # -# 显示下载进度条；移除 -RedirectStandard*，让 curl 下载进度实时显示到终端。
+                    $curlArgs = @('-#', '-L', '-f', '-S', '--connect-timeout', '15', '--max-time', '90', '--retry', '2', '--speed-time', '90', '--speed-limit', '100000', '-o', $OutFile, $url)
                     if ($Proxy) { $curlArgs = @('-x', $Proxy) + $curlArgs }
-                    $p = Start-Process -FilePath 'curl.exe' -ArgumentList $curlArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\ollama_dl.out" -RedirectStandardError "$env:TEMP\ollama_dl.err"
+                    $p = Start-Process -FilePath 'curl.exe' -ArgumentList $curlArgs -Wait -NoNewWindow -PassThru
                     if ($p.ExitCode -ne 0) { throw "curl exit code $($p.ExitCode)" }
                 }
                 if (Test-Path $OutFile) {
@@ -522,8 +526,9 @@ function Invoke-OllamaSetup {
         # 1) 优先 winget 安装（官方渠道，无需手动下载安装包）
         if (Get-Command winget -ErrorAction SilentlyContinue) {
             try {
-                Log "尝试用 winget 安装 Ollama（Ollama.Ollama）..."
-                $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','Ollama.Ollama','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\winget_ollama.out" -RedirectStandardError "$env:TEMP\winget_ollama.err"
+                # 关键修复：移除 -RedirectStandard*，让 winget 安装进度实时打到终端，用户可看到下载/安装进度，不再「长时间无输出」误以为卡死。-NoNewWindow 让子进程继承控制台输出。
+                Log "开始用 winget 安装 Ollama（Ollama.Ollama），安装进度实时显示，请稍候 ..."
+                $p = Start-Process -FilePath 'winget' -ArgumentList @('install','--exact','--id','Ollama.Ollama','-e','--accept-package-agreements','--accept-source-agreements') -Wait -NoNewWindow -PassThru
                 if ($p.ExitCode -eq 0) {
                     $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
                     return
@@ -552,7 +557,7 @@ function Invoke-OllamaSetup {
             Log "  3) 把 OllamaSetup.exe 放到 scripts/ 目录旁（离线安装模式，脚本会自动识别）" -ForegroundColor Red
             throw "Ollama 自动安装失败（网络受限），请按上方提示手动处理或用 -SkipOllama / -Proxy。"
         }
-        Log "Running silent install (OllamaSetup.exe /S) ..."
+        Log "开始静默安装 OllamaSetup.exe（/S，通常需要 10~30 秒，请稍候）..."
         Start-Process -FilePath $dest -ArgumentList '/S' -Wait
         # Refresh PATH so ollama is usable immediately in this session
         $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path', 'User')
@@ -627,7 +632,7 @@ function Invoke-OllamaSetup {
         # (d) Launch our instance. On Windows, Ollama 'serve' honors the OLLAMA_HOST
         #     env var (Machine scope), NOT the --host CLI flag (unreliable on Windows).
         #     We rely on the Machine OLLAMA_HOST set above to bind 0.0.0.0:11434.
-        Log "Starting Ollama (serve, binds via OLLAMA_HOST=$OLLAMA_HOST_VALUE) in background..."
+        Log "安装完成，正在启动 Ollama 服务（serve，通过 OLLAMA_HOST=$OLLAMA_HOST_VALUE 绑定，请稍候）..."
         Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden
         # (e) Poll until WE are listening on 0.0.0.0.
         $bound = $false
@@ -706,14 +711,13 @@ function Invoke-OllamaSetup {
         if ($list -match [regex]::Escape($MODEL_NAME)) { $modelPresent = $true }
     } catch { }
     if ($modelPresent) {
-        Log "Model $MODEL_NAME already present locally; skipping pull."
+        Log "模型 $MODEL_NAME 已在本地，跳过拉取（约 1.2GB 已就绪）。"
     } else {
-        if ($Proxy) {
-            Log "Pulling model $MODEL_NAME via proxy $Proxy ..."
-        } else {
-            Log "Pulling model $MODEL_NAME (first download may be slow)..."
-        }
+        # 进度可见性：明确告知用户开始拉取大模型，并提示体积与耗时。
+        Log "开始拉取 $MODEL_NAME（约 1.2GB 模型权重，首次下载可能较慢，进度实时显示，请耐心等待）..."
+        # 关键修复：直接执行 ollama pull，让进度条实时输出到终端；不使用 $(...) 捕获或重定向吞掉输出。
         & ollama pull $MODEL_NAME
+        Log "拉取完成：$MODEL_NAME 已就绪。"
     }
 
     # ---------- 5. Health check ----------
