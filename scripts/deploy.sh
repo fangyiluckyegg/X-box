@@ -18,6 +18,8 @@
 #   bash scripts/deploy.sh --env prod --skip-ollama   # 跳过 Ollama 准备
 #   bash scripts/deploy.sh --env prod --dry-run       # 仅检查/准备 env 并校验契约，不启动
 #   bash scripts/deploy.sh --env prod --proxy http://127.0.0.1:7890
+#   bash scripts/deploy.sh --env prod -ResetMysql            # 删除 MySQL 数据卷并重建空库（交互确认）
+#   bash scripts/deploy.sh --env prod -ResetMysql -Force     # 非交互环境强制删除（CI/管道慎用）
 #
 # 安全红线：
 #   - 绝不硬编码真实密码；仅生成随机值或保留用户已有值
@@ -51,12 +53,16 @@ SKIP_OLLAMA=0
 DRY_RUN=0
 PROXY=""
 OLLAMA_STATUS="unknown"
+RESET_MYSQL=0
+FORCE=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env) ENV="${2:-}"; shift ;;
     --skip-ollama) SKIP_OLLAMA=1 ;;
     --dry-run) DRY_RUN=1 ;;
     --proxy) PROXY="${2:-}"; shift ;;
+    -ResetMysql|--reset-mysql) RESET_MYSQL=1 ;;
+    -Force|--force|-y) FORCE=1 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
   shift
@@ -687,6 +693,77 @@ print_summary() {
   fi
 }
 
+# ---------- [新增] -ResetMysql 相关函数 ----------
+# 醒目警告（最先打印）：明确告知将永久删除 MySQL 数据卷
+print_reset_mysql_warning() {
+  local ts
+  ts="$(date '+%Y-%m-%d %H:%M:%S')"
+  printf '\033[31m[%s] [deploy] ============================================================\033[0m\n' "$ts"
+  printf '\033[31m[%s] [deploy] !!! 警告 !!! 即将删除 MySQL 数据卷，卷内所有数据将永久丢失且不可恢复！\033[0m\n' "$ts"
+  printf '\033[31m[%s] [deploy]   操作对象：MySQL 数据卷（如 x-box_mysql_data）\033[0m\n' "$ts"
+  printf '\033[31m[%s] [deploy]   卷内数据：留言、用户、账号等全部数据将被清空，且不可恢复！\033[0m\n' "$ts"
+  printf '\033[31m[%s] [deploy]   仅当你确实需要「重置/重建空库」时才继续。\033[0m\n' "$ts"
+  printf '\033[31m[%s] [deploy] ============================================================\033[0m\n' "$ts"
+}
+
+# 二次确认（安全核心）：交互终端要求 yes/y；非交互环境（CI/管道）拒绝除非 -Force
+confirm_reset_mysql() {
+  if [ -t 1 ]; then
+    # 交互终端：要求输入 yes/y 才继续，其它任何输入中止并退出
+    local ans=""
+    printf '\033[33m[%s] [deploy] 确认要删除 MySQL 数据卷并重新初始化空库吗？输入 yes 或 y 继续，其他任何输入将中止：\033[0m\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+    read -r ans || true
+    local a
+    a="$(printf '%s' "$ans" | tr '[:upper:]' '[:lower:]')"
+    case "$a" in
+      yes|y) return 0 ;;
+      *) log "已取消操作（未输入 yes/y），未删除任何数据，部署中止。"; exit 1 ;;
+    esac
+  else
+    # 非交互环境（CI / 管道）：默认拒绝，除非显式传入 -Force
+    if [[ "$FORCE" -eq 1 ]]; then
+      log "非交互环境，但已显式传入 -Force，继续执行 MySQL 数据卷删除。"
+    else
+      log "非交互环境禁止自动删除 MySQL 数据卷，请加 -Force 确认或手动执行。" >&2
+      exit 1
+    fi
+  fi
+}
+
+# 执行清理：停栈（不删其它卷）→ 精准删除 mysql 卷；失败仅告警不崩后续
+reset_mysql_volume() {
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    log "[DryRun] 将执行：停栈（docker compose down）+ 删除 MySQL 数据卷（docker volume rm）；实际部署时才执行。"
+    return 0
+  fi
+  log "===== 清理 MySQL 数据卷（停栈 + 精准删除 mysql 卷）====="
+  local down_args=()
+  local f
+  for f in "${COMPOSE_FILES[@]}"; do down_args+=( -f "$f" ); done
+  # 先停整个栈（不删其它卷），否则卷 in use 无法删除
+  log "正在停止整个栈（docker compose down，不删除其它卷）..."
+  if ! docker compose "${down_args[@]}" down 2>&1; then
+    log "警告：停止栈返回非零退出码，尝试继续删除卷（若卷仍被占用，下方删除可能失败）。" >&2
+  fi
+  # 精准定位 mysql 数据卷实际名称（仅用 -f 文件，不依赖 env 文件）
+  local vol_key=""
+  vol_key="$(docker compose "${down_args[@]}" config --volumes 2>/dev/null | grep -i mysql | head -n1)" || true
+  if [[ -z "$vol_key" ]]; then vol_key="mysql_data"; fi
+  local actual=""
+  actual="$(docker volume ls --format '{{.Name}}' --filter "name=${vol_key}" 2>/dev/null | head -n1)" || true
+  if [[ -z "$actual" ]]; then
+    log "未找到 MySQL 数据卷（卷名推测为 ${vol_key}），可能尚未创建，跳过删除。"
+    log "即将继续正常部署（MySQL 将全新初始化或沿用现有卷）。"
+    return 0
+  fi
+  log "精准删除 MySQL 数据卷：$actual ..."
+  if docker volume rm "$actual" 2>&1; then
+    log "已删除 MySQL 数据卷，即将重新初始化空库。"
+  else
+    log "错误：删除 MySQL 数据卷 $actual 失败（可能仍被容器占用）。请手动执行 'docker compose ${down_args[*]} down' 后重试；本脚本将继续常规部署流程。" >&2
+  fi
+}
+
 # ---------- 主流程 ----------
 main() {
   resolve_env
@@ -699,9 +776,21 @@ main() {
     fi
   fi
 
+  # [新增] -ResetMysql：最先打印醒目警告（在任何前置操作之前）
+  if [[ "$RESET_MYSQL" -eq 1 ]]; then
+    print_reset_mysql_warning
+  fi
+
   if [[ "$DRY_RUN" -eq 0 ]]; then
     check_prereqs
   fi
+
+  # [新增] -ResetMysql：二次确认 + 停栈 + 精准删卷（确认被拒则 exit 1；删除失败仅告警不崩后续）
+  if [[ "$RESET_MYSQL" -eq 1 ]]; then
+    confirm_reset_mysql
+    reset_mysql_volume || true
+  fi
+
   prepare_env_files
   ensure_ssl_cert
   validate_contract

@@ -28,6 +28,8 @@
 #       -SkipOllama               跳过 Ollama 准备
 #       -DryRun                   只检查/准备不启动
 #       -Proxy <url>             透传给内联 Ollama 准备函数 Invoke-OllamaSetup
+#       -ResetMysql               删除 MySQL 数据卷并重建空库（需二次确认；非交互环境须 -Force）
+#       -Force                    非交互环境下强制确认删除 MySQL 数据卷（仅配合 -ResetMysql）
 #
 # 安全红线：绝不硬编码真实密码；绝不覆盖非占位符值；不打印密码明文；不改 docker-compose/网关/源码。
 # 日志红线：每条日志带 ISO 时间戳前缀 [yyyy-MM-dd HH:mm:ss] [deploy]；env 文件以 UTF-8 无 BOM + LF 写入。
@@ -38,7 +40,9 @@ param(
     [string]$Env = 'prod',
     [switch]$SkipOllama,
     [switch]$DryRun,
-    [string]$Proxy = ''
+    [string]$Proxy = '',
+    [switch]$ResetMysql,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -916,6 +920,81 @@ function Print-Summary {
     }
 }
 
+# ---------- [新增] -ResetMysql 相关函数 ----------
+# 判定是否为交互终端（管道 / CI 环境视为非交互）
+function Test-IsInteractive {
+    # 显式标记 PS1_INTERACTIVE 时强制视为交互
+    if (-not [string]::IsNullOrEmpty($env:PS1_INTERACTIVE)) { return $true }
+    try {
+        if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) { return $false }
+        # 常见 CI 环境变量
+        if ($env:CI -eq 'true' -or $env:CI -eq '1' -or $env:TF_BUILD -or $env:GITHUB_ACTIONS) { return $false }
+        # 管道 / 非交互宿主下 $Host.UI.RawUI 通常不可用
+        $null = $Host.UI.RawUI
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# 二次确认（安全核心）：交互终端要求 yes/y；非交互环境（CI/管道）拒绝除非 -Force
+function Confirm-ResetMysql {
+    if (Test-IsInteractive) {
+        Log "请在下方输入 yes 或 y 以确认删除 MySQL 数据卷；输入其它任何内容将中止：" Yellow
+        $ans = Read-Host "确认删除 MySQL 数据卷?"
+        $a = $ans.Trim().ToLower()
+        if ($a -ne 'yes' -and $a -ne 'y') {
+            Log "已取消操作（未输入 yes/y），未删除任何数据，部署中止。" Yellow
+            exit 1
+        }
+    } else {
+        if ($Force) {
+            Log "非交互环境，但已显式传入 -Force，继续执行 MySQL 数据卷删除。" Yellow
+        } else {
+            Log "非交互环境禁止自动删除 MySQL 数据卷，请加 -Force 确认或手动执行。" Red
+            exit 1
+        }
+    }
+}
+
+# 执行清理：停栈（不删其它卷）→ 精准删除 mysql 卷；失败仅告警不崩后续（自带 try/catch）
+function Reset-MysqlVolume {
+    if ($DryRun) {
+        Log "[DryRun] 将执行：停栈（docker compose down）+ 删除 MySQL 数据卷（docker volume rm）；实际部署时才执行。"
+        return
+    }
+    Log "===== 清理 MySQL 数据卷（停栈 + 精准删除 mysql 卷）====="
+    $downArgs = @()
+    foreach ($f in $cfg.ComposeFiles) { $downArgs += '-f'; $downArgs += $f }
+    try {
+        # 先停整个栈（不删其它卷），否则卷 in use 无法删除
+        Log "正在停止整个栈（docker compose down，不删除其它卷）..."
+        & docker compose @downArgs down 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Log "警告：停止栈返回非零退出码 $LASTEXITCODE，尝试继续删除卷（若卷仍被占用，下方删除可能失败）。" Yellow
+        }
+
+        # 精准定位 mysql 数据卷实际名称（仅用 -f 文件，不依赖 env 文件）
+        $volKey = & docker compose @downArgs config --volumes 2>$null | Where-Object { $_ -match 'mysql' } | Select-Object -First 1
+        if (-not $volKey) { $volKey = 'mysql_data' }
+        $actual = docker volume ls --format '{{.Name}}' --filter "name=$volKey" 2>$null | Select-Object -First 1
+        if (-not $actual) {
+            Log "未找到 MySQL 数据卷（卷名推测为 $volKey），可能尚未创建，跳过删除。"
+            Log "即将继续正常部署（MySQL 将全新初始化或沿用现有卷）。"
+            return
+        }
+        Log "精准删除 MySQL 数据卷：$actual ..."
+        & docker volume rm $actual 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Log "已删除 MySQL 数据卷，即将重新初始化空库。"
+        } else {
+            Log "错误：删除 MySQL 数据卷 $actual 失败（可能仍被容器占用）。请手动执行 'docker compose @downArgs down' 后重试；本脚本将继续常规部署流程。" Red
+        }
+    } catch {
+        Log "错误：清理 MySQL 数据卷过程中出现异常：$($_.Exception.Message)。请手动清理后重试；本脚本将继续常规部署流程。" Red
+    }
+}
+
 # ---------- 主流程 ----------
 $StartTime = Get-Date
 $cfg = $Configs[$Env]
@@ -929,7 +1008,24 @@ try {
         }
     }
 
+    # [新增] -ResetMysql：最先打印醒目警告（在任何前置操作之前）
+    if ($ResetMysql) {
+        Log "============================================================" Red
+        Log "!!! 警告 !!! 即将删除 MySQL 数据卷，卷内所有数据将永久丢失且不可恢复！" Red
+        Log "  操作对象：MySQL 数据卷（如 x-box_mysql_data）" Red
+        Log "  卷内数据：留言、用户、账号等全部数据将被清空，且不可恢复！" Red
+        Log "  仅当你确实需要「重置/重建空库」时才继续。" Red
+        Log "============================================================" Red
+    }
+
     if (-not $DryRun) { Test-Prereqs }
+
+    # [新增] -ResetMysql：二次确认 + 停栈 + 精准删卷（确认被拒则 exit 1；删除失败仅告警不崩后续）
+    if ($ResetMysql) {
+        Confirm-ResetMysql
+        Reset-MysqlVolume
+    }
+
     Prepare-EnvFiles -Cfg $cfg
     Ensure-SslCert
     Test-Contract
