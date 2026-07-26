@@ -2,6 +2,12 @@
 ob_start();
 session_start();
 require_once('Connections/conn.php');
+
+// 登录守卫：未登录用户禁止发表回复（写操作）
+if (!isset($_SESSION['MM_Username'])) {
+    header('Location: login.php');
+    exit;
+}
 ?>
 <?php //这句话使用了require_once函数调用了Connections文件夹下的conn.php文件，连接数据库 ?>
 <?php

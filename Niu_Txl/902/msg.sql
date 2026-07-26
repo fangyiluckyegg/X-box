@@ -19,7 +19,7 @@ SET time_zone = "+00:00";
 --
 -- Database: `msg`
 --
-CREATE DATABASE IF NOT EXISTS `msg` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE DATABASE IF NOT EXISTS `msg` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `msg`;
 
 -- --------------------------------------------------------
@@ -31,7 +31,7 @@ USE `msg`;
 CREATE TABLE `admin_user` (
   `username` varchar(20) NOT NULL,
   `password` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 注：admin_user 种子数据改由容器启动脚本 Niu_Txl/ensure_admin_hash.php 负责建/修（bcrypt 化），此处不再写明文 INSERT。
 
@@ -49,7 +49,7 @@ CREATE TABLE `post` (
   `P_Date` datetime NOT NULL,
   `P_Content` text NOT NULL,
   `P_Private` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- 转存表中的数据 `post`
@@ -76,7 +76,7 @@ CREATE TABLE `reply` (
   `R_Mail` varchar(30) NOT NULL,
   `R_Date` datetime NOT NULL,
   `R_Content` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- 转存表中的数据 `reply`

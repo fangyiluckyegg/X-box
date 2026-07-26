@@ -5,14 +5,14 @@
 # ============================================================
 
 # [P1-FIX] 开发环境：JDK 17（匹配 pom.xml java.version=17，Spring Boot 3 要求），支持热重载
-FROM eclipse-temurin:17-jdk-alpine
+# [ARCH-FIX] 改用非 alpine 版 eclipse-temurin:17-jdk（含 arm64/amd64 多架构清单）；
+#            原 alpine 版 17-jdk-alpine 仅有 amd64，Apple Silicon(M2) 构建会报
+#            "no match for platform in manifest: not found"。非 alpine 版在 M2/Intel/Windows 均可原生构建。
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
-# 替换阿里云Alpine软件源
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-# 安装Maven + wget（HEALTHCHECK需要）
-RUN apk update && apk add --no-cache maven wget
+# 安装Maven + wget（HEALTHCHECK需要）；Ubuntu 基础镜像使用 apt 而非 apk
+RUN apt-get update && apt-get install -y --no-install-recommends maven wget && rm -rf /var/lib/apt/lists/*
 
 # 配置阿里云Maven镜像加速依赖下载
 COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml

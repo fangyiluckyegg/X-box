@@ -28,11 +28,13 @@ logging:
 
 # Spring配置
 spring:
-  # [P0-FIX] Spring Boot 2.6+ 默认禁止循环引用，PageHelper 存在自引用循环，需显式放行
+  # [P2] Spring Boot 2.6+ 默认禁止循环引用；历史因 PageHelper/业务模块循环依赖显式放行。
+  # ⚠️ 此开关掩盖潜在循环依赖，建议后续排查真实循环源（PageHelper 2.1.0 理论上不应自引用，疑为业务代码）
+  #    并移除本开关，避免依赖关系腐化。当前保留以维持运行兼容。
   main:
     allow-circular-references: true
   application:
-    name: hrmanager
+    name: prj-backend
     
   # [P1-FIX] 移除 spring.jpa 配置（JPA依赖已移除，0个@Entity/@Repository，仅MyBatis使用）
   datasource:
@@ -47,7 +49,8 @@ spring:
     # 最小连接池数量
     minIdle: 10
     # 最大连接池数量
-    maxActive: 20
+    # [P2] 上调连接池上限（原 20 偏小，单实例并发下易耗尽；按实际负载可继续上调）
+    maxActive: 50
     # 配置获取连接等待超时的时间
     maxWait: 10000
     # [P0-FIX] Druid监控控制台认证配置，防止未授权访问

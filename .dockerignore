@@ -10,7 +10,7 @@ docs/
 # 但其内 php 服务 context=./Niu_Txl(docroot) 不在后端构建上下文内，排除不影响 php 构建。
 Niu_Txl/
 # deliverables/ 已于 2026-07-20 整体迁移至 docs/deliverables，已由上方 docs/ 规则排除，无需单独排除
-*.md
+# [R-08-FIX] 移除裸 *.md 排除，避免误伤根目录 VERSION.md 等文档（docs/ 已由上方规则排除）
 .git/
 .gitignore
 .env*

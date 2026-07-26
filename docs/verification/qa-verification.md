@@ -111,11 +111,11 @@
   - `ollama/ollama:0.31.2` 原生支持 Apple Silicon arm64 ✅。
   - ⚠️ `redis:5.0.14-alpine` **很可能无 arm64 镜像变体** → 建议**升级为 `redis:7-alpine`**（多架构），并确认 `redis-server --requirepass` 启动参数与 `application-prod.yml` 的 `database: 9` 兼容。
   - 后端/前端为源码构建（`Dockerfile.prod`/`Dockerfile.prod`），compose 在 arm64 主机上默认以 `linux/arm64` 构建；若某基础镜像缺 arm64，构建期即报错，需提前替换。
-- [ ] 【主理人】端口绑定：`docker-compose.prod.yml` 已仅绑定 `127.0.0.1:80/443`；**不要**直接公网暴露 80，除非启用 TLS（见下）。
+- [ ] 【主理人】端口绑定：网关 `0.0.0.0:80/443` 供**局域网**访问（公网经 frp 内网穿透 1181 暴露，不经网关 80/443）；若宿主有公网 IP 且需直接暴露 80/443，必须启用 TLS（见下）。
 - [ ] 【建议】启用 TLS（C6）：取消 `prj.conf` 预留 443 块注释 + 放置证书 `gateway/nginx/ssl/prj.crt|prj.key` + 取消 HSTS；缓解 F-11 明文令牌嗅探。
 - [ ] 【建议】落实 F-05 网关 XFF 覆盖（单跳内网 `$remote_addr`）。
 - [ ] 确认 `db/mysql_init/` 初始化脚本存在且 `init.sql`/`migrate_role.sql` 含至少一个 `role='ADMIN'` 真实用户（否则 `/druid` 与写操作无人可访问）。
-- [ ] 确认 `db/mysql_data`、`db/redis_data` 持久化卷路径存在（首次启动自动建）。
+- [ ] 确认 prod 独立命名卷 `prod_mysql_data`、`prod_redis_data` 已声明（docker-compose.prod.yml volumes 段，首次启动自动建）；dev 仍用 `mysql_data`/`db/redis_data`。
 
 ---
 
@@ -171,7 +171,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod ps
 docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f prj-backend-c
 ```
 
-### 4) 冒烟测试（网关 127.0.0.1:80）
+### 4) 冒烟测试（网关 0.0.0.0:80，含 127.0.0.1 回环，局域网可达）
 ```bash
 # 网关根路径 → 前端静态页（期望 200）
 curl -s -o /dev/null -w "GET /            -> %{http_code}\n" http://127.0.0.1/
@@ -195,7 +195,7 @@ curl -s -H "Authorization: Bearer <TOKEN>" http://127.0.0.1/api/excel/progress
 ```bash
 cd X-box
 
-# 仅停止服务（保留 db 卷 db/mysql_data、db/redis_data，切勿删除）
+# 仅停止服务（保留 prod 卷 prod_mysql_data、prod_redis_data；dev 卷 mysql_data、db/redis_data，切勿删除）
 docker compose -f docker-compose.prod.yml --env-file .env.prod down
 
 # 回滚后端/前端到上一版：git 切回上一提交后重新构建

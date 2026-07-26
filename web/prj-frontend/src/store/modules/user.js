@@ -25,8 +25,9 @@ const user = {
       const uuid = userInfo.uuid
       return new Promise((resolve, reject) => {
         login(username, password, code, uuid).then(res => {
+          // [F-11-FIX] 不在前端存储原始 JWT（防 XSS）；setToken 仅置一个非敏感的登录态标记
           setToken(res.token)
-          commit('SET_TOKEN', res.token)
+          commit('SET_TOKEN', 'logged-in')
           resolve()
         }).catch(error => {
           reject(error)

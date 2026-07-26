@@ -44,5 +44,14 @@ CREATE TABLE employee_kpi (
 
 -- [P2-13-FIX] 默认管理员账号（密码 admin123 的 BCrypt 哈希）
 -- [C1] role='ADMIN'：保证管理员在 @PreAuthorize("hasRole('ADMIN')") 与 /druid/** 判定中放行
+-- ⚠️【弱口令治理·P1】本 INSERT 写入的是硬编码默认账号 admin / admin123，属已知弱口令。
+--   治理方案见同目录 README.admin-credential.md：
+--     * 初始化机制为纯 `mysql < init.sql`，【无】envsubst / 模板变量替换，故无法在此直接用
+--       ${ADMIN_INIT_PWD} 注入（会被当作字面量写入）；env 注入需先引入替换步骤（见 README 方案 A）。
+--     * msg / work 库的 admin_user 已由 Niu_Txl/ensure_admin_hash.php 经 ADMIN_INIT_PWD 注入
+--       （dev=Admin@2026，prod=Xb0xAdm902_Pq7Kv3RtM），不在此弱口令范围内。
+--     * 当前采用方案 B（保留默认账号 + 文档化 + 标记后续开发），未硬造登录流程；
+--       本文件仅在【全新数据卷首次初始化】时执行一次，改密需后端首登强制改密或启动后手动 ALTER。
+--   后续若引入 env 注入 / 首登强制改密，可移除本注释与下方硬编码 VALUES。
 INSERT INTO user_info (user_name, nick_name, password, role) VALUES
 ('admin', '管理员', '$2a$10$PzPW0yfIE7eW55U0Y3tQnec4UJ86QDlJFIiGwYCXZ73E/SU3YpfBS', 'ADMIN');

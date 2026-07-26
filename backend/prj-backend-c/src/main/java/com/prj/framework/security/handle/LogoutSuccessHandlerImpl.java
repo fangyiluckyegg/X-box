@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
 import com.prj.common.core.domain.model.LoginUser;
 
 
@@ -43,6 +45,17 @@ public class LogoutSuccessHandlerImpl implements LogoutSuccessHandler
             // 删除用户缓存记录
             tokenService.delLoginUser(loginUser.getToken());
         }
+
+        // [F-11-FIX] 清除 HttpOnly Cookie（Max-Age=0）
+        boolean secure = "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto")) || request.isSecure();
+        ResponseCookie cookie = ResponseCookie.from(TokenService.ADMIN_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
         response.setStatus(200);
         response.setContentType("application/json");

@@ -1,21 +1,17 @@
-import Cookies from 'js-cookie'
-
-const TokenKey = 'Admin-Token'
-
-// [P1-FIX] Cookie 安全加固：添加 SameSite 防止 CSRF，secure 在 HTTPS 下生效
-const cookieOptions = {
-  sameSite: 'Lax',
-  secure: window.location.protocol === 'https:'
-}
+// [F-11-FIX] 鉴权改造：真实 JWT 由后端以 HttpOnly Cookie 下发，前端 JS 永不直接持有令牌，
+// 仅在 localStorage 记录一个「已登录」标记用于路由守卫判断，从源头消除 XSS 窃取令牌的风险。
+const LoginFlag = 'Admin-IsLogin'
 
 export function getToken() {
-  return Cookies.get(TokenKey)
+  // 返回登录态标记（'1' 或 null）；路由守卫据此判断是否已登录
+  return localStorage.getItem(LoginFlag)
 }
 
 export function setToken(token) {
-  return Cookies.set(TokenKey, token, cookieOptions)
+  // 刻意不保存原始 JWT（参数被忽略）；令牌只存在于 HttpOnly Cookie 中，JS 无法读取
+  return localStorage.setItem(LoginFlag, '1')
 }
 
 export function removeToken() {
-  return Cookies.remove(TokenKey, cookieOptions)
+  return localStorage.removeItem(LoginFlag)
 }

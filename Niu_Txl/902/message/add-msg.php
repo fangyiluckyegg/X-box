@@ -1,5 +1,12 @@
 <?php session_start(); ?>
-<?php require_once('Connections/conn.php'); ?>
+<?php require_once('Connections/conn.php');
+
+// 登录守卫：未登录用户禁止发表留言（写操作）
+if (!isset($_SESSION['MM_Username'])) {
+    header('Location: login.php');
+    exit;
+}
+?>
 <?php
 if (!function_exists("GetSQLValueString")) {
 function GetSQLValueString($theValue, $theType, $theDefinedValue = "", $theNotDefinedValue = "") 

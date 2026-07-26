@@ -31,7 +31,7 @@ public class ResourcesConfig implements WebMvcConfigurer
 {
     // [P0-FIX] CORS允许的源地址从配置读取，不再使用通配符"*"
     // [BUGFIX] 补充 127.0.0.1 和无端口(=80) 版本，浏览器对默认端口省略端口号
-    @Value("${cors.allowed-origins:http://localhost:8080,http://localhost:80,http://localhost:8081,http://localhost,http://127.0.0.1:8080,http://127.0.0.1:80,http://127.0.0.1:8081,http://127.0.0.1}")
+    @Value("${cors.allowed-origins:http://localhost:8080,http://localhost:80,http://localhost:8081,http://localhost,http://127.0.0.1:8080,http://127.0.0.1:80,http://127.0.0.1:8081,http://127.0.0.1,http://118.25.129.219:7007}")
     private String[] allowedOrigins;
 
     /**

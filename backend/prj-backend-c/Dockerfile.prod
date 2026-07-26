@@ -7,7 +7,10 @@
 
 # [P1-FIX] 生产环境：JDK 17 多阶段构建（Spring Boot 3 要求 JDK 17），JRE 运行时优化镜像大小
 # 编译阶段
-FROM eclipse-temurin:17-jdk-alpine AS builder
+# [ARCH-FIX] 改用非 alpine 版 eclipse-temurin:17-jdk（含 arm64/amd64 多架构清单）；
+#            原 alpine 版仅 amd64，Apple Silicon(M2) 构建会报 "no match for platform in manifest"。
+#            Ubuntu 基础镜像使用 apt 而非 apk。
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
 
 # [CACHE-FIX] 仅拷贝依赖清单(pom.xml)与 Maven 配置(settings.xml)，而非全部源码。
@@ -16,11 +19,8 @@ COPY backend/prj-backend-c/pom.xml /app/backend/prj-backend-c/pom.xml
 # 使用阿里云 Maven 镜像加速依赖下载（规避中央仓库/Docker Hub 拉取超时）
 COPY backend/prj-backend-c/settings.xml /root/.m2/settings.xml
 
-# 替换阿里云Alpine软件源
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-# 安装Maven并打包项目
-RUN apk update && apk add --no-cache maven wget
+# 安装Maven并打包项目（Ubuntu 基础镜像使用 apt）
+RUN apt-get update && apt-get install -y --no-install-recommends maven wget && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/backend/prj-backend-c
 
 # [CACHE-FIX] 先仅解析/下载依赖到镜像层（pom.xml 不变则命中缓存，不触发依赖重下）
@@ -33,11 +33,16 @@ COPY backend/prj-backend-c/src /app/backend/prj-backend-c/src
 RUN mvn clean package -Dmaven.test.skip=true
 
 # 运行阶段：轻量 JRE（Spring Boot 3 要求 JDK 17 编译，运行时只需 JRE 17）
-FROM eclipse-temurin:17-jre-alpine
+# [ARCH-FIX] 改用非 alpine 版 eclipse-temurin:17-jre（含 arm64/amd64 多架构清单）
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # [P2-FIX] 创建非root用户，提升生产环境安全性
-RUN addgroup -S appuser && adduser -S appuser -G appuser
+#          Ubuntu 基础镜像使用 groupadd/useradd（Alpine 的 addgroup/adduser -S 为 BusyBox 专属）
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# [P2-FIX] 安装 wget 供 HEALTHCHECK 使用（Ubuntu 基础镜像默认不含 wget，Alpine 由 BusyBox 提供）
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 
 # 拷贝jar包
 COPY --from=builder /app/backend/prj-backend-c/target/*.jar app.jar

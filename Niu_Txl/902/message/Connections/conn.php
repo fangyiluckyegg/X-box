@@ -19,7 +19,7 @@ if (!$conn) {
     http_response_code(500);
     die('服务暂时不可用,请稍后重试');
 }
-mysqli_set_charset($conn, 'utf8');   // 与现有表字符集保持一致（utf8，非 utf8mb4）
+mysqli_set_charset($conn, 'utf8mb4');   // 与已迁移的 utf8mb4 表保持一致，避免 4 字节字符（emoji 等）被截断
 
 // 自动兼容老项目函数（保留原垫片，避免旧代码 mysql_* 调用报错）
 if (!function_exists('mysql_query')) {

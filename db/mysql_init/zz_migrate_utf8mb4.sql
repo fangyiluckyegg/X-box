@@ -1,0 +1,19 @@
+-- ============================================================
+-- 废弃占位脚本（DEPRECATED）
+-- 原文件名：db/mysql_init/zz_migrate_utf8mb4.sql
+-- ============================================================
+-- 本文件原承担「msg / work 库由 utf8 升级 utf8mb4」的迁移职责，使用 COLLATE utf8mb4_unicode_ci。
+-- 现该职责已统一收敛到 db/mysql_init/zz_migrate_msg_work_utf8mb4.sql：
+--   * 表名清单与本文档历史版本一致（msg: admin_user/post/reply；work: admin_user/work_pic/work_type）；
+--   * COLLATE 统一为 utf8mb4_general_ci，与建表 SQL（msg.sql / work.sql）的原 utf8_general_ci
+--     一一对应升级，避免同一库内 collation 漂移。
+--
+-- 为何保留为空脚本（仅注释、无 ALTER）：
+--   两个 zz_ 前缀脚本若同时在 initdb.d 中执行，会导致对已有 utf8 表的重复 CONVERT TO，
+--   且因字母序 zz_migrate_msg_work_utf8mb4.sql 先于本文件执行，若两者 collation 不一致，
+--   最终 collation 将由后执行者决定、结果不可预期。故本文件改为空占位，
+--   仅保留文件名以避免其他引用失效；实际迁移以 zz_migrate_msg_work_utf8mb4.sql 为准。
+--
+-- 手动迁移请改用：
+--   mysql -u root -p < db/mysql_init/zz_migrate_msg_work_utf8mb4.sql
+-- ============================================================

@@ -66,8 +66,8 @@
 
     <!-- 左下方班级同学录链接（两个上下排列） -->
     <div class="loginFooterLink">
-      <a href="http://127.0.0.1:1181/607/" target="_blank" class="classmatesBtn">607班级同学录</a>
-      <a href="http://127.0.0.1:1181/902/" target="_blank" class="classmatesBtn">902班级同学录</a>
+      <a href="http://192.168.2.111/607/" target="_blank" class="classmatesBtn">607班级同学录</a>
+      <a href="http://192.168.2.111/902/" target="_blank" class="classmatesBtn">902班级同学录</a>
     </div>
   </div>
 </template>

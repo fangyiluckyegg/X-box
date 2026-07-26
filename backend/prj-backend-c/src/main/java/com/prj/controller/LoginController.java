@@ -5,6 +5,7 @@ import com.prj.common.core.domain.AjaxResult;
 import com.prj.common.core.domain.model.LoginBody;
 import com.prj.common.utils.IpUtils;
 import com.prj.framework.web.service.LoginService;
+import com.prj.framework.web.service.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.validation.Valid;
 
 
@@ -40,16 +45,21 @@ public class LoginController
     @Autowired
     private LoginService loginService;
 
+    // [F-11] 登录 Cookie 有效期（分钟），与 token.expireTime 对齐
+    @Value("${token.expireTime:30}")
+    private int tokenExpireMinutes;
+
     /**
      * 用户登录接口。
      *
      * @param loginBody 登录请求体（@Valid 触发 LoginBody 上 JSR-303 校验：用户名/密码/验证码非空等）
-     * @param request   HTTP 请求（用于解析客户端真实 IP）
+     * @param request   HTTP 请求（用于解析客户端真实 IP 与协议）
+     * @param response  HTTP 响应（用于种 HttpOnly Cookie）
      * @return 成功响应，data 中携带 {@code token} 字段；校验失败由 LoginService 抛出业务异常
      */
     @PostMapping("/login")
     // [P0-FIX] @Valid 触发 LoginBody 上的 JSR-303 约束校验
-    public AjaxResult login(@Valid @RequestBody LoginBody loginBody, HttpServletRequest request)
+    public AjaxResult login(@Valid @RequestBody LoginBody loginBody, HttpServletRequest request, HttpServletResponse response)
     {
         AjaxResult ajax = AjaxResult.success();
         // [C8/C12] 解析真实客户端 IP 并透传至登录锁定逻辑
@@ -58,6 +68,18 @@ public class LoginController
         String token = loginService.login(loginBody.getUsername(), loginBody.getPassword(), loginBody.getCode(),
                 loginBody.getUuid(), clientIp);
         ajax.put(Constants.TOKEN, token);
+
+        // [F-11-FIX] 以 HttpOnly + Secure + SameSite=Strict 种 Cookie；JS 无法读取，防 XSS 窃取令牌。
+        // secure 依据原始请求协议（兼容前置 Nginx 的 X-Forwarded-Proto），本地 HTTP 开发亦可正常使用。
+        boolean secure = "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto")) || request.isSecure();
+        ResponseCookie cookie = ResponseCookie.from(TokenService.ADMIN_TOKEN_COOKIE, token)
+                .httpOnly(true)
+                .secure(secure)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(tokenExpireMinutes * 60L)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return ajax;
     }
 

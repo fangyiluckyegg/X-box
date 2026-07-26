@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Cookie;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -205,14 +206,29 @@ public class TokenService
         }
     }
 
+    /** [F-11] HttpOnly Cookie 名称（与后端登录种 Cookie、前端不再读取保持一致）。 */
+    public static final String ADMIN_TOKEN_COOKIE = "Admin-Token";
+
     /** 获取请求token
      * @param request
      * @return token
      */
-    /** 从请求头中提取 token，并去掉 "Bearer " 前缀。 */
+    /** 从请求中提取 token：优先 Authorization 头（Bearer），缺失时回退到 HttpOnly Cookie（Admin-Token）。
+     *  [F-11-FIX] 前端不再以 JS 读取令牌，令牌仅存于 HttpOnly Cookie，从源头规避 XSS 窃取。 */
     private String getToken(HttpServletRequest request)
     {
         String token = request.getHeader(header);
+        if (StringUtils.isEmpty(token) && request.getCookies() != null)
+        {
+            for (Cookie cookie : request.getCookies())
+            {
+                if (ADMIN_TOKEN_COOKIE.equals(cookie.getName()))
+                {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
         if (StringUtils.isNotEmpty(token) && token.startsWith(Constants.TOKEN_PREFIX))
         {
             token = token.replace(Constants.TOKEN_PREFIX, "");

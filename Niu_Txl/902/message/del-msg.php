@@ -3,6 +3,12 @@ ob_start();
 session_start();
 require_once('Connections/conn.php');
 
+// 登录守卫：未登录用户禁止任何写操作，防止越权删除（IDOR）
+if (!isset($_SESSION['MM_Username'])) {
+    header('Location: login.php');
+    exit;
+}
+
 if (!function_exists("GetSQLValueString")) {
 function GetSQLValueString($theValue, $theType, $theDefinedValue = "", $theNotDefinedValue = "") 
 {

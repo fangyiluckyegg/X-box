@@ -88,3 +88,8 @@ Niu_Txl/607/永远的607/
 Niu_Txl/902/message/images/
 Niu_Txl/902/message/tinymce/
 Niu_Txl/902/work/admin/upload/
+# [2026-07-25 综合审查·清理] 排除 Dreamweaver 元数据、复制件、个人实验页与测试数据
+Niu_Txl/**/_notes/
+**/* copy.php
+Niu_Txl/607/Dad's/
+Niu_Txl/607/places/top-1mcsv.zip

@@ -19,7 +19,7 @@ SET time_zone = "+00:00";
 --
 -- Database: `work`
 --
-CREATE DATABASE IF NOT EXISTS `work` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE DATABASE IF NOT EXISTS `work` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `work`;
 
 -- --------------------------------------------------------
@@ -31,7 +31,7 @@ USE `work`;
 CREATE TABLE `admin_user` (
   `username` varchar(20) NOT NULL,
   `password` varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 注：admin_user 种子数据改由容器启动脚本 Niu_Txl/ensure_admin_hash.php 负责建/修（bcrypt 化），此处不再写明文 INSERT。
 
@@ -47,7 +47,7 @@ CREATE TABLE `work_pic` (
   `p_src` varchar(50) NOT NULL,
   `p_name` varchar(50) NOT NULL,
   `p_date` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- 转存表中的数据 `work_pic`
@@ -76,7 +76,7 @@ INSERT INTO `work_pic` (`p_id`, `t_id`, `p_src`, `p_name`, `p_date`) VALUES
 CREATE TABLE `work_type` (
   `t_id` int(11) NOT NULL,
   `t_name` varchar(20) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- 转存表中的数据 `work_type`

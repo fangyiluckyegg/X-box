@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { Notification, MessageBox, Message } from 'element-ui'
 import store from '@/store'
-import { getToken } from '@/utils/auth'
 import errorCode from '@/utils/errorCode'
 
 // 创建请求实例
@@ -12,14 +11,10 @@ const service = axios.create({
   timeout: 10000
 })
 
-// 请求request拦截器，查看请求是否带token
+// 请求request拦截器
+// [F-11-FIX] 鉴权令牌由后端通过 HttpOnly Cookie 下发，浏览器同源自动携带，
+// 前端不再拼接 Authorization 头（也无需、不应持有原始 JWT），从源头规避 XSS 窃取令牌。
 service.interceptors.request.use(config => {
-  // 是否需要设置 token
-  const isToken = (config.headers || {}).isToken === false
-  if (getToken() && !isToken) {
-    config.headers['Authorization'] = 'Bearer ' + getToken()
-  }
-
   return config
 }, error => {
     // [P1-FIX] axios 1.x 拦截器 error handler 必须返回 Promise.reject，否则错误会被静默吞没

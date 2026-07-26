@@ -81,9 +81,9 @@ public class SecurityConfig
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception
     {
-        // [C11] CSRF 当前禁用。本系统采用无状态鉴权：令牌通过 Authorization: Bearer <JWT> 请求头传递，
-        // 而非 Cookie，因此传统 CSRF（依赖 Cookie 自动携带）风险较低。后续如需进一步加固，
-        // 可恢复 CSRF Token 或维持 Bearer Header + SameSite 策略。
+        // [C11] CSRF 当前禁用。本系统采用无状态鉴权：令牌优先经 Authorization: Bearer <JWT> 请求头传递，
+        // 缺失时回退到 HttpOnly Cookie（Admin-Token，[F-11] 令牌仅存于 HttpOnly Cookie 从源头规避 XSS 窃取）；
+        // 传统 CSRF（依赖 Cookie 自动携带）风险由 SameSite=Strict Cookie 策略缓解，且令牌不进 JS 故 XSS 难窃取。
         httpSecurity
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

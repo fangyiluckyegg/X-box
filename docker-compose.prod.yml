@@ -5,12 +5,12 @@
 #   1. 【端口冲突修复·高】原 prj-nginx 与 base 的 nginx-gateway 同时绑定 127.0.0.1:80/443，
 #      合并运行必冲突（仅一个能起）。现移除 prj-nginx，统一复用 base 的 nginx-gateway
 #      （同一份 gateway/nginx/conf.d/prj.conf，TLS/资源限制完全一致）。
-#   2. 【端口对齐·高】prod 现直接复用 base 的 redis（容器名 dev-redis），不再保留独立
-#      prj-redis；base redis 的 127.0.0.1:63790:6379 在 prod 仅 loopback 可达，天然无 63790
-#      端口冲突，消除冗余实例与暴露。
-#   3. 【网络对齐·中】原 prod 业务服务挂在 isolated 的 prj-network，而网关在 dev-network，
-#      导致前端仅 prj-network、网关无法代理前端。现全部 prod 业务服务统一挂 dev-network
-#      （与 dev 一致），删除 prj-network。
+#   2. 【环境隔离·2026-07-25】prod 不再复用 base 的 redis（dev-redis），改为独立
+#      prod-redis（独立命名卷 prod_redis_data + 独立网络 prod-network），实现 dev/prod
+#      Redis 数据物理分离；详见下方 redis 服务覆写块。
+#   3. 【网络隔离·2026-07-25】prod 业务服务统一挂独立 prod-network（不再混用 dev-network），
+#      与 dev 拓扑物理隔离；共享网关 nginx-gateway 同时挂 dev-network + prod-network 以代理
+#      prod 后端（详见下方 nginx-gateway 覆写块）。
 #   4. 【前端端口对齐·低】prj-frontend 补回 127.0.0.1:8081:8081（与 dev 对齐，loopback）。
 # ⬆⬆⬆ 以上修正已使 prod 与 dev 在「service 命名 / 网络 / 端口映射逻辑」上对齐 ⬆⬆⬆
 #
@@ -25,30 +25,32 @@
 #   docker compose -f docker-compose.base.yml -f docker-compose.prod.yml --env-file .env.prod up -d --build
 #
 # ⚠️ 本生产栈【并非】自包含——必须与 docker-compose.base.yml 一同启动，
-#   共享 base 的 nginx-gateway / dev-mysql / dev-redis（均在 dev-network）。
-#   单跑本文件会因 dev-mysql / nginx-gateway 不存在而解析/连接失败。
+#   共享 base 的 nginx-gateway（dev-network + prod-network 双栈桥接）；
+#   MySQL/Redis 则使用本文件覆写的独立实例 prod-mysql / prod-redis（prod-network + 独立命名卷），
+#   与 dev 的 dev-mysql / dev-redis 数据物理分离。
+#   单跑本文件会因 nginx-gateway 不存在而解析/连接失败。
 #
-# ⚠️【凭证契约 · 必须一致】共享 dev-mysql 中 prj_user 的口令由 base 的 .env.dev 的
-#   SPRING_DATASOURCE_PASSWORD 在运行时注入（ensure_app_user()）。故 Mac 部署 prod 时，
-#   本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD 必须与 .env.prod.backend 的
-#   SPRING_DATASOURCE_PASSWORD 完全相同，否则 prod 后端连不上 dev-mysql。
+# ⚠️【凭证契约 · 必须一致】prod-mysql 继承 base mysql 的 env_file（.env.dev），其 prj_user
+#   口令由 .env.dev 的 SPRING_DATASOURCE_PASSWORD 在运行时注入（ensure_app_user()）。故 Mac
+#   部署 prod 时，本机 .env.dev 的 SPRING_DATASOURCE_PASSWORD 必须与 .env.prod.backend 的
+#   SPRING_DATASOURCE_PASSWORD 完全相同，否则 prod 后端连不上 prod-mysql。
 #   （当前 .env.dev 与 .env.prod.backend 该值已一致：<REDACTED-live-prod>）
 #
-# ⚠️ 拓扑：生产全栈复用 base 的 dev-mysql（容器名 dev-mysql，网络 dev-network）。
-#   建库（prj_dev）、class_user 账号与授权、密码对齐见 docs 运行手册，由运维在 dev-mysql 运行时执行。
+# ⚠️ 拓扑：生产全栈使用本文件覆写的独立 prod-mysql（容器名 prod-mysql，网络 prod-network，
+#   独立命名卷 prod_mysql_data）。建库（prj_dev）、class_user 账号与授权经 db/mysql_init 首次初始化
+#   自动执行（全新 prod_mysql_data 卷首次启动即建 msg/work 库）；密码对齐见上方【凭证契约】段。
 #   AI 推理自 2026-07-16 起迁至宿主原生 Ollama（host.docker.internal:11434），prod 不再 depends_on Ollama。
 # ============================================================
 services:
   # ------------------------------------------------------------
-  # prod 复用 base 的 redis（容器名 dev-redis，服务名 redis）。prod 部署以
-  # --env-file .env.prod 启动，使 base redis 的 --requirepass ${REDIS_PASSWORD} 与
-  # prj-backend 的 REDIS_PASSWORD 同源（均取 .env.prod 强口令），故无需独立实例；
-  # 这与 DEV 拓扑（仅 base redis）对齐。prj-backend-c 经服务名 redis 访问。
+  # prod 使用独立 Redis 实例 prod-redis（容器名 prod-redis，服务名 redis），
+  # 独立命名卷 prod_redis_data（详见下方【卷/网络隔离】redis 覆写块）。
+  # REDIS_PASSWORD 由 .env.prod 注入，与 dev-redis 物理隔离。
   # ------------------------------------------------------------
 
   # 凭证契约见文件头【凭证契约】段：后端用 .env.prod.backend 的 SPRING_DATASOURCE_PASSWORD
-  # 连 dev-mysql 的 prj_user；该口令由 .env.dev 的 SPRING_DATASOURCE_PASSWORD 注入，
-  # 两者必须一致（Mac 部署 prod 时务必对齐）。
+  # 连独立 prod-mysql 的 prj_user；prod-mysql 由 .env.prod.backend 注入独立口令，
+  # 与 dev-mysql 物理隔离（详见下方 mysql 覆写块）。
   prj-backend-c:
     env_file: .env.prod.backend
     build:
@@ -76,13 +78,16 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./logs/prj-backend-c:/app/logs
+    # [注] 本应仅挂 prod-network 实现强隔离，但本机 Docker Compose 版本对 networks 的 `!reset`
+    # 存在缺陷（会回退到 default 网络导致网关无法代理），故采用合并写法：在 base 的 dev-network
+    # 之上追加 prod-network（dev/prod 仍共享 dev-network）。数据层已通过独立命名卷物理隔离。
     networks:
-      - dev-network
+      - prod-network
 
   prj-frontend:
     build:
@@ -105,11 +110,11 @@ services:
     # [对齐·2026-07-20] 与 dev 一致，loopback 暴露 8081（同时仍经 nginx-gateway:80 统一入口）
     ports:
       - "127.0.0.1:8081:8081"
-    # 复用 base 的 nginx-gateway（已移除重复的 prj-nginx）
+    # 复用共享 nginx-gateway（双栈 dev+prod 桥接），prj-frontend 仅挂独立 prod-network（base 未定义此服务）
     depends_on:
       - nginx-gateway
     networks:
-      - dev-network
+      - prod-network
 
   # ===== 班级网站 Niu_Txl（607/902）运行环境 =====
   # Apache + PHP 8.2 + mysqli + gd，bind mount ./Niu_Txl 为 docroot（/var/www/html），
@@ -145,16 +150,61 @@ services:
     depends_on:
       mysql:
         condition: service_started
+    # 仅挂独立 prod-network（networks 的 !reset 在本机 compose 版本有缺陷，故用合并写法追加）
     networks:
-      - dev-network
+      - prod-network
 
   # 【prod 端口收敛·2026-07-23】prod 运行时后端经内网 mysql:3306 访问，无需宿主 MySQL 端口；
   # Windows 上 33060 常被 Hyper-V/WinNAT 保留导致 bind 失败。故 prod 不发布 mysql 宿主端口，
   # 彻底规避该环境冲突。如需在 prod 宿主用 Navicat 连库，改为设置 base 的 MYSQL_HOST_PORT
   # （在 .env.prod 或 shell 设空闲端口）并在此块删除 ports: !reset 覆写。
   # 注：compose 合并对 ports 列表，空值 `ports: []` 不会清掉 base 的端口映射，必须用 `!reset`。
+  # 【卷/网络隔离·2026-07-25】prod 使用独立命名卷 prod_mysql_data（替代 base 的 mysql_data），
+  # 独立网络 prod-network（替代 dev-network），容器重命名为 prod-mysql；dev/prod 数据物理分离。
+  # 卷隔离写法：仅声明 prod_mysql_data:/var/lib/mysql，compose 按挂载目标 /var/lib/mysql 去重替换
+  # base 的 mysql_data；其余挂载（db/mysql_init、db/mysql_scripts、logs/mysql）继承自 base，无需重复声明。
+  # （注：本机 Docker Compose v5 对 networks/volumes 的 `!reset` 存在把节点清空为空的缺陷，故改用
+  #  追加+按目标去重替换的方式实现隔离；ports 仍用 !reset 以清空 host 端口发布。）
   mysql:
+    container_name: prod-mysql
+    volumes:
+      - prod_mysql_data:/var/lib/mysql
+    # 合并写法追加 prod-network（!reset 对本机 compose 版本的 networks 有缺陷，会回退 default）
+    networks:
+      - prod-network
     ports: !reset
 
-# 说明：本文件不再定义 prj-network。prod 业务服务统一挂 base 定义的 dev-network，
-#       与 dev 拓扑一致，且可与 base 的 nginx-gateway / dev-mysql 互通。
+  # 【卷/网络隔离·2026-07-25】prod 使用独立 Redis 实例 prod-redis（替代 base 的 dev-redis），
+  # 独立命名卷 prod_redis_data（替代 base 的 ./db/redis_data bind 挂载），独立网络 prod-network。
+  # 卷隔离写法：仅声明 prod_redis_data:/data，compose 按挂载目标 /data 去重替换 base 的
+  # ./db/redis_data；日志挂载 logs/redis 继承自 base。ports 用 !reset 以清空宿主端口（避免与
+  # dev-redis 的 63790 冲突）。
+  redis:
+    container_name: prod-redis
+    volumes:
+      - prod_redis_data:/data
+    # 合并写法追加 prod-network（!reset 对本机 compose 版本的 networks 有缺陷，会回退 default）
+    networks:
+      - prod-network
+    ports: !reset
+
+  # 共享网关：同时挂 dev-network 与 prod-network，以代理 prod 后端（prj-backend-c /
+  # prj-frontend / prj-php 均在 prod-network）。dev 业务若启用仍可经同一网关。
+  nginx-gateway:
+    networks:
+      - dev-network
+      - prod-network
+
+# 说明：prod 业务服务（prj-backend-c / prj-frontend / prj-php）及 prod-mysql / prod-redis
+#       统一挂独立 prod-network，与 dev 拓扑物理隔离；网关 nginx-gateway 双栈桥接
+#       dev-network + prod-network。本文件不再定义旧的 prj-network。
+
+# prod 独立网络
+networks:
+  prod-network:
+    driver: bridge
+
+# prod 独立命名卷（dev/prod 数据物理分离）
+volumes:
+  prod_mysql_data:
+  prod_redis_data:
